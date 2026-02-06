@@ -39,7 +39,32 @@ public class TenantResolutionMiddleware
         if (tenant is null)
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
-            await context.Response.WriteAsync("Tenant not found.");
+            context.Response.ContentType = "text/html; charset=utf-8";
+            await context.Response.WriteAsync("""
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                    <title>Page Not Found</title>
+                    <style>
+                        body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f5f5f5; color: #333; }
+                        .container { text-align: center; padding: 2rem; }
+                        h1 { font-size: 4rem; margin: 0; color: #888; }
+                        p { font-size: 1.125rem; margin: 1rem 0; }
+                        a { color: #6366f1; text-decoration: none; }
+                        a:hover { text-decoration: underline; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>404</h1>
+                        <p>The page you're looking for doesn't exist.</p>
+                        <a href="/">← Back to home</a>
+                    </div>
+                </body>
+                </html>
+                """);
             return;
         }
 

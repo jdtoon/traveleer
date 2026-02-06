@@ -1,0 +1,30 @@
+@model dynamic
+@inject Microsoft.Extensions.Options.IOptions<saas.Shared.SiteSettings> SiteOptions
+@{
+    var slug = (string)Model.Slug;
+    var email = (string)Model.Email;
+    var site = SiteOptions.Value;
+}
+
+<div class="alert alert-success">
+    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+    <div>
+        <h3 class="font-bold">Workspace Created Successfully!</h3>
+        <div class="text-sm mt-2">
+            <p>Your workspace <span class="font-semibold">@slug</span> has been created.</p>
+            <p class="mt-1">We've sent a welcome email to <span class="font-semibold">@email</span></p>
+            <p class="mt-2">
+                <a href="/@slug/login" class="btn btn-sm btn-primary mt-2">
+                    Go to Login →
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Disable form after successful submission
+    document.getElementById('registration-form').style.display = 'none';
+</script>

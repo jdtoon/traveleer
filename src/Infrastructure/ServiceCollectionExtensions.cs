@@ -102,6 +102,12 @@ public static class ServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.AddScoped<ITenantContext, TenantContext>();
 
+        // Site settings
+        services.AddOptions<SiteSettings>()
+            .BindConfiguration(SiteSettings.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         // Default providers (Phase 2)
         services.AddScoped<IEmailService, ConsoleEmailService>();
         services.AddScoped<IBotProtection, MockBotProtection>();

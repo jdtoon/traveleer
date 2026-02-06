@@ -1,0 +1,22 @@
+@model dynamic
+@{
+    var isValid = (bool)Model.IsValid;
+    var message = (string)Model.Message;
+}
+
+<div class="label">
+    @if (isValid)
+    {
+        <span class="label-text-alt text-success font-semibold">@message</span>
+    }
+    else if (!string.IsNullOrEmpty(message))
+    {
+        <span class="label-text-alt text-error font-semibold">@message</span>
+    }
+    else
+    {
+        <span class="label-text-alt text-base-content/60">
+            Choose a unique identifier (3-63 characters, lowercase letters, numbers, and hyphens)
+        </span>
+    }
+</div>

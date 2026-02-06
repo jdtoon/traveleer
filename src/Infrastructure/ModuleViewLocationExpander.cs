@@ -11,6 +11,7 @@ public class ModuleViewLocationExpander : IViewLocationExpander
         ["SuperAdminAuth"] = new("Auth"),
         ["TenantAuth"] = new("Auth"),
         ["SuperAdmin"] = new("SuperAdmin"),
+        ["Registration"] = new("Registration"),
         // Add mappings as modules are created:
         // ["ControllerName"] = new("ModuleFolderName"),
     };

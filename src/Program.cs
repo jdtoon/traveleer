@@ -1,9 +1,14 @@
+using System.Globalization;
 using saas.Infrastructure;
 using saas.Data.Core;
 using saas.Data.Audit;
 using saas.Data.Seeding;
 using saas.Infrastructure.HealthChecks;
 using saas.Shared;
+
+// Force InvariantCulture for SQLite decimal collation compatibility
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,7 +38,8 @@ builder.Services.AddCoreServices();
 var modules = new IModule[]
 {
     new saas.Modules.Auth.AuthModule(),
-    new saas.Modules.SuperAdmin.SuperAdminModule()
+    new saas.Modules.SuperAdmin.SuperAdminModule(),
+    new saas.Modules.Registration.RegistrationModule()
 };
 
 foreach (var module in modules)

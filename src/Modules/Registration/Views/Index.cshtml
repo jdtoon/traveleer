@@ -1,0 +1,123 @@
+@model IEnumerable<saas.Data.Core.Plan>
+@inject Microsoft.Extensions.Options.IOptions<saas.Shared.SiteSettings> SiteOptions
+@{
+    ViewData["Title"] = "Create Your Workspace";
+    var site = SiteOptions.Value;
+    var displayUrl = new Uri(site.BaseUrl).Host;
+}
+
+<div class="min-h-screen bg-base-200 flex items-center justify-center p-4">
+    <div class="card w-full max-w-2xl bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h1 class="card-title text-3xl mb-6">Create Your Workspace</h1>
+            
+            <form id="registration-form" 
+                  hx-post="/register" 
+                  hx-target="#registration-result"
+                  hx-disabled-elt="#submit-btn">
+                
+                @Html.AntiForgeryToken()
+                
+                <!-- Slug Input -->
+                <div class="form-control mb-4">
+                    <label class="label">
+                        <span class="label-text font-semibold">Choose your workspace URL</span>
+                    </label>
+                    <div class="join w-full">
+                        <span class="join-item btn btn-disabled">@displayUrl/</span>
+                        <input type="text" 
+                               name="slug" 
+                               id="slug-input"
+                               placeholder="my-company" 
+                               class="input input-bordered join-item flex-1"
+                               pattern="[a-z0-9][a-z0-9-]*[a-z0-9]"
+                               minlength="3"
+                               maxlength="63"
+                               required
+                               hx-get="/register/check-slug"
+                               hx-trigger="keyup changed delay:500ms"
+                               hx-target="#slug-validation"
+                               hx-include="[name='slug']">
+                    </div>
+                    <div id="slug-validation" class="label">
+                        <span class="label-text-alt text-base-content/60">
+                            Choose a unique identifier (3-63 characters, lowercase letters, numbers, and hyphens)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Email Input -->
+                <div class="form-control mb-4">
+                    <label class="label">
+                        <span class="label-text font-semibold">Admin email address</span>
+                    </label>
+                    <input type="email" 
+                           name="email" 
+                           placeholder="you@example.com" 
+                           class="input input-bordered w-full"
+                           required>
+                    <label class="label">
+                        <span class="label-text-alt">You'll receive a magic link to access your workspace</span>
+                    </label>
+                </div>
+
+                <!-- Plan Selection -->
+                <div class="form-control mb-6">
+                    <label class="label">
+                        <span class="label-text font-semibold">Select a plan</span>
+                    </label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        @foreach (var plan in Model)
+                        {
+                            <label class="card cursor-pointer hover:bg-base-200 transition-colors">
+                                <div class="card-body">
+                                    <div class="flex items-start gap-3">
+                                        <input type="radio" 
+                                               name="planId" 
+                                               value="@plan.Id" 
+                                               class="radio radio-primary mt-1"
+                                               required>
+                                        <div class="flex-1">
+                                            <h3 class="font-bold text-lg">@plan.Name</h3>
+                                            <p class="text-sm text-base-content/70 mb-2">@plan.Description</p>
+                                            <div class="text-2xl font-bold text-primary">
+                                                @if (plan.MonthlyPrice == 0)
+                                                {
+                                                    <span>Free</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>R @plan.MonthlyPrice.ToString("N0")</span>
+                                                    <span class="text-sm font-normal text-base-content/60">/month</span>
+                                                }
+                                            </div>
+                                            <div class="badge badge-success badge-sm mt-2">
+                                                14-day free trial
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                        }
+                    </div>
+                </div>
+
+                <!-- Hidden captcha token (bot protection will be mock for now) -->
+                <input type="hidden" name="captchaToken" value="mock-captcha-token">
+
+                <!-- Submit Button -->
+                <div class="form-control">
+                    <button type="submit" 
+                            id="submit-btn"
+                            class="btn btn-primary btn-lg w-full">
+                        <span class="htmx-indicator loading loading-spinner loading-sm"></span>
+                        Create Workspace
+                    </button>
+                </div>
+            </form>
+
+            <!-- Result Container -->
+            <div id="registration-result" class="mt-4"></div>
+        </div>
+    </div>
+</div>
