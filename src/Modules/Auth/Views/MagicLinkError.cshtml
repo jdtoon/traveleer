@@ -1,9 +1,18 @@
 @model string
 @{
+    Layout = "_PublicLayout";
     ViewData["Title"] = "Magic link error";
 }
 
-<div class="mx-auto max-w-md">
-    <h1 class="text-2xl font-bold mb-4">Magic link error</h1>
-    <p>@(string.IsNullOrEmpty(Model) ? "The magic link is invalid or expired." : Model)</p>
+<div class="flex items-center justify-center p-4 py-12">
+    <div class="card w-full max-w-md bg-base-100 shadow-xl">
+        <div class="card-body text-center">
+            <div class="text-5xl mb-4">⚠️</div>
+            <h1 class="card-title text-2xl justify-center mb-2">Magic link error</h1>
+            <p class="text-base-content/70">@(string.IsNullOrEmpty(Model) ? "The magic link is invalid or expired." : Model)</p>
+            <div class="mt-4">
+                <a href="/" class="btn btn-primary">← Back to home</a>
+            </div>
+        </div>
+    </div>
 </div>

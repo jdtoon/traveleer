@@ -1,0 +1,48 @@
+@inject Microsoft.Extensions.Options.IOptions<saas.Shared.SiteSettings> SiteOptions
+@{
+    var siteName = SiteOptions.Value.Name;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - @siteName</title>
+
+    <!-- DaisyUI + Tailwind CSS -->
+    <link rel="stylesheet" href="/css/styles.css" asp-append-version="true" />
+
+    <!-- Swap.Htmx CSS -->
+    <link rel="stylesheet" href="~/_content/Swap.Htmx/css/swap.css" asp-append-version="true" />
+</head>
+<body data-theme="corporate" class="min-h-screen bg-base-200 text-base-content">
+
+    <!-- Minimal top bar -->
+    <header class="navbar bg-base-100 border-b border-base-300 shadow-sm">
+        <div class="flex-1">
+            <a href="/" class="btn btn-ghost text-xl font-bold">@siteName</a>
+        </div>
+        <div class="flex-none gap-2">
+            @await RenderSectionAsync("HeaderActions", required: false)
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1">
+        @RenderBody()
+    </main>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="toast toast-end"></div>
+
+    <!-- Modal container -->
+    <div id="modal-container"></div>
+
+    <!-- Scripts -->
+    <script src="~/lib/htmx/dist/htmx.min.js" asp-append-version="true"></script>
+    <script src="~/_content/Swap.Htmx/js/swap.client.js" asp-append-version="true"></script>
+    <script src="/js/bundle.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
