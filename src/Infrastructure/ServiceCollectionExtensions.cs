@@ -12,7 +12,7 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddDataProtectionConfig(this IServiceCollection services, IWebHostEnvironment environment)
     {
-        var keysPath = Path.Combine(environment.ContentRootPath, "data", "keys");
+        var keysPath = Path.Combine(environment.ContentRootPath, "db", "keys");
         Directory.CreateDirectory(keysPath);
 
         services.AddDataProtection()
@@ -47,7 +47,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddDatabaseConfig(this IServiceCollection services, IConfiguration configuration)
     {
         // Ensure data directories exist
-        var dataPath = Path.Combine(Directory.GetCurrentDirectory(), "data");
+        var dataPath = Path.Combine(Directory.GetCurrentDirectory(), "db");
         Directory.CreateDirectory(dataPath);
         Directory.CreateDirectory(Path.Combine(dataPath, "tenants"));
         Directory.CreateDirectory(Path.Combine(dataPath, "keys"));

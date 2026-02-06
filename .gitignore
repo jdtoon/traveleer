@@ -49,11 +49,13 @@ src/wwwroot/uploads/
 
 # Ignore SQLite database files in docker volumes but not source code
 docker-data/
+db/
+src/db/
 *.db
 *.db-shm
 *.db-wal
 
 examples/
-keys/
+db/keys/
 Generated/
 test-publish/

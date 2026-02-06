@@ -7,12 +7,10 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - sqlite-data:/app/data
-      - key-storage:/app/keys
+      - sqlite-data:/app/db
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
     restart: unless-stopped
 
 volumes:
   sqlite-data:
-  key-storage:

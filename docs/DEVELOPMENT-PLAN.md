@@ -94,7 +94,7 @@
   - [ ] Static class with all feature key constants
 - [ ] **1.10** Refactor `Program.cs`:
   - [ ] Register `CoreDbContext` + `AuditDbContext` with fixed connection strings
-  - [ ] Configure `data/` directory structure (data/core.db, data/audit.db, data/tenants/, data/keys/)
+  - [ ] Configure `db/` directory structure (db/core.db, db/audit.db, db/tenants/, db/keys/)
   - [ ] Run `EnsureCreated()` + WAL mode + `MasterDataSeeder` on startup
   - [ ] Add `IModule` registration loop (empty array for now)
   - [ ] Remove old `AppDbContext` registration
@@ -119,14 +119,14 @@
 When I hand this over, verify:
 
 1. `dotnet run --project src` starts without errors
-2. `data/core.db` exists — open with SQLite Viewer:
+2. `db/core.db` exists — open with SQLite Viewer:
    - Plans table: 4 rows (Free, Starter, Professional, Enterprise)
    - Features table: populated with feature keys
    - PlanFeatures table: mappings exist
    - SuperAdmins table: 1 row with admin@localhost
-3. `data/audit.db` exists — AuditEntries table present (empty)
-4. `data/tenants/` directory exists (empty)
-5. `data/keys/` directory exists
+3. `db/audit.db` exists — AuditEntries table present (empty)
+4. `db/tenants/` directory exists (empty)
+5. `db/keys/` directory exists
 6. Browser: https://localhost:5001 loads (basic page, Notes nav missing — expected)
 7. Browser: https://localhost:5001/health returns "Healthy"
 8. Terminal: no EF Core or startup errors in logs
@@ -154,7 +154,7 @@ When I hand this over, verify:
   - [ ] Pass through for non-tenant routes (`/`, `/pricing`, `/health`, `/super-admin/*`, `/register/*`)
   - [ ] Return 404 for unknown tenant slugs
 - [ ] **2.2** Register `TenantDbContext` with dynamic connection string factory:
-  - [ ] Reads `ITenantContext.Slug` to build `data/tenants/{slug}.db`
+  - [ ] Reads `ITenantContext.Slug` to build `db/tenants/{slug}.db`
   - [ ] Uses `WalModeInterceptor`
   - [ ] Only resolves connection when `ITenantContext.IsTenantRequest` is true
 - [ ] **2.3** Implement `ConsoleEmailService` (`IEmailService`):
@@ -186,7 +186,7 @@ When I hand this over, verify:
   - [ ] Custom 429 HTML response
 - [ ] **2.9** Add remaining infrastructure:
   - [ ] Forwarded headers (for reverse proxy)
-  - [ ] Data protection (file-system keys in `data/keys/`)
+  - [ ] Data protection (file-system keys in `db/keys/`)
   - [ ] Response compression (Brotli + Gzip)
   - [ ] Health checks (core DB + tenant directory)
 - [ ] **2.10** Update `Program.cs` middleware pipeline to full 13-step order:
@@ -327,7 +327,7 @@ When I hand this over, verify:
 ### Steps
 
 - [ ] **4.1** Implement `TenantProvisioner` (`ITenantProvisioner`):
-  - [ ] Creates `data/tenants/{slug}.db` file
+  - [ ] Creates `db/tenants/{slug}.db` file
   - [ ] Applies `TenantDbContext.Database.EnsureCreated()` (migrations in Phase 8)
   - [ ] Sets PRAGMA journal_mode=WAL
   - [ ] Seeds default roles: Admin (system), Member (system)
@@ -399,13 +399,13 @@ When I hand this over, verify:
 6. Fill in: Organisation = "Test Corp", Email = "test@test.com",
    Slug = "testcorp", select Free plan → submit
 7. Redirected to success page
-8. Verify data/tenants/testcorp.db exists:
+8. Verify db/tenants/testcorp.db exists:
    - Open with SQLite Viewer
    - AspNetUsers table: 1 row (test@test.com)
    - AspNetRoles table: 2 rows (Admin, Member)
    - Permissions table: populated
    - RolePermissions table: Admin role has all permissions
-9. Verify data/core.db:
+9. Verify db/core.db:
    - Tenants table: new row, slug=testcorp, status=Active
    - Subscriptions table: new row, status=Active (free plan)
 10. Terminal shows ★ MAGIC LINK welcome email for test@test.com
@@ -414,7 +414,7 @@ When I hand this over, verify:
 13. Paste magic link URL → logged in as tenant admin
 14. Cookie `.Tenant.Auth` exists
 15. Register SECOND tenant (slug "other", different email)
-16. Verify data/tenants/other.db exists (separate DB)
+16. Verify db/tenants/other.db exists (separate DB)
 17. Try registering slug "testcorp" again → "Already taken"
 ```
 
@@ -472,7 +472,7 @@ When I hand this over, verify:
   - [ ] `NotesServiceTests` — CRUD operations work against TenantDbContext, audit entries written
   - [ ] `AuditWriterTests` — entries appear in AuditDbContext after background processing
   - [ ] Integration: authenticated tenant user → CRUD notes at /{slug}/notes; unauthenticated → redirect to login
-  - [ ] Integration: audit entries in data/audit.db after note operations
+  - [ ] Integration: audit entries in db/audit.db after note operations
 
 ### QA Handover — Phase 5
 
@@ -485,7 +485,7 @@ When I hand this over, verify:
 4. Edit the note → changes saved
 5. Pin/unpin the note → state toggles
 6. Delete the note → removed
-7. Check data/tenants/testcorp.db → Notes table has your data
+7. Check db/tenants/testcorp.db → Notes table has your data
 8. Check data/audit.db → AuditEntries table has rows:
    - Created, Updated, Deleted actions for Note entity
    - TenantSlug = "testcorp"

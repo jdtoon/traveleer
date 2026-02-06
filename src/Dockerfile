@@ -21,8 +21,9 @@ WORKDIR /app
 COPY --from=build /app/publish .
 COPY --from=build /src/wwwroot ./wwwroot
 
-RUN mkdir -p /app/data /app/keys && chmod -R 700 /app/keys
-ENV ConnectionStrings__DefaultConnection="Data Source=/app/data/saas.db"
+RUN mkdir -p /app/db /app/db/keys && chmod -R 700 /app/db/keys
+ENV ConnectionStrings__CoreDatabase="Data Source=/app/db/core.db"
+ENV ConnectionStrings__AuditDatabase="Data Source=/app/db/audit.db"
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_HTTP_PORTS=8080
 
