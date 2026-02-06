@@ -2,6 +2,7 @@ using saas.Infrastructure;
 using saas.Data.Core;
 using saas.Data.Audit;
 using saas.Data.Seeding;
+using saas.Infrastructure.HealthChecks;
 using saas.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,13 +13,17 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDataProtectionConfig(builder.Environment);
 builder.Services.AddCompressionConfig();
+builder.Services.AddForwardedHeadersConfig();
+builder.Services.AddRateLimitingConfig();
 
 // =============================================================================
 // DATABASE & CORE SERVICES
 // =============================================================================
 
 builder.Services.AddDatabaseConfig(builder.Configuration);
-builder.Services.AddHealthChecks().AddDbContextCheck<CoreDbContext>("core-database");
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<CoreDbContext>("core-database")
+    .AddCheck<TenantDirectoryHealthCheck>("tenant-directory");
 builder.Services.AddCoreServices();
 
 // =============================================================================

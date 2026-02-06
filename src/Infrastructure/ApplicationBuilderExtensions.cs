@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using saas.Data.Core;
 using saas.Data.Audit;
 using saas.Data.Seeding;
+using saas.Infrastructure.Middleware;
 using Swap.Htmx;
 
 namespace saas.Infrastructure;
@@ -45,6 +46,8 @@ public static class ApplicationBuilderExtensions
     public static WebApplication ConfigurePipeline(this WebApplication app)
     {
         app.UseResponseCompression();
+        app.UseForwardedHeaders();
+        app.UseMiddleware<SecurityHeadersMiddleware>();
 
         if (!app.Environment.IsDevelopment())
         {
@@ -56,8 +59,12 @@ public static class ApplicationBuilderExtensions
         app.UseWebOptimizer();
         app.UseStaticFiles();
         app.UseRouting();
+        app.UseRateLimiter();
+        app.UseMiddleware<TenantResolutionMiddleware>();
+        app.UseAuthentication();
         app.UseSwapHtmx();
         app.UseAuthorization();
+        app.UseMiddleware<CurrentUserMiddleware>();
 
         return app;
     }

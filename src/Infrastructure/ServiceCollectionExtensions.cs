@@ -1,10 +1,15 @@
 using System.IO.Compression;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Core;
 using saas.Data.Audit;
 using saas.Data.Tenant;
+using saas.Infrastructure.Middleware;
+using saas.Infrastructure.Services;
+using saas.Shared;
 
 namespace saas.Infrastructure;
 
@@ -69,10 +74,25 @@ public static class ServiceCollectionExtensions
             ).AddInterceptors(walInterceptor));
 
         // TenantDbContext — registered but connection string set dynamically (Phase 2)
-        // For now, register with a placeholder that won't be used until tenant resolution is added
-        services.AddDbContext<TenantDbContext>(options =>
-            options.UseSqlite("Data Source=:memory:")
-                   .AddInterceptors(walInterceptor));
+        services.AddDbContext<TenantDbContext>((serviceProvider, options) =>
+        {
+            var tenantContext = serviceProvider.GetRequiredService<ITenantContext>();
+            if (tenantContext.IsTenantRequest && tenantContext.Slug is not null)
+            {
+                var tenantPath = configuration["Tenancy:DatabasePath"] ?? Path.Combine("db", "tenants");
+                var basePath = Path.IsPathRooted(tenantPath)
+                    ? tenantPath
+                    : Path.Combine(Directory.GetCurrentDirectory(), tenantPath);
+                var dbPath = Path.Combine(basePath, $"{tenantContext.Slug}.db");
+                options.UseSqlite($"Data Source={dbPath}");
+            }
+            else
+            {
+                options.UseSqlite("Data Source=:memory:");
+            }
+
+            options.AddInterceptors(walInterceptor);
+        });
 
         return services;
     }
@@ -80,6 +100,89 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddCoreServices(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
+        services.AddScoped<ITenantContext, TenantContext>();
+
+        // Default providers (Phase 2)
+        services.AddScoped<IEmailService, ConsoleEmailService>();
+        services.AddScoped<IBotProtection, MockBotProtection>();
+        services.AddScoped<IAuditWriter, NullAuditWriter>();
+        services.AddScoped<IBillingService, MockBillingService>();
+
+        services.AddAuthentication();
+        services.AddAuthorization();
+
+        return services;
+    }
+
+    public static IServiceCollection AddForwardedHeadersConfig(this IServiceCollection services)
+    {
+        services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            options.KnownIPNetworks.Clear();
+            options.KnownProxies.Clear();
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddRateLimitingConfig(this IServiceCollection services)
+    {
+        services.AddRateLimiter(options =>
+        {
+            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 100,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+
+            options.AddPolicy("strict", httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 5,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+
+            options.AddPolicy("registration", httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 3,
+                        Window = TimeSpan.FromMinutes(5),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+
+            options.AddPolicy("webhook", httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 50,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = async (context, token) =>
+            {
+                context.HttpContext.Response.ContentType = "text/html";
+                await context.HttpContext.Response.WriteAsync(
+                    "<h1>Too Many Requests</h1><p>Please slow down and try again shortly.</p>",
+                    token);
+            };
+        });
 
         return services;
     }
