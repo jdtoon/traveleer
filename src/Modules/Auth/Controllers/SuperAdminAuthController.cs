@@ -80,4 +80,11 @@ public class SuperAdminAuthController : SwapController
         await HttpContext.SignOutAsync(AuthSchemes.SuperAdmin);
         return Redirect("/super-admin/login");
     }
+
+    [HttpGet("logout")]
+    public async Task<IActionResult> LogoutGet()
+    {
+        await HttpContext.SignOutAsync(AuthSchemes.SuperAdmin);
+        return Redirect("/super-admin/login");
+    }
 }

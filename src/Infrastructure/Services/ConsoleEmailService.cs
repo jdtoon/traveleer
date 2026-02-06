@@ -19,7 +19,7 @@ public class ConsoleEmailService : IEmailService
 
     public Task SendMagicLinkAsync(string to, string magicLinkUrl)
     {
-        _logger.LogInformation("★ MAGIC LINK for {To}: {Url}", to, magicLinkUrl);
+        _logger.LogInformation("\n================ MAGIC LINK ================\nTo: {To}\nUrl: {Url}\n===========================================\n", to, magicLinkUrl);
         return Task.CompletedTask;
     }
 }

@@ -89,4 +89,11 @@ public class TenantAuthController : SwapController
         await HttpContext.SignOutAsync(AuthSchemes.Tenant);
         return Redirect($"/{slug}/login");
     }
+
+    [HttpGet("logout")]
+    public async Task<IActionResult> LogoutGet([FromRoute] string slug)
+    {
+        await HttpContext.SignOutAsync(AuthSchemes.Tenant);
+        return Redirect($"/{slug}/login");
+    }
 }

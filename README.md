@@ -19,8 +19,10 @@ A modular monolith starter template powered by **Swap.Htmx** for building server
 cd src
 libman restore
 
-# Create initial migration
-dotnet ef migrations add InitialCreate
+# Create initial migrations (Core, Audit, Tenant)
+dotnet ef migrations add InitialCore --context CoreDbContext --output-dir Data/Core/Migrations --project src/saas.csproj --startup-project src/saas.csproj
+dotnet ef migrations add InitialAudit --context AuditDbContext --output-dir Data/Audit/Migrations --project src/saas.csproj --startup-project src/saas.csproj
+dotnet ef migrations add InitialTenant --context TenantDbContext --output-dir Data/Tenant/Migrations --project src/saas.csproj --startup-project src/saas.csproj
 
 # Run the application
 dotnet run
@@ -77,7 +79,7 @@ See [DaisyUI Themes](https://daisyui.com/docs/themes/) for all options.
 3. Register in `Program.cs`: `builder.Services.Add[ModuleName]Module();`
 4. Add event config in `Infrastructure/MvcExtensions.cs`
 5. Add view mapping in `Infrastructure/ModuleViewLocationExpander.cs`
-6. Add DbSet in `Data/AppDbContext.cs`
+6. Register any module entity configuration in TenantDbContext (Data/Tenant/Configurations)
 7. Add navigation in `_Layout.cshtml`
 
 ## Key Concepts
@@ -149,11 +151,23 @@ return SwapResponse()
 # Development
 dotnet run
 
-# Add migration
-dotnet ef migrations add [MigrationName]
+# Add migration (Core)
+dotnet ef migrations add [MigrationName] --context CoreDbContext --output-dir Data/Core/Migrations --project src/saas.csproj --startup-project src/saas.csproj
 
-# Apply migrations
-dotnet ef database update
+# Add migration (Audit)
+dotnet ef migrations add [MigrationName] --context AuditDbContext --output-dir Data/Audit/Migrations --project src/saas.csproj --startup-project src/saas.csproj
+
+# Add migration (Tenant)
+dotnet ef migrations add [MigrationName] --context TenantDbContext --output-dir Data/Tenant/Migrations --project src/saas.csproj --startup-project src/saas.csproj
+
+# Apply migrations (Core)
+dotnet ef database update --context CoreDbContext --project src/saas.csproj --startup-project src/saas.csproj
+
+# Apply migrations (Audit)
+dotnet ef database update --context AuditDbContext --project src/saas.csproj --startup-project src/saas.csproj
+
+# Apply migrations (Tenant)
+dotnet ef database update --context TenantDbContext --project src/saas.csproj --startup-project src/saas.csproj
 
 # Docker
 docker-compose up -d
