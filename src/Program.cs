@@ -30,7 +30,10 @@ builder.Services.AddCoreServices();
 // DOMAIN MODULES
 // =============================================================================
 
-var modules = Array.Empty<IModule>();
+var modules = new IModule[]
+{
+    new saas.Modules.Auth.AuthModule()
+};
 
 foreach (var module in modules)
 {

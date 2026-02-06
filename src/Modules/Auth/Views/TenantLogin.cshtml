@@ -1,0 +1,22 @@
+@model string
+@{
+    ViewData["Title"] = "Tenant Login";
+    var slug = ViewData["TenantSlug"]?.ToString() ?? "";
+}
+
+<div class="mx-auto max-w-md">
+    <h1 class="text-2xl font-bold mb-4">Sign in to @slug</h1>
+
+    @if (!string.IsNullOrEmpty(Model))
+    {
+        <div class="alert alert-error mb-4">@Model</div>
+    }
+
+    <form method="post" action="/@slug/login" class="space-y-3">
+        <label class="form-control w-full">
+            <span class="label-text">Email</span>
+            <input type="email" name="email" class="input input-bordered w-full" required />
+        </label>
+        <button class="btn btn-primary w-full" type="submit">Send Magic Link</button>
+    </form>
+</div>

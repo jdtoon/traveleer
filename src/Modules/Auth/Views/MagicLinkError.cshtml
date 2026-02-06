@@ -1,0 +1,9 @@
+@model string
+@{
+    ViewData["Title"] = "Magic link error";
+}
+
+<div class="mx-auto max-w-md">
+    <h1 class="text-2xl font-bold mb-4">Magic link error</h1>
+    <p>@(string.IsNullOrEmpty(Model) ? "The magic link is invalid or expired." : Model)</p>
+</div>

@@ -8,6 +8,8 @@ public class ModuleViewLocationExpander : IViewLocationExpander
     private static readonly Dictionary<string, ModuleViewConfig> ControllerModuleMap = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Notes"] = new("Notes"),
+        ["SuperAdminAuth"] = new("Auth"),
+        ["TenantAuth"] = new("Auth"),
         // Add mappings as modules are created:
         // ["ControllerName"] = new("ModuleFolderName"),
     };

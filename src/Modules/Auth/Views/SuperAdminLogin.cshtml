@@ -1,0 +1,21 @@
+@model string
+@{
+    ViewData["Title"] = "Super Admin Login";
+}
+
+<div class="mx-auto max-w-md">
+    <h1 class="text-2xl font-bold mb-4">Super Admin Login</h1>
+
+    @if (!string.IsNullOrEmpty(Model))
+    {
+        <div class="alert alert-error mb-4">@Model</div>
+    }
+
+    <form method="post" action="/super-admin/login" class="space-y-3">
+        <label class="form-control w-full">
+            <span class="label-text">Email</span>
+            <input type="email" name="email" class="input input-bordered w-full" required />
+        </label>
+        <button class="btn btn-primary w-full" type="submit">Send Magic Link</button>
+    </form>
+</div>

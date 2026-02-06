@@ -225,7 +225,7 @@ When I hand this over, verify:
 7. Terminal shows no errors on startup
 ```
 
-**QA Status**: [ ] Not started · [ ] Issues raised · [ ] Signed off ✅
+**QA Status**: [ ] Not started · [ ] Issues raised · [x] Signed off ✅
 
 **QA Notes**:
 > _(Write any issues or observations here)_
