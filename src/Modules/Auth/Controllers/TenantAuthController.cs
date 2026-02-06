@@ -16,12 +16,18 @@ public class TenantAuthController : SwapController
     private readonly MagicLinkService _magicLinks;
     private readonly IEmailService _email;
     private readonly UserManager<AppUser> _userManager;
+    private readonly TenantDbContext _tenantDb;
 
-    public TenantAuthController(MagicLinkService magicLinks, IEmailService email, UserManager<AppUser> userManager)
+    public TenantAuthController(
+        MagicLinkService magicLinks, 
+        IEmailService email, 
+        UserManager<AppUser> userManager,
+        TenantDbContext tenantDb)
     {
         _magicLinks = magicLinks;
         _email = email;
         _userManager = userManager;
+        _tenantDb = tenantDb;
     }
 
     [HttpGet("login")]
@@ -67,6 +73,19 @@ public class TenantAuthController : SwapController
 
         var roles = await _userManager.GetRolesAsync(user);
 
+        // Load role IDs for the user's roles
+        var roleIds = await _tenantDb.Roles
+            .Where(r => roles.Contains(r.Name!))
+            .Select(r => r.Id)
+            .ToListAsync();
+
+        // Load permissions for those roles
+        var permissionKeys = await _tenantDb.RolePermissions
+            .Where(rp => roleIds.Contains(rp.RoleId))
+            .Select(rp => rp.Permission.Key)
+            .Distinct()
+            .ToListAsync();
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id),
@@ -75,6 +94,7 @@ public class TenantAuthController : SwapController
         };
 
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+        claims.AddRange(permissionKeys.Select(p => new Claim(AuthClaims.Permission, p)));
 
         var identity = new ClaimsIdentity(claims, AuthSchemes.Tenant);
         var principal = new ClaimsPrincipal(identity);

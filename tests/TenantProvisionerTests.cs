@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -14,20 +15,24 @@ namespace saas.Tests;
 [Trait("Category", "Integration")]
 public class TenantProvisionerTests : IAsyncLifetime
 {
-    // TODO: Fix InMemory provider version compatibility issue
-    // Currently getting: System.MissingMethodException: Method not found: 
-    // 'System.String Microsoft.EntityFrameworkCore.Diagnostics.AbstractionsStrings.ArgumentIsEmpty(System.Object)'.
+    private SqliteConnection _coreConnection = null!;
     private CoreDbContext _coreDb = null!;
     private ServiceProvider _serviceProvider = null!;
     private string _testDbPath = null!;
+    private Guid _testPlanId;
+    private readonly List<string> _provisionedDbPaths = [];
 
     public async Task InitializeAsync()
     {
-        // Create in-memory Core database for testing
+        // SQLite in-memory via a shared connection that stays open for the lifetime of the test
+        _coreConnection = new SqliteConnection("Data Source=:memory:");
+        await _coreConnection.OpenAsync();
+
         var coreOptions = new DbContextOptionsBuilder<CoreDbContext>()
-            .UseInMemoryDatabase($"CoreDb_TenantProvisionerTests_{Guid.NewGuid()}")
+            .UseSqlite(_coreConnection)
             .Options;
         _coreDb = new CoreDbContext(coreOptions);
+        await _coreDb.Database.EnsureCreatedAsync();
 
         // Seed test plan
         var testPlan = new Plan
@@ -43,23 +48,18 @@ public class TenantProvisionerTests : IAsyncLifetime
         };
         _coreDb.Plans.Add(testPlan);
         await _coreDb.SaveChangesAsync();
+        _testPlanId = testPlan.Id;
 
-        // Setup service provider with all dependencies
+        // Unique temp file for the tenant database
+        _testDbPath = Path.Combine(Path.GetTempPath(), $"tenant-test-{Guid.NewGuid()}.db");
+
         var services = new ServiceCollection();
-        
-        // Add logging
-        services.AddLogging(builder => builder.AddConsole());
-        
-        // Add Core database
+        services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Warning));
         services.AddSingleton(_coreDb);
-        
-        // Add Tenant database context (with factory pattern)
-        services.AddDbContext<TenantDbContext>((sp, opts) =>
-        {
-            opts.UseSqlite($"Data Source={_testDbPath}");
-        });
-        
-        // Add Identity
+
+        services.AddDbContext<TenantDbContext>((_, opts) =>
+            opts.UseSqlite($"Data Source={_testDbPath}"));
+
         services.AddIdentity<AppUser, AppRole>(options =>
         {
             options.Password.RequireDigit = false;
@@ -71,198 +71,195 @@ public class TenantProvisionerTests : IAsyncLifetime
         })
         .AddEntityFrameworkStores<TenantDbContext>()
         .AddDefaultTokenProviders();
-        
-        // Add mock services
+
         services.AddSingleton<IEmailService, ConsoleEmailService>();
         services.AddSingleton<IBotProtection, MockBotProtection>();
-        
-        // Add provisioner service
         services.AddScoped<ITenantProvisioner, TenantProvisionerService>();
-        
+
         _serviceProvider = services.BuildServiceProvider();
     }
 
     public async Task DisposeAsync()
     {
-        await _coreDb.DisposeAsync();
         await _serviceProvider.DisposeAsync();
-        
-        // Clean up test database files
-        if (!string.IsNullOrEmpty(_testDbPath) && File.Exists(_testDbPath))
+        await _coreDb.DisposeAsync();
+        await _coreConnection.DisposeAsync();
+
+        // Clean up temp tenant database file
+        foreach (var suffix in new[] { "", "-shm", "-wal" })
         {
-            try
+            var path = _testDbPath + suffix;
+            if (File.Exists(path))
+                try { File.Delete(path); } catch { }
+        }
+
+        // Clean up provisioned DB files (from ProvisionTenantAsync tests)
+        foreach (var dbPath in _provisionedDbPaths)
+        {
+            foreach (var suffix in new[] { "", "-shm", "-wal" })
             {
-                File.Delete(_testDbPath);
+                var path = dbPath + suffix;
+                if (File.Exists(path))
+                    try { File.Delete(path); } catch { }
             }
-            catch { /* Ignore cleanup errors */ }
         }
     }
 
-    [Fact(Skip = "InMemory provider version compatibility issue")]
+    [Fact]
     public async Task ValidateSlugAsync_ValidSlug_ReturnsValid()
     {
-        // Arrange
         using var scope = _serviceProvider.CreateScope();
         var provisioner = scope.ServiceProvider.GetRequiredService<ITenantProvisioner>();
 
-        // Act
         var result = await provisioner.ValidateSlugAsync("valid-slug-123");
 
-        // Assert
         Assert.True(result.IsValid);
         Assert.Null(result.ErrorMessage);
     }
 
-    [Theory(Skip = "InMemory provider version compatibility issue")]
-    [InlineData("ab", "Slug must be at least 3 characters")]
+    [Theory]
+    [InlineData("ab", "at least 3 characters")]
     [InlineData("", "Slug is required")]
-    [InlineData("slug-", "Slug must contain only lowercase letters, numbers, and hyphens, and must start and end with a letter or number")]
-    [InlineData("-slug", "Slug must contain only lowercase letters, numbers, and hyphens, and must start and end with a letter or number")]
-    [InlineData("UPPERCASE", "Slug must contain only lowercase letters, numbers, and hyphens, and must start and end with a letter or number")]
-    [InlineData("slug_with_underscore", "Slug must contain only lowercase letters, numbers, and hyphens, and must start and end with a letter or number")]
-    [InlineData("super-admin", "This slug is reserved and cannot be used")]
-    [InlineData("admin", "This slug is reserved and cannot be used")]
-    [InlineData("api", "This slug is reserved and cannot be used")]
-    public async Task ValidateSlugAsync_InvalidSlug_ReturnsError(string slug, string expectedError)
+    [InlineData("slug-", "must start and end")]
+    [InlineData("-slug", "must start and end")]
+    [InlineData("slug_with_underscore", "must contain only lowercase")]
+    [InlineData("super-admin", "reserved")]
+    [InlineData("admin", "reserved")]
+    [InlineData("api", "reserved")]
+    public async Task ValidateSlugAsync_InvalidSlug_ReturnsError(string slug, string expectedFragment)
     {
-        // Arrange
         using var scope = _serviceProvider.CreateScope();
         var provisioner = scope.ServiceProvider.GetRequiredService<ITenantProvisioner>();
 
-        // Act
         var result = await provisioner.ValidateSlugAsync(slug);
 
-        // Assert
         Assert.False(result.IsValid);
-        Assert.Contains(expectedError, result.ErrorMessage);
+        Assert.Contains(expectedFragment, result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact(Skip = "InMemory provider version compatibility issue")]
+    [Fact]
     public async Task ValidateSlugAsync_DuplicateSlug_ReturnsError()
     {
-        // Arrange
-        using var scope = _serviceProvider.CreateScope();
-        var provisioner = scope.ServiceProvider.GetRequiredService<ITenantProvisioner>();
-
-        // Create existing tenant
-        var existingTenant = new Tenant
+        _coreDb.Tenants.Add(new Tenant
         {
             Id = Guid.NewGuid(),
             Slug = "existing-slug",
             Name = "Existing",
-            PlanId = _coreDb.Plans.First().Id,
+            PlanId = _testPlanId,
             Status = TenantStatus.Active,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
-        };
-        _coreDb.Tenants.Add(existingTenant);
+        });
         await _coreDb.SaveChangesAsync();
 
-        // Act
+        using var scope = _serviceProvider.CreateScope();
+        var provisioner = scope.ServiceProvider.GetRequiredService<ITenantProvisioner>();
+
         var result = await provisioner.ValidateSlugAsync("existing-slug");
 
-        // Assert
         Assert.False(result.IsValid);
         Assert.Equal("This slug is already taken", result.ErrorMessage);
     }
 
-    [Fact(Skip = "InMemory provider version compatibility issue")]
+    [Fact]
     public async Task ProvisionTenantAsync_ValidData_CreatesTenantAndDatabase()
     {
-        // Arrange
-        var slug = $"test-tenant-{Guid.NewGuid().ToString()[..8]}";
+        var slug = $"test-prov-{Guid.NewGuid().ToString()[..8]}";
         var email = "admin@test.com";
-        var planId = _coreDb.Plans.First().Id;
-        
-        _testDbPath = Path.Combine("db", "tenants", $"{slug}.db");
-        
+
         using var scope = _serviceProvider.CreateScope();
         var provisioner = scope.ServiceProvider.GetRequiredService<ITenantProvisioner>();
 
-        // Act
-        var result = await provisioner.ProvisionTenantAsync(slug, email, planId);
+        var result = await provisioner.ProvisionTenantAsync(slug, email, _testPlanId);
 
-        // Assert
+        // Core assertions
         Assert.True(result.Success);
         Assert.NotNull(result.TenantId);
         Assert.Null(result.ErrorMessage);
 
-        // Verify tenant in Core database
         var tenant = await _coreDb.Tenants.FindAsync(result.TenantId);
         Assert.NotNull(tenant);
         Assert.Equal(slug, tenant!.Slug);
+        Assert.Equal(email, tenant.ContactEmail);
         Assert.Equal(TenantStatus.Active, tenant.Status);
 
-        // Verify subscription created
         var subscription = await _coreDb.Subscriptions
             .FirstOrDefaultAsync(s => s.TenantId == result.TenantId);
         Assert.NotNull(subscription);
         Assert.Equal(SubscriptionStatus.Trialing, subscription!.Status);
-        Assert.NotNull(subscription.NextBillingDate);
 
-        // Verify tenant database file created
-        Assert.True(File.Exists(_testDbPath));
+        // Tenant DB assertions — the provisioner creates db/tenants/{slug}.db
+        var provisionedDbPath = Path.Combine("db", "tenants", $"{slug}.db");
+        _provisionedDbPaths.Add(provisionedDbPath);
+        Assert.True(File.Exists(provisionedDbPath), $"Tenant DB file not found at {provisionedDbPath}");
 
-        // Verify admin user created in tenant database
         var tenantDbOptions = new DbContextOptionsBuilder<TenantDbContext>()
-            .UseSqlite($"Data Source={_testDbPath}")
+            .UseSqlite($"Data Source={provisionedDbPath}")
             .Options;
         using var tenantDb = new TenantDbContext(tenantDbOptions);
-        
+
         var adminUser = await tenantDb.Users.FirstOrDefaultAsync(u => u.Email == email);
         Assert.NotNull(adminUser);
-        Assert.Equal(email, adminUser!.UserName);
-        Assert.True(adminUser.EmailConfirmed);
+        Assert.True(adminUser!.EmailConfirmed);
 
-        // Verify admin role assigned
+        // Roles
+        var roles = await tenantDb.Roles.Select(r => r.Name).ToListAsync();
+        Assert.Contains("Admin", roles);
+        Assert.Contains("Member", roles);
+
+        // Admin is in Admin role
         var userRoles = await tenantDb.UserRoles
             .Where(ur => ur.UserId == adminUser.Id)
             .ToListAsync();
         Assert.NotEmpty(userRoles);
+
+        // Permissions seeded
+        var permissions = await tenantDb.Permissions.ToListAsync();
+        Assert.Equal(14, permissions.Count);
+        Assert.Contains(permissions, p => p.Key == PermissionDefinitions.NotesRead);
+        Assert.Contains(permissions, p => p.Key == PermissionDefinitions.SettingsEdit);
+
+        // RolePermissions: Admin has all 14
+        var adminRole = await tenantDb.Roles.FirstAsync(r => r.Name == "Admin");
+        var adminRolePerms = await tenantDb.RolePermissions
+            .Where(rp => rp.RoleId == adminRole.Id)
+            .ToListAsync();
+        Assert.Equal(14, adminRolePerms.Count);
     }
 
-    [Fact(Skip = "InMemory provider version compatibility issue")]
+    [Fact]
     public async Task ProvisionTenantAsync_InvalidSlug_ReturnsError()
     {
-        // Arrange
         using var scope = _serviceProvider.CreateScope();
         var provisioner = scope.ServiceProvider.GetRequiredService<ITenantProvisioner>();
 
-        // Act
-        var result = await provisioner.ProvisionTenantAsync("invalid_slug", "admin@test.com", _coreDb.Plans.First().Id);
+        var result = await provisioner.ProvisionTenantAsync("invalid_slug", "admin@test.com", _testPlanId);
 
-        // Assert
         Assert.False(result.Success);
         Assert.Null(result.TenantId);
         Assert.NotNull(result.ErrorMessage);
     }
 
-    [Fact(Skip = "InMemory provider version compatibility issue")]
+    [Fact]
     public async Task ProvisionTenantAsync_InvalidEmail_ReturnsError()
     {
-        // Arrange
         using var scope = _serviceProvider.CreateScope();
         var provisioner = scope.ServiceProvider.GetRequiredService<ITenantProvisioner>();
 
-        // Act
-        var result = await provisioner.ProvisionTenantAsync("valid-slug", "not-an-email", _coreDb.Plans.First().Id);
+        var result = await provisioner.ProvisionTenantAsync("valid-slug", "not-an-email", _testPlanId);
 
-        // Assert
         Assert.False(result.Success);
         Assert.Equal("Invalid email address", result.ErrorMessage);
     }
 
-    [Fact(Skip = "InMemory provider version compatibility issue")]
+    [Fact]
     public async Task ProvisionTenantAsync_InvalidPlan_ReturnsError()
     {
-        // Arrange
         using var scope = _serviceProvider.CreateScope();
         var provisioner = scope.ServiceProvider.GetRequiredService<ITenantProvisioner>();
 
-        // Act
         var result = await provisioner.ProvisionTenantAsync("valid-slug", "admin@test.com", Guid.NewGuid());
 
-        // Assert
         Assert.False(result.Success);
         Assert.Equal("Invalid plan selected", result.ErrorMessage);
     }

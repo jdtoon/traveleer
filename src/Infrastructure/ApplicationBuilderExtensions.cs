@@ -194,6 +194,10 @@ public static class ApplicationBuilderExtensions
         });
 
         app.MapControllerRoute(
+            name: "tenant",
+            pattern: "{slug}/{controller=Home}/{action=Index}/{id?}");
+
+        app.MapControllerRoute(
             name: "default",
             pattern: "{controller=Home}/{action=Index}/{id?}");
 

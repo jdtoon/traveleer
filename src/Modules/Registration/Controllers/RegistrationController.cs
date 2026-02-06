@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Core;
 using saas.Infrastructure.Provisioning;
+using saas.Modules.Registration.Models;
 using saas.Modules.Registration.Services;
 using saas.Shared;
 using Swap.Htmx;
@@ -60,32 +61,47 @@ public class RegistrationController : SwapController
 
     [HttpPost("/register")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Register(
-        [FromForm] string slug,
-        [FromForm] string email,
-        [FromForm] Guid planId,
-        [FromForm] string? captchaToken)
+    public async Task<IActionResult> Register([FromForm] RegisterRequest request)
     {
-        var botCheck = await _botProtection.ValidateAsync(captchaToken ?? string.Empty);
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .First();
+            return PartialView("_RegistrationError", new { Message = errors });
+        }
+
+        var botCheck = await _botProtection.ValidateAsync(request.CaptchaToken ?? string.Empty);
         if (!botCheck)
         {
-            _logger.LogWarning("Bot protection failed for registration attempt: {Slug}", slug);
+            _logger.LogWarning("Bot protection failed for registration attempt: {Slug}", request.Slug);
             return PartialView("_RegistrationError", new { Message = "Bot protection verification failed" });
         }
 
-        var result = await _provisioner.ProvisionTenantAsync(slug, email, planId);
+        var result = await _provisioner.ProvisionTenantAsync(request.Slug, request.Email, request.PlanId);
 
         if (!result.Success)
         {
-            _logger.LogWarning("Registration failed for {Slug}: {Error}", slug, result.ErrorMessage);
+            _logger.LogWarning("Registration failed for {Slug}: {Error}", request.Slug, result.ErrorMessage);
             return PartialView("_RegistrationError", new { Message = result.ErrorMessage });
         }
 
         // Delegate email to dedicated service (swallows errors internally)
-        await _registrationEmail.SendWelcomeEmailAsync(email, slug);
+        await _registrationEmail.SendWelcomeEmailAsync(request.Email, request.Slug);
 
-        _logger.LogInformation("Successfully registered tenant {Slug} with admin {Email}", slug, email);
+        _logger.LogInformation("Successfully registered tenant {Slug} with admin {Email}", request.Slug, request.Email);
 
-        return PartialView("_RegistrationSuccess", new { Slug = slug, Email = email });
+        return PartialView("_RegistrationSuccess", new { Slug = request.Slug, Email = request.Email });
+    }
+
+    /// <summary>
+    /// Callback endpoint for external registration flows (e.g., payment provider redirect).
+    /// Stubbed for now — will be implemented in Phase 8 (Billing &amp; Paystack).
+    /// </summary>
+    [HttpGet("/register/callback")]
+    public IActionResult Callback()
+    {
+        return NotFound();
     }
 }

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using saas.Infrastructure;
 using saas.Infrastructure.Provisioning;
 using saas.Modules.Registration.Services;
@@ -16,13 +15,8 @@ public class RegistrationModule : IModule
         services.AddScoped<IRegistrationEmailService, RegistrationEmailService>();
     }
 
-    public void RegisterMiddleware(IApplicationBuilder app, IWebHostEnvironment env)
+    public void RegisterMiddleware(IApplicationBuilder app)
     {
         // No middleware needed
-    }
-
-    public void RegisterMvc(IMvcBuilder mvcBuilder)
-    {
-        mvcBuilder.AddApplicationPart(typeof(RegistrationModule).Assembly);
     }
 }

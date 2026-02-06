@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using saas.Data;
 using saas.Data.Core;
 using saas.Data.Tenant;
+using saas.Shared;
 
 namespace saas.Infrastructure.Provisioning;
 
@@ -64,6 +65,7 @@ public partial class TenantProvisionerService : ITenantProvisioner
                 Id = Guid.NewGuid(),
                 Slug = slug.ToLowerInvariant(),
                 Name = slug, // Can be updated later by admin
+                ContactEmail = adminEmail,
                 PlanId = planId,
                 Status = TenantStatus.Active,
                 CreatedAt = DateTime.UtcNow,
@@ -105,8 +107,10 @@ public partial class TenantProvisionerService : ITenantProvisioner
 
             // Create a scoped TenantDbContext for the new tenant
             var connectionString = $"Data Source={dbPath};Mode=ReadWriteCreate";
+            var walInterceptor = new WalModeInterceptor();
             var optionsBuilder = new DbContextOptionsBuilder<TenantDbContext>();
-            optionsBuilder.UseSqlite(connectionString);
+            optionsBuilder.UseSqlite(connectionString)
+                          .AddInterceptors(walInterceptor);
 
             using var tenantDb = new TenantDbContext(optionsBuilder.Options);
             
@@ -125,7 +129,7 @@ public partial class TenantProvisionerService : ITenantProvisioner
 
             // Create roles
             var adminRole = new AppRole { Name = "Admin", NormalizedName = "ADMIN", IsSystemRole = true };
-            var userRole = new AppRole { Name = "User", NormalizedName = "USER", IsSystemRole = true };
+            var memberRole = new AppRole { Name = "Member", NormalizedName = "MEMBER", IsSystemRole = true };
 
             if (!await roleManager.RoleExistsAsync("Admin"))
             {
@@ -136,10 +140,27 @@ public partial class TenantProvisionerService : ITenantProvisioner
                 adminRole = await roleManager.FindByNameAsync("Admin") ?? adminRole;
             }
             
-            if (!await roleManager.RoleExistsAsync("User"))
+            if (!await roleManager.RoleExistsAsync("Member"))
             {
-                await roleManager.CreateAsync(userRole);
+                await roleManager.CreateAsync(memberRole);
             }
+
+            // Seed permissions
+            var permissions = PermissionDefinitions.GetAll();
+            tenantDb.Permissions.AddRange(permissions);
+            await tenantDb.SaveChangesAsync();
+
+            // Grant all permissions to Admin role
+            var rolePermissions = permissions.Select(p => new RolePermission
+            {
+                RoleId = adminRole.Id,
+                PermissionId = p.Id
+            });
+            tenantDb.RolePermissions.AddRange(rolePermissions);
+            await tenantDb.SaveChangesAsync();
+
+            _logger.LogInformation("Seeded {Count} permissions and Admin role-permissions for tenant {Slug}",
+                permissions.Count, tenant.Slug);
 
             // Create admin user
             var adminUser = new AppUser
