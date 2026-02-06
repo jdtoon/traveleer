@@ -311,7 +311,7 @@ When I hand this over, verify:
 10. Logout: POST /super-admin/logout → cookie cleared
 ```
 
-**QA Status**: [ ] Not started · [ ] Issues raised · [ ] Signed off ✅
+**QA Status**: [ ] Not started · [ ] Issues raised · [x] Signed off ✅
 
 **QA Notes**:
 > _(Write any issues or observations here)_

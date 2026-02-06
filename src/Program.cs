@@ -32,7 +32,8 @@ builder.Services.AddCoreServices();
 
 var modules = new IModule[]
 {
-    new saas.Modules.Auth.AuthModule()
+    new saas.Modules.Auth.AuthModule(),
+    new saas.Modules.SuperAdmin.SuperAdminModule()
 };
 
 foreach (var module in modules)
