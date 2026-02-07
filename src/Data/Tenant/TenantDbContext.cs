@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.Extensions.DependencyInjection;
 using saas.Data.Audit;
 using saas.Modules.Notes.Entities;
 using saas.Shared;
@@ -16,14 +15,13 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     private readonly IAuditWriter? _auditWriter;
     private readonly ICurrentUser? _currentUser;
 
-    // Used by provisioning, migrations, design-time factory, and tests
-    public TenantDbContext(DbContextOptions<TenantDbContext> options) : base(options) { }
-
-    // Used at runtime via DI — all scoped deps injected here
-    [ActivatorUtilitiesConstructor]
+    /// <summary>
+    /// Single constructor — DI resolves all parameters at runtime.
+    /// For provisioning / migrations / tests without DI, pass <c>null</c>.
+    /// </summary>
     public TenantDbContext(
         DbContextOptions<TenantDbContext> options,
-        ITenantContext tenantContext,
+        ITenantContext? tenantContext = null,
         IAuditWriter? auditWriter = null,
         ICurrentUser? currentUser = null)
         : base(options)
