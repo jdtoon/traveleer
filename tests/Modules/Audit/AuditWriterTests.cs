@@ -13,18 +13,19 @@ namespace saas.Tests.Modules.Audit;
 /// </summary>
 public class AuditWriterTests : IAsyncLifetime
 {
-    private SqliteConnection _connection = null!;
+    private string _dbPath = null!;
     private ServiceProvider _serviceProvider = null!;
     private ChannelAuditWriter _writer = null!;
 
     public async Task InitializeAsync()
     {
-        _connection = new SqliteConnection("Data Source=:memory:");
-        await _connection.OpenAsync();
+        // Use a temp file-based database to avoid SQLite in-memory connection sharing
+        // issues with the background consumer (active statement conflicts).
+        _dbPath = Path.Combine(Path.GetTempPath(), $"audit_test_{Guid.NewGuid():N}.db");
 
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Warning));
-        services.AddDbContext<AuditDbContext>(opts => opts.UseSqlite(_connection));
+        services.AddDbContext<AuditDbContext>(opts => opts.UseSqlite($"Data Source={_dbPath}"));
         _serviceProvider = services.BuildServiceProvider();
 
         // Ensure schema is created
@@ -47,7 +48,12 @@ public class AuditWriterTests : IAsyncLifetime
         await _writer.StopAsync(CancellationToken.None);
         _writer.Dispose();
         await _serviceProvider.DisposeAsync();
-        await _connection.DisposeAsync();
+
+        // Clear SQLite connection pool so Windows releases the file lock
+        SqliteConnection.ClearAllPools();
+
+        if (File.Exists(_dbPath))
+            File.Delete(_dbPath);
     }
 
     [Fact]

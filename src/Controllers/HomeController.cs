@@ -24,7 +24,13 @@ public class HomeController : SwapController
             // there is no default scheme, so User.Identity is unpopulated
             // unless an [Authorize] policy triggers it.
             var authResult = await HttpContext.AuthenticateAsync(AuthSchemes.Tenant);
+
+            // Must be authenticated AND the cookie's slug claim must match this tenant
             if (!authResult.Succeeded)
+                return Redirect($"/{_tenantContext.Slug}/login");
+
+            var slugClaim = authResult.Principal?.FindFirst(AuthClaims.TenantSlug)?.Value;
+            if (!string.Equals(slugClaim, _tenantContext.Slug, StringComparison.OrdinalIgnoreCase))
                 return Redirect($"/{_tenantContext.Slug}/login");
 
             return SwapView("Dashboard");
