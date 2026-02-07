@@ -1,7 +1,7 @@
 using saas.Shared;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Shared;
 
 public class PermissionDefinitionsTests
 {

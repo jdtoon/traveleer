@@ -5,7 +5,7 @@ using saas.Data.Core;
 using saas.Modules.Auth.Services;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Modules.Auth;
 
 public class MagicLinkServiceTests
 {

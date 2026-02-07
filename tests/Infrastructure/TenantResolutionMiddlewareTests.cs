@@ -6,7 +6,7 @@ using saas.Infrastructure.Middleware;
 using saas.Shared;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Infrastructure;
 
 public class TenantResolutionMiddlewareTests
 {

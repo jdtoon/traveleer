@@ -3,7 +3,7 @@ using saas.Modules.Auth;
 using saas.Modules.Auth.Services;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Modules.Auth;
 
 public class CurrentUserTests
 {

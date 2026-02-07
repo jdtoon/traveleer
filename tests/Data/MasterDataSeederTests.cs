@@ -6,7 +6,7 @@ using saas.Data.Seeding;
 using saas.Shared;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Data;
 
 public class MasterDataSeederTests
 {

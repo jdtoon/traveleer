@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Integration;
 
 public class HomeControllerTests : IClassFixture<WebApplicationFactory<Program>>
 {

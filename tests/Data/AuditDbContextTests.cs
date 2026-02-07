@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using saas.Data.Audit;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Data;
 
 public class AuditDbContextTests
 {

@@ -9,7 +9,7 @@ using saas.Modules.Audit.Services;
 using saas.Shared;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Modules.Audit;
 
 /// <summary>
 /// Tests that [AuditIgnore] correctly excludes entities/properties from automatic audit trail.

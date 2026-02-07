@@ -10,7 +10,7 @@ using saas.Modules.Notes.Services;
 using saas.Shared;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Modules.Notes;
 
 /// <summary>
 /// Tests for NotesService CRUD operations against TenantDbContext.

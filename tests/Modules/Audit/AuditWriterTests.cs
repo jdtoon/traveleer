@@ -6,7 +6,7 @@ using saas.Data.Audit;
 using saas.Modules.Audit.Services;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Modules.Audit;
 
 /// <summary>
 /// Tests that the ChannelAuditWriter background consumer persists entries to AuditDbContext.

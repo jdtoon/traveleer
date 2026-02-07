@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using saas.Infrastructure.Services;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Infrastructure;
 
 public class MockBotProtectionTests
 {

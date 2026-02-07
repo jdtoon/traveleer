@@ -3,7 +3,7 @@ using Microsoft.FeatureManagement;
 using saas.Modules.FeatureFlags.Services;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Modules.FeatureFlags;
 
 public class FeatureServiceTests
 {

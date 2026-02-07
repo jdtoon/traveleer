@@ -10,7 +10,7 @@ using saas.Infrastructure.Services;
 using saas.Shared;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Infrastructure;
 
 [Trait("Category", "Integration")]
 public class TenantProvisionerTests : IAsyncLifetime

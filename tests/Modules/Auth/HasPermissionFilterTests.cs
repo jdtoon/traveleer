@@ -6,7 +6,7 @@ using saas.Modules.Auth.Filters;
 using saas.Shared;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Modules.Auth;
 
 public class HasPermissionFilterTests
 {

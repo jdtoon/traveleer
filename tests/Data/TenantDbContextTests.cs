@@ -4,7 +4,7 @@ using saas.Data.Tenant;
 using saas.Modules.Notes.Entities;
 using Xunit;
 
-namespace saas.Tests;
+namespace saas.Tests.Data;
 
 public class TenantDbContextTests
 {
