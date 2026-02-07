@@ -24,9 +24,10 @@ public class ModuleViewLocationExpander : IViewLocationExpander
         if (context.ControllerName != null &&
             _controllerModuleMap.TryGetValue(context.ControllerName, out var moduleName))
         {
+            // MVC convention: /Modules/{module}/Views/{controller}/{view}.cshtml
             var moduleLocations = new[]
             {
-                $"/Modules/{moduleName}/Views/{{0}}.cshtml",
+                $"/Modules/{moduleName}/Views/{{1}}/{{0}}.cshtml",
                 $"/Modules/{moduleName}/Views/Shared/{{0}}.cshtml"
             };
 

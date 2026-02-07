@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.Extensions.DependencyInjection;
 using saas.Data.Audit;
 using saas.Modules.Notes.Entities;
 using saas.Shared;
@@ -19,6 +20,7 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public TenantDbContext(DbContextOptions<TenantDbContext> options) : base(options) { }
 
     // Used at runtime via DI — all scoped deps injected here
+    [ActivatorUtilitiesConstructor]
     public TenantDbContext(
         DbContextOptions<TenantDbContext> options,
         ITenantContext tenantContext,

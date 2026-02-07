@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using saas.Modules.Auth;
 using saas.Modules.Auth.Services;
 using saas.Shared;
@@ -5,7 +6,10 @@ using saas.Shared;
 namespace saas.Infrastructure.Middleware;
 
 /// <summary>
-/// Placeholder for Phase 3. Will populate ICurrentUser from auth claims.
+/// Populates <see cref="ICurrentUser"/> from the authenticated principal's claims.
+/// Blocks cross-tenant access: if the user's tenant-slug claim doesn't match the
+/// URL slug, the tenant cookie is signed out and the request is redirected to the
+/// correct tenant login page.
 /// </summary>
 public class CurrentUserMiddleware
 {
@@ -25,11 +29,16 @@ public class CurrentUserMiddleware
 
             if (tenantContext.IsTenantRequest && !string.IsNullOrEmpty(tenantContext.Slug))
             {
-                if (!string.Equals(tenantSlug, tenantContext.Slug, StringComparison.OrdinalIgnoreCase))
+                // CRITICAL: block cross-tenant access.
+                // If the cookie carries a slug for a DIFFERENT tenant, sign out
+                // and redirect to the target tenant's login page.
+                if (!string.IsNullOrEmpty(tenantSlug) &&
+                    !string.Equals(tenantSlug, tenantContext.Slug, StringComparison.OrdinalIgnoreCase))
                 {
                     current.Clear();
-                    await _next(context);
-                    return;
+                    await context.SignOutAsync(AuthSchemes.Tenant);
+                    context.Response.Redirect($"/{tenantContext.Slug}/login");
+                    return; // short-circuit — do NOT call _next
                 }
             }
 
