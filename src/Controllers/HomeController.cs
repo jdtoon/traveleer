@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
+using saas.Modules.Auth;
 using saas.Shared;
 using Swap.Htmx;
 
@@ -13,12 +15,16 @@ public class HomeController : SwapController
         _tenantContext = tenantContext;
     }
 
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
         // Tenant-scoped request: show the tenant dashboard (requires auth)
         if (_tenantContext.IsTenantRequest)
         {
-            if (User.Identity?.IsAuthenticated != true)
+            // Explicitly authenticate against the Tenant cookie scheme —
+            // there is no default scheme, so User.Identity is unpopulated
+            // unless an [Authorize] policy triggers it.
+            var authResult = await HttpContext.AuthenticateAsync(AuthSchemes.Tenant);
+            if (!authResult.Succeeded)
                 return Redirect($"/{_tenantContext.Slug}/login");
 
             return SwapView("Dashboard");
