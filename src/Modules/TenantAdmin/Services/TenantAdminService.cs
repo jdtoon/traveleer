@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using saas.Data;
 using saas.Data.Tenant;
 using saas.Shared;
 
@@ -26,11 +27,11 @@ public class TenantAdminService : ITenantAdminService
 
     // ── Users ────────────────────────────────────────────────────────────────
 
-    public async Task<List<UserListItem>> GetUsersAsync()
+    public async Task<PaginatedList<UserListItem>> GetUsersAsync(int page = 1, int pageSize = 20)
     {
-        var users = await _db.Users
-            .OrderBy(u => u.Email)
-            .ToListAsync();
+        var query = _db.Users.OrderBy(u => u.Email);
+        var totalCount = await query.CountAsync();
+        var users = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
         var result = new List<UserListItem>();
         foreach (var user in users)
@@ -48,7 +49,7 @@ public class TenantAdminService : ITenantAdminService
             });
         }
 
-        return result;
+        return new PaginatedList<UserListItem>(result, totalCount, page, pageSize);
     }
 
     public async Task<bool> InviteUserAsync(string email)

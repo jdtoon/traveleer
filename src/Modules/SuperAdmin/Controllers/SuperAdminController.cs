@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
+using saas.Infrastructure.Middleware;
 using saas.Modules.FeatureFlags.Services;
 using saas.Modules.SuperAdmin.Services;
 using Swap.Htmx;
@@ -11,11 +13,13 @@ public class SuperAdminController : SwapController
 {
     private readonly ISuperAdminService _service;
     private readonly FeatureCacheInvalidator _cacheInvalidator;
+    private readonly IMemoryCache _cache;
 
-    public SuperAdminController(ISuperAdminService service, FeatureCacheInvalidator cacheInvalidator)
+    public SuperAdminController(ISuperAdminService service, FeatureCacheInvalidator cacheInvalidator, IMemoryCache cache)
     {
         _service = service;
         _cacheInvalidator = cacheInvalidator;
+        _cache = cache;
     }
 
     // ── Dashboard ────────────────────────────────────────────────────────────
@@ -30,16 +34,18 @@ public class SuperAdminController : SwapController
     // ── Tenant Management ────────────────────────────────────────────────────
 
     [HttpGet("/super-admin/tenants")]
-    public async Task<IActionResult> Tenants(string? search)
+    public async Task<IActionResult> Tenants(string? search, int page = 1)
     {
-        var tenants = await _service.GetTenantsAsync(search);
+        var tenants = await _service.GetTenantsAsync(search, page);
+        ViewData["Search"] = search;
         return SwapView(tenants);
     }
 
     [HttpGet("/super-admin/tenants/list")]
-    public async Task<IActionResult> TenantList(string? search)
+    public async Task<IActionResult> TenantList(string? search, int page = 1)
     {
-        var tenants = await _service.GetTenantsAsync(search);
+        var tenants = await _service.GetTenantsAsync(search, page);
+        ViewData["Search"] = search;
         return SwapView("_TenantList", tenants);
     }
 
@@ -57,7 +63,11 @@ public class SuperAdminController : SwapController
         var success = await _service.SuspendTenantAsync(id);
         if (!success) return NotFound();
 
+        // Invalidate resolution cache so the suspended status takes effect immediately
         var model = await _service.GetTenantDetailAsync(id);
+        if (model is not null)
+            TenantResolutionMiddleware.InvalidateCache(_cache, model.Slug);
+
         return SwapResponse()
             .WithView("TenantDetail", model)
             .WithWarningToast("Tenant suspended")
@@ -71,6 +81,9 @@ public class SuperAdminController : SwapController
         if (!success) return NotFound();
 
         var model = await _service.GetTenantDetailAsync(id);
+        if (model is not null)
+            TenantResolutionMiddleware.InvalidateCache(_cache, model.Slug);
+
         return SwapResponse()
             .WithView("TenantDetail", model)
             .WithSuccessToast("Tenant activated")
@@ -121,6 +134,14 @@ public class SuperAdminController : SwapController
         if (!ModelState.IsValid)
             return SwapView("_PlanEditModal", model);
 
+        // Check for duplicate slug
+        var duplicateSlug = await _service.IsSlugTakenAsync(model.Slug, model.Id);
+        if (duplicateSlug)
+        {
+            ModelState.AddModelError("Slug", "A plan with this slug already exists.");
+            return SwapView("_PlanEditModal", model);
+        }
+
         await _service.SavePlanAsync(model);
         var plans = await _service.GetPlansAsync();
 
@@ -156,7 +177,8 @@ public class SuperAdminController : SwapController
     [HttpGet("/super-admin/features/override")]
     public async Task<IActionResult> FeatureOverrideModal(Guid tenantId, Guid featureId)
     {
-        var model = new TenantFeatureOverrideModel
+        var existing = await _service.GetTenantFeatureOverrideAsync(tenantId, featureId);
+        var model = existing ?? new TenantFeatureOverrideModel
         {
             TenantId = tenantId,
             FeatureId = featureId,

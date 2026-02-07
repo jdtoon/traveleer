@@ -20,17 +20,17 @@ public class TenantAdminController : SwapController
 
     [HttpGet]
     [HasPermission(TenantAdminPermissions.UsersRead)]
-    public async Task<IActionResult> Users()
+    public async Task<IActionResult> Users(int page = 1)
     {
-        var users = await _service.GetUsersAsync();
+        var users = await _service.GetUsersAsync(page);
         return SwapView(users);
     }
 
     [HttpGet]
     [HasPermission(TenantAdminPermissions.UsersRead)]
-    public async Task<IActionResult> UserList()
+    public async Task<IActionResult> UserList(int page = 1)
     {
-        var users = await _service.GetUsersAsync();
+        var users = await _service.GetUsersAsync(page);
         return SwapView("_UserList", users);
     }
 

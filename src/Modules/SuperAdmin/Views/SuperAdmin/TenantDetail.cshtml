@@ -80,4 +80,78 @@
             </div>
         </div>
     </div>
+
+    <!-- Feature Overrides -->
+    <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body">
+            <h2 class="card-title text-lg mb-4">Feature Access</h2>
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Module</th>
+                            <th>Plan</th>
+                            <th>Override</th>
+                            <th>Effective</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var f in Model.Features)
+                        {
+                            var effective = f.OverrideEnabled ?? f.EnabledByPlan || f.IsGlobal;
+                            <tr>
+                                <td class="font-medium">@f.Name</td>
+                                <td class="opacity-60">@(f.Module ?? "—")</td>
+                                <td>
+                                    @if (f.IsGlobal)
+                                    {
+                                        <span class="badge badge-sm badge-info">Global</span>
+                                    }
+                                    else if (f.EnabledByPlan)
+                                    {
+                                        <span class="badge badge-sm badge-success">Included</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-sm badge-ghost">Not included</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (f.OverrideEnabled.HasValue)
+                                    {
+                                        <span class="badge badge-sm @(f.OverrideEnabled.Value ? "badge-success" : "badge-error")" title="@f.OverrideReason">
+                                            @(f.OverrideEnabled.Value ? "Enabled" : "Disabled")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="opacity-40">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (effective)
+                                    {
+                                        <span class="text-success font-bold">✓</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-error">✗</span>
+                                    }
+                                </td>
+                                <td>
+                                    <button class="btn btn-ghost btn-xs"
+                                            hx-get="/super-admin/features/override?tenantId=@Model.Id&featureId=@f.FeatureId"
+                                            hx-target="#modal-container">
+                                        Override
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>

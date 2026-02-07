@@ -18,12 +18,14 @@
                     <label class="label" for="Name"><span class="label-text">Name</span></label>
                     <input type="text" id="Name" name="Name" class="input input-bordered w-full"
                            value="@Model.Name" required autofocus />
+                    <span asp-validation-for="Name" class="text-error text-sm mt-1"></span>
                 </div>
 
                 <div class="form-control w-full">
                     <label class="label" for="Slug"><span class="label-text">Slug</span></label>
                     <input type="text" id="Slug" name="Slug" class="input input-bordered w-full"
                            value="@Model.Slug" required />
+                    <span asp-validation-for="Slug" class="text-error text-sm mt-1"></span>
                 </div>
 
                 <div class="form-control w-full sm:col-span-2">

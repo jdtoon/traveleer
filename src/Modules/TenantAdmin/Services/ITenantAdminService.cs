@@ -1,3 +1,4 @@
+using saas.Data;
 using saas.Data.Tenant;
 
 namespace saas.Modules.TenantAdmin.Services;
@@ -5,7 +6,7 @@ namespace saas.Modules.TenantAdmin.Services;
 public interface ITenantAdminService
 {
     // Users
-    Task<List<UserListItem>> GetUsersAsync();
+    Task<PaginatedList<UserListItem>> GetUsersAsync(int page = 1, int pageSize = 20);
     Task<bool> InviteUserAsync(string email);
     Task<bool> DeactivateUserAsync(string userId);
     Task<bool> ActivateUserAsync(string userId);

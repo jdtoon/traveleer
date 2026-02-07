@@ -1,3 +1,4 @@
+using saas.Data;
 using saas.Data.Core;
 
 namespace saas.Modules.SuperAdmin.Services;
@@ -8,7 +9,7 @@ public interface ISuperAdminService
     Task<SuperAdminDashboardModel> GetDashboardAsync();
 
     // Tenant management
-    Task<List<TenantListItem>> GetTenantsAsync(string? search = null);
+    Task<PaginatedList<TenantListItem>> GetTenantsAsync(string? search = null, int page = 1, int pageSize = 20);
     Task<TenantDetailModel?> GetTenantDetailAsync(Guid tenantId);
     Task<bool> SuspendTenantAsync(Guid tenantId);
     Task<bool> ActivateTenantAsync(Guid tenantId);
@@ -17,10 +18,12 @@ public interface ISuperAdminService
     Task<List<Plan>> GetPlansAsync();
     Task<Plan?> GetPlanAsync(Guid planId);
     Task SavePlanAsync(PlanEditModel model);
+    Task<bool> IsSlugTakenAsync(string slug, Guid? excludeId = null);
 
     // Feature management
     Task<FeatureMatrixModel> GetFeatureMatrixAsync();
     Task TogglePlanFeatureAsync(Guid planId, Guid featureId);
+    Task<TenantFeatureOverrideModel?> GetTenantFeatureOverrideAsync(Guid tenantId, Guid featureId);
     Task SaveTenantFeatureOverrideAsync(TenantFeatureOverrideModel model);
 }
 
@@ -56,6 +59,18 @@ public class TenantDetailModel
     public SubscriptionStatus? SubscriptionStatus { get; set; }
     public DateTime? NextBillingDate { get; set; }
     public int UserCount { get; set; }
+    public List<TenantFeatureItem> Features { get; set; } = [];
+}
+
+public class TenantFeatureItem
+{
+    public Guid FeatureId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Module { get; set; }
+    public bool IsGlobal { get; set; }
+    public bool EnabledByPlan { get; set; }
+    public bool? OverrideEnabled { get; set; }
+    public string? OverrideReason { get; set; }
 }
 
 public class PlanEditModel

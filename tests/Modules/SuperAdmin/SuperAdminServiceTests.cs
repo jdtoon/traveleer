@@ -89,7 +89,7 @@ public class SuperAdminServiceTests : IAsyncLifetime
     {
         var tenants = await _service.GetTenantsAsync();
 
-        Assert.Equal(2, tenants.Count);
+        Assert.Equal(2, tenants.Items.Count);
     }
 
     [Fact]
@@ -97,8 +97,8 @@ public class SuperAdminServiceTests : IAsyncLifetime
     {
         var tenants = await _service.GetTenantsAsync("testcorp");
 
-        Assert.Single(tenants);
-        Assert.Equal("Test Corp", tenants[0].Name);
+        Assert.Single(tenants.Items);
+        Assert.Equal("Test Corp", tenants.Items[0].Name);
     }
 
     [Fact]
@@ -106,15 +106,15 @@ public class SuperAdminServiceTests : IAsyncLifetime
     {
         var tenants = await _service.GetTenantsAsync("other.com");
 
-        Assert.Single(tenants);
-        Assert.Equal("Other Inc", tenants[0].Name);
+        Assert.Single(tenants.Items);
+        Assert.Equal("Other Inc", tenants.Items[0].Name);
     }
 
     [Fact]
     public async Task SuspendTenantAsync_ChangesStatusToSuspended()
     {
         var tenants = await _service.GetTenantsAsync("testcorp");
-        var tenantId = tenants[0].Id;
+        var tenantId = tenants.Items[0].Id;
 
         var success = await _service.SuspendTenantAsync(tenantId);
 
@@ -127,7 +127,7 @@ public class SuperAdminServiceTests : IAsyncLifetime
     public async Task ActivateTenantAsync_ChangesStatusToActive()
     {
         var tenants = await _service.GetTenantsAsync("testcorp");
-        var tenantId = tenants[0].Id;
+        var tenantId = tenants.Items[0].Id;
 
         await _service.SuspendTenantAsync(tenantId);
         var success = await _service.ActivateTenantAsync(tenantId);

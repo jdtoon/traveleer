@@ -97,7 +97,7 @@ public class NotesServiceTests : IAsyncLifetime
     public async Task GetAllAsync_EmptyDb_ReturnsEmptyList()
     {
         var notes = await _service.GetAllAsync();
-        Assert.Empty(notes);
+        Assert.Empty(notes.Items);
     }
 
     [Fact]
@@ -279,8 +279,8 @@ public class NotesServiceTests : IAsyncLifetime
         await _service.CreateAsync(pinned);
 
         var all = await _service.GetAllAsync();
-        Assert.Equal(2, all.Count);
-        Assert.Equal("Pinned", all[0].Title);
+        Assert.Equal(2, all.Items.Count);
+        Assert.Equal("Pinned", all.Items[0].Title);
     }
 
     // ── Fakes ──────────────────────────────────────────────────────────────

@@ -1,4 +1,10 @@
-@model List<saas.Modules.SuperAdmin.Services.TenantListItem>
+@model PaginatedList<saas.Modules.SuperAdmin.Services.TenantListItem>
+@{
+    var search = ViewData["Search"] as string;
+    var listUrl = string.IsNullOrEmpty(search)
+        ? "/super-admin/tenants/list"
+        : $"/super-admin/tenants/list?search={Uri.EscapeDataString(search)}";
+}
 
 <div class="overflow-x-auto">
     <table class="table">
@@ -14,13 +20,13 @@
             </tr>
         </thead>
         <tbody>
-            @if (Model.Count == 0)
+            @if (Model.Items.Count == 0)
             {
                 <tr>
                     <td colspan="7" class="text-center opacity-60 py-8">No tenants found</td>
                 </tr>
             }
-            @foreach (var tenant in Model)
+            @foreach (var tenant in Model.Items)
             {
                 <tr class="hover">
                     <td class="font-medium">@tenant.Name</td>
@@ -41,3 +47,4 @@
         </tbody>
     </table>
 </div>
+<partial name="_Pagination" model="@Model.ToPagination(listUrl, "#tenant-list")" />

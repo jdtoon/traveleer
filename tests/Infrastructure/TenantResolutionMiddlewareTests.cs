@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using saas.Data.Core;
 using saas.Infrastructure.Middleware;
 using saas.Shared;
@@ -41,8 +42,9 @@ public class TenantResolutionMiddlewareTests
 
         var tenantContext = new TenantContext();
         var middleware = new TenantResolutionMiddleware(_ => Task.CompletedTask);
+        var cache = new MemoryCache(new MemoryCacheOptions());
 
-        await middleware.InvokeAsync(context, tenantContext, db);
+        await middleware.InvokeAsync(context, tenantContext, db, cache);
 
         Assert.True(tenantContext.IsTenantRequest);
         Assert.Equal("testcorp", tenantContext.Slug);
@@ -73,8 +75,9 @@ public class TenantResolutionMiddlewareTests
             called = true;
             return Task.CompletedTask;
         });
+        var cache = new MemoryCache(new MemoryCacheOptions());
 
-        await middleware.InvokeAsync(context, tenantContext, db);
+        await middleware.InvokeAsync(context, tenantContext, db, cache);
 
         Assert.True(called);
         Assert.False(tenantContext.IsTenantRequest);

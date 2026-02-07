@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using saas.Data;
 using saas.Data.Core;
 using saas.Data.Tenant;
 
@@ -53,7 +54,7 @@ public class SuperAdminService : ISuperAdminService
 
     // ── Tenant Management ────────────────────────────────────────────────────
 
-    public async Task<List<TenantListItem>> GetTenantsAsync(string? search = null)
+    public async Task<PaginatedList<TenantListItem>> GetTenantsAsync(string? search = null, int page = 1, int pageSize = 20)
     {
         var query = _coreDb.Tenants.Include(t => t.Plan).AsQueryable();
 
@@ -66,7 +67,7 @@ public class SuperAdminService : ISuperAdminService
                 t.ContactEmail.ToLower().Contains(term));
         }
 
-        return await query
+        var projected = query
             .OrderBy(t => t.Name)
             .Select(t => new TenantListItem
             {
@@ -77,8 +78,9 @@ public class SuperAdminService : ISuperAdminService
                 Status = t.Status,
                 PlanName = t.Plan.Name,
                 CreatedAt = t.CreatedAt
-            })
-            .ToListAsync();
+            });
+
+        return await PaginatedList<TenantListItem>.CreateAsync(projected, page, pageSize);
     }
 
     public async Task<TenantDetailModel?> GetTenantDetailAsync(Guid tenantId)
@@ -92,6 +94,37 @@ public class SuperAdminService : ISuperAdminService
 
         var userCount = await GetTenantUserCountAsync(tenant.Slug);
 
+        // Load all features with plan-enabled status and per-tenant overrides
+        var allFeatures = await _coreDb.Features
+            .OrderBy(f => f.Module).ThenBy(f => f.Name)
+            .ToListAsync();
+
+        var planFeatureIds = await _coreDb.PlanFeatures
+            .Where(pf => pf.PlanId == tenant.PlanId)
+            .Select(pf => pf.FeatureId)
+            .ToListAsync();
+        var planFeatureSet = planFeatureIds.ToHashSet();
+
+        var overrides = await _coreDb.TenantFeatureOverrides
+            .Where(o => o.TenantId == tenant.Id)
+            .ToListAsync();
+        var overrideMap = overrides.ToDictionary(o => o.FeatureId);
+
+        var featureItems = allFeatures.Select(f =>
+        {
+            overrideMap.TryGetValue(f.Id, out var ovr);
+            return new TenantFeatureItem
+            {
+                FeatureId = f.Id,
+                Name = f.Name,
+                Module = f.Module,
+                IsGlobal = f.IsGlobal,
+                EnabledByPlan = planFeatureSet.Contains(f.Id),
+                OverrideEnabled = ovr?.IsEnabled,
+                OverrideReason = ovr?.Reason
+            };
+        }).ToList();
+
         return new TenantDetailModel
         {
             Id = tenant.Id,
@@ -104,7 +137,8 @@ public class SuperAdminService : ISuperAdminService
             CreatedAt = tenant.CreatedAt,
             SubscriptionStatus = tenant.ActiveSubscription?.Status,
             NextBillingDate = tenant.ActiveSubscription?.NextBillingDate,
-            UserCount = userCount
+            UserCount = userCount,
+            Features = featureItems
         };
     }
 
@@ -168,6 +202,14 @@ public class SuperAdminService : ISuperAdminService
         await _coreDb.SaveChangesAsync();
     }
 
+    public async Task<bool> IsSlugTakenAsync(string slug, Guid? excludeId = null)
+    {
+        var query = _coreDb.Plans.Where(p => p.Slug == slug);
+        if (excludeId.HasValue)
+            query = query.Where(p => p.Id != excludeId.Value);
+        return await query.AnyAsync();
+    }
+
     // ── Feature Management ───────────────────────────────────────────────────
 
     public async Task<FeatureMatrixModel> GetFeatureMatrixAsync()
@@ -213,6 +255,22 @@ public class SuperAdminService : ISuperAdminService
         }
 
         await _coreDb.SaveChangesAsync();
+    }
+
+    public async Task<TenantFeatureOverrideModel?> GetTenantFeatureOverrideAsync(Guid tenantId, Guid featureId)
+    {
+        var ovr = await _coreDb.TenantFeatureOverrides
+            .FirstOrDefaultAsync(o => o.TenantId == tenantId && o.FeatureId == featureId);
+
+        if (ovr is null) return null;
+
+        return new TenantFeatureOverrideModel
+        {
+            TenantId = ovr.TenantId,
+            FeatureId = ovr.FeatureId,
+            IsEnabled = ovr.IsEnabled,
+            Reason = ovr.Reason
+        };
     }
 
     public async Task SaveTenantFeatureOverrideAsync(TenantFeatureOverrideModel model)

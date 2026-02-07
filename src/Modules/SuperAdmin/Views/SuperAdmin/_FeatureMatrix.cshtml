@@ -36,7 +36,7 @@
                             else
                             {
                                 <input type="checkbox"
-                                       class="toggle toggle-sm toggle-success"
+                                       class="checkbox checkbox-sm checkbox-success"
                                        @(isEnabled ? "checked" : "")
                                        hx-post="/super-admin/features/@feature.Id/toggle"
                                        hx-vals='{"planId": "@plan.Id"}'

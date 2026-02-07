@@ -94,10 +94,10 @@ public class TenantAdminServiceTests : IAsyncLifetime
     {
         var users = await _service.GetUsersAsync();
 
-        Assert.Single(users);
-        Assert.Equal("admin@testcorp.com", users[0].Email);
-        Assert.Equal("Admin", users[0].DisplayName);
-        Assert.True(users[0].IsActive);
+        Assert.Single(users.Items);
+        Assert.Equal("admin@testcorp.com", users.Items[0].Email);
+        Assert.Equal("Admin", users.Items[0].DisplayName);
+        Assert.True(users.Items[0].IsActive);
     }
 
     [Fact]
@@ -107,8 +107,8 @@ public class TenantAdminServiceTests : IAsyncLifetime
 
         Assert.True(success);
         var users = await _service.GetUsersAsync();
-        Assert.Equal(2, users.Count);
-        Assert.Contains(users, u => u.Email == "new@testcorp.com");
+        Assert.Equal(2, users.Items.Count);
+        Assert.Contains(users.Items, u => u.Email == "new@testcorp.com");
     }
 
     [Fact]
@@ -178,7 +178,7 @@ public class TenantAdminServiceTests : IAsyncLifetime
 
         Assert.True(success);
         var users = await _service.GetUsersAsync();
-        Assert.Contains("Admin", users[0].Roles);
+        Assert.Contains("Admin", users.Items[0].Roles);
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class TenantAdminServiceTests : IAsyncLifetime
 
         Assert.True(success);
         var users = await _service.GetUsersAsync();
-        Assert.DoesNotContain("Admin", users[0].Roles);
+        Assert.DoesNotContain("Admin", users.Items[0].Roles);
     }
 
     // ── Fakes ────────────────────────────────────────────────────────────────

@@ -21,16 +21,16 @@ public class NotesController : SwapController
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int page = 1)
     {
-        var notes = await _service.GetAllAsync();
+        var notes = await _service.GetAllAsync(page);
         return SwapView(notes);
     }
 
     [HttpGet]
-    public async Task<IActionResult> List()
+    public async Task<IActionResult> List(int page = 1)
     {
-        var notes = await _service.GetAllAsync();
+        var notes = await _service.GetAllAsync(page);
         return SwapView("_NotesList", notes);
     }
 

@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace saas.Data;
 
+public record PaginationModel(int PageIndex, int TotalPages, int TotalCount, string ListUrl, string HxTarget);
+
 public class PaginatedList<T>
 {
     public List<T> Items { get; }
@@ -21,6 +23,9 @@ public class PaginatedList<T>
 
     public bool HasPreviousPage => PageIndex > 1;
     public bool HasNextPage => PageIndex < TotalPages;
+
+    public PaginationModel ToPagination(string listUrl, string hxTarget)
+        => new(PageIndex, TotalPages, TotalCount, listUrl, hxTarget);
 
     public static async Task<PaginatedList<T>> CreateAsync(IQueryable<T> source, int pageIndex, int pageSize)
     {

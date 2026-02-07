@@ -1,6 +1,7 @@
-@model List<saas.Modules.SuperAdmin.Services.TenantListItem>
+@model PaginatedList<saas.Modules.SuperAdmin.Services.TenantListItem>
 @{
     ViewData["Title"] = "Tenants";
+    var search = ViewData["Search"] as string;
 }
 
 <div class="flex flex-col gap-6">
@@ -12,6 +13,7 @@
         <div>
             <input type="text"
                    name="search"
+                   value="@search"
                    placeholder="Search tenants..."
                    class="input input-bordered input-sm w-64"
                    hx-get="/super-admin/tenants/list"

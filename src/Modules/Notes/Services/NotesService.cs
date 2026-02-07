@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using saas.Data;
 using saas.Data.Tenant;
 using saas.Modules.Notes.Entities;
 
@@ -13,12 +14,13 @@ public class NotesService : INotesService
         _db = db;
     }
 
-    public async Task<List<Note>> GetAllAsync()
+    public async Task<PaginatedList<Note>> GetAllAsync(int page = 1, int pageSize = 12)
     {
-        return await _db.Notes
+        var query = _db.Notes
             .OrderByDescending(n => n.IsPinned)
-            .ThenByDescending(n => n.CreatedAt)
-            .ToListAsync();
+            .ThenByDescending(n => n.CreatedAt);
+
+        return await PaginatedList<Note>.CreateAsync(query, page, pageSize);
     }
 
     public async Task<Note?> GetByIdAsync(Guid id)
