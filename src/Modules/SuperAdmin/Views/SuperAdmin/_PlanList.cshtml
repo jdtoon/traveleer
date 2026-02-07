@@ -20,7 +20,7 @@
                 <tr class="hover">
                     <td class="font-medium">@plan.Name</td>
                     <td class="opacity-70">@plan.Slug</td>
-                    <td>R@plan.MonthlyPrice.ToString("N0")</td>
+                    <td>R @plan.MonthlyPrice.ToString("N0")</td>
                     <td>@(plan.AnnualPrice.HasValue ? $"R{plan.AnnualPrice.Value:N0}" : "—")</td>
                     <td>@(plan.MaxUsers?.ToString() ?? "∞")</td>
                     <td>
