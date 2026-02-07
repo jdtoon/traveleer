@@ -1,0 +1,48 @@
+@model List<saas.Data.Core.Plan>
+
+<div class="overflow-x-auto">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Slug</th>
+                <th>Monthly</th>
+                <th>Annual</th>
+                <th>Max Users</th>
+                <th>Active</th>
+                <th>Order</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var plan in Model)
+            {
+                <tr class="hover">
+                    <td class="font-medium">@plan.Name</td>
+                    <td class="opacity-70">@plan.Slug</td>
+                    <td>R@plan.MonthlyPrice.ToString("N0")</td>
+                    <td>@(plan.AnnualPrice.HasValue ? $"R{plan.AnnualPrice.Value:N0}" : "—")</td>
+                    <td>@(plan.MaxUsers?.ToString() ?? "∞")</td>
+                    <td>
+                        @if (plan.IsActive)
+                        {
+                            <span class="badge badge-success badge-sm">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-ghost badge-sm">Inactive</span>
+                        }
+                    </td>
+                    <td>@plan.SortOrder</td>
+                    <td>
+                        <button class="btn btn-ghost btn-xs"
+                                hx-get="/super-admin/plans/edit?id=@plan.Id"
+                                hx-target="#modal-container">
+                            Edit
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

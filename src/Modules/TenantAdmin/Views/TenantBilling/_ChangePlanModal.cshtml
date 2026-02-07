@@ -1,0 +1,61 @@
+@model ChangePlanViewModel
+
+<dialog class="modal modal-open">
+    <div class="modal-box max-w-2xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold">Change Plan</h3>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            @foreach (var plan in Model.Plans)
+            {
+                var isCurrent = plan.Id == Model.CurrentPlanId;
+                <div class="card bg-base-100 border @(isCurrent ? "border-primary ring-2 ring-primary/20" : "border-base-300") shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-bold">@plan.Name</h4>
+                            @if (isCurrent)
+                            {
+                                <span class="badge badge-primary badge-sm">Current</span>
+                            }
+                        </div>
+                        @if (!string.IsNullOrEmpty(plan.Description))
+                        {
+                            <p class="text-sm opacity-60">@plan.Description</p>
+                        }
+                        <div class="mt-2">
+                            <span class="text-xl font-bold">R@plan.MonthlyPrice.ToString("N0")</span>
+                            <span class="text-sm opacity-60">/month</span>
+                        </div>
+                        @if (plan.MaxUsers.HasValue)
+                        {
+                            <p class="text-sm opacity-60">Up to @plan.MaxUsers users</p>
+                        }
+                        else
+                        {
+                            <p class="text-sm opacity-60">Unlimited users</p>
+                        }
+                        @if (!isCurrent)
+                        {
+                            <button class="btn btn-primary btn-sm mt-2"
+                                    hx-post="@Url.Action("ChangePlan", "TenantBilling")"
+                                    hx-vals='{"planId": "@plan.Id"}'
+                                    hx-target="#modal-container"
+                                    hx-confirm="Switch to @plan.Name plan?">
+                                Select
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="modal-action">
+            <button type="button" class="btn" onclick="this.closest('.modal').classList.remove('modal-open')">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

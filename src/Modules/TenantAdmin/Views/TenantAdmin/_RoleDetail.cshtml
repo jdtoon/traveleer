@@ -1,0 +1,38 @@
+@model RoleDetailViewModel
+
+<div class="card bg-base-100 shadow-sm border border-base-300">
+    <div class="card-body">
+        <h3 class="card-title text-lg">@Model.Role.Name</h3>
+        @if (!string.IsNullOrEmpty(Model.Role.Description))
+        {
+            <p class="opacity-60">@Model.Role.Description</p>
+        }
+        <div class="divider"></div>
+        <h4 class="font-medium mb-2">All Permissions</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            @foreach (var group in Model.AllPermissions.GroupBy(p => p.Group))
+            {
+                <div>
+                    <span class="text-sm font-medium opacity-70">@group.Key</span>
+                    <ul class="ml-2 mt-1 space-y-1">
+                        @foreach (var perm in group)
+                        {
+                            var isGranted = Model.Role.Permissions.Contains(perm.Name);
+                            <li class="text-sm flex items-center gap-2">
+                                @if (isGranted)
+                                {
+                                    <span class="text-success">✓</span>
+                                }
+                                else
+                                {
+                                    <span class="opacity-30">✗</span>
+                                }
+                                @perm.Name
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    </div>
+</div>

@@ -33,6 +33,9 @@ public static class MvcExtensions
             options.DefaultNavigationTarget = "#main-content";
             
             options.PartialViewSearchPaths.Add("Notes");
+            options.PartialViewSearchPaths.Add("SuperAdmin");
+            options.PartialViewSearchPaths.Add("TenantAdmin");
+            options.PartialViewSearchPaths.Add("TenantBilling");
             options.AddConfig<NotesEventConfig>();
         });
 

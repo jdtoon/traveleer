@@ -1,0 +1,15 @@
+@model saas.Modules.SuperAdmin.Services.FeatureMatrixModel
+@{
+    ViewData["Title"] = "Features";
+}
+
+<div class="flex flex-col gap-6">
+    <div>
+        <h1 class="text-2xl font-bold">Features</h1>
+        <p class="opacity-60">Feature × Plan matrix — toggle features per plan</p>
+    </div>
+
+    <div id="feature-matrix">
+        <partial name="_FeatureMatrix" model="Model" />
+    </div>
+</div>

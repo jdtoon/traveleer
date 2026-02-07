@@ -1,0 +1,110 @@
+@model BillingViewModel
+
+<!-- Subscription Card -->
+<div class="card bg-base-100 shadow-sm border border-base-300 mb-6">
+    <div class="card-body">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h2 class="card-title text-lg">Current Plan</h2>
+                <div class="flex items-center gap-3 mt-2">
+                    <span class="text-2xl font-bold">@Model.PlanName</span>
+                    <span class="text-lg opacity-70">@Model.Currency @Model.MonthlyPrice.ToString("N0")/mo</span>
+                </div>
+                @if (Model.SubscriptionStatus.HasValue)
+                {
+                    <div class="flex items-center gap-2 mt-2">
+                        <span class="text-sm opacity-60">Status:</span>
+                        @{
+                            var statusClass = Model.SubscriptionStatus switch
+                            {
+                                saas.Data.Core.SubscriptionStatus.Active => "badge-success",
+                                saas.Data.Core.SubscriptionStatus.Cancelled => "badge-error",
+                                saas.Data.Core.SubscriptionStatus.PastDue => "badge-warning",
+                                saas.Data.Core.SubscriptionStatus.Trialing => "badge-info",
+                                _ => "badge-ghost"
+                            };
+                        }
+                        <span class="badge @statusClass badge-sm">@Model.SubscriptionStatus</span>
+                        @if (Model.BillingCycle.HasValue)
+                        {
+                            <span class="badge badge-outline badge-sm">@Model.BillingCycle</span>
+                        }
+                    </div>
+                    @if (Model.NextBillingDate.HasValue)
+                    {
+                        <p class="text-sm opacity-60 mt-1">Next billing: @Model.NextBillingDate.Value.ToString("dd MMMM yyyy")</p>
+                    }
+                    @if (Model.CancelledAt.HasValue)
+                    {
+                        <p class="text-sm text-error mt-1">Cancelled: @Model.CancelledAt.Value.ToString("dd MMMM yyyy")</p>
+                    }
+                }
+            </div>
+            <div class="flex gap-2">
+                <button class="btn btn-primary btn-sm"
+                        hx-get="@Url.Action("ChangePlanModal", "TenantBilling")"
+                        hx-target="#modal-container">
+                    Change Plan
+                </button>
+                @if (Model.SubscriptionStatus == saas.Data.Core.SubscriptionStatus.Active)
+                {
+                    <button class="btn btn-outline btn-error btn-sm"
+                            hx-post="@Url.Action("Cancel", "TenantBilling")"
+                            hx-target="#billing-content"
+                            hx-confirm="Are you sure you want to cancel your subscription?">
+                        Cancel
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invoice List -->
+<div class="card bg-base-100 shadow-sm border border-base-300">
+    <div class="card-body">
+        <h2 class="card-title text-lg mb-4">Recent Invoices</h2>
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Invoice #</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Invoices.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center opacity-60 py-8">No invoices yet</td>
+                        </tr>
+                    }
+                    @foreach (var invoice in Model.Invoices)
+                    {
+                        <tr class="hover">
+                            <td class="font-mono text-sm">@invoice.InvoiceNumber</td>
+                            <td>@invoice.IssuedDate.ToString("dd MMM yyyy")</td>
+                            <td>@invoice.Currency @invoice.Amount.ToString("N2")</td>
+                            <td>
+                                @{
+                                    var invClass = invoice.Status switch
+                                    {
+                                        saas.Data.Core.InvoiceStatus.Paid => "badge-success",
+                                        saas.Data.Core.InvoiceStatus.Overdue => "badge-error",
+                                        saas.Data.Core.InvoiceStatus.Issued => "badge-warning",
+                                        _ => "badge-ghost"
+                                    };
+                                }
+                                <span class="badge @invClass badge-sm">@invoice.Status</span>
+                            </td>
+                            <td class="opacity-70">@(invoice.Description ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

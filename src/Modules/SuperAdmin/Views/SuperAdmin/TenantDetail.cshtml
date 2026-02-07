@@ -1,0 +1,83 @@
+@model saas.Modules.SuperAdmin.Services.TenantDetailModel
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<div class="flex flex-col gap-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <swap-nav to="/super-admin/tenants" class="btn btn-ghost btn-sm btn-circle">←</swap-nav>
+                <h1 class="text-2xl font-bold">@Model.Name</h1>
+                <partial name="_StatusBadge" model="Model.Status" />
+            </div>
+            <p class="opacity-60 ml-12">/@Model.Slug</p>
+        </div>
+        <div class="flex gap-2">
+            @if (Model.Status == saas.Data.Core.TenantStatus.Active)
+            {
+                <button class="btn btn-error btn-sm"
+                        hx-post="/super-admin/tenants/@Model.Id/suspend"
+                        hx-target="#main-content"
+                        hx-confirm="Are you sure you want to suspend this tenant?">
+                    Suspend
+                </button>
+            }
+            else if (Model.Status == saas.Data.Core.TenantStatus.Suspended)
+            {
+                <button class="btn btn-success btn-sm"
+                        hx-post="/super-admin/tenants/@Model.Id/activate"
+                        hx-target="#main-content"
+                        hx-confirm="Reactivate this tenant?">
+                    Activate
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="stat bg-base-100 shadow-sm border border-base-300 rounded-box">
+            <div class="stat-title">Plan</div>
+            <div class="stat-value text-lg">@Model.PlanName</div>
+        </div>
+        <div class="stat bg-base-100 shadow-sm border border-base-300 rounded-box">
+            <div class="stat-title">Users</div>
+            <div class="stat-value text-lg">@Model.UserCount</div>
+        </div>
+        <div class="stat bg-base-100 shadow-sm border border-base-300 rounded-box">
+            <div class="stat-title">Subscription</div>
+            <div class="stat-value text-lg">@(Model.SubscriptionStatus?.ToString() ?? "None")</div>
+        </div>
+        <div class="stat bg-base-100 shadow-sm border border-base-300 rounded-box">
+            <div class="stat-title">Next Billing</div>
+            <div class="stat-value text-lg">@(Model.NextBillingDate?.ToString("dd MMM") ?? "—")</div>
+        </div>
+    </div>
+
+    <!-- Details Card -->
+    <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body">
+            <h2 class="card-title text-lg mb-4">Tenant Details</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <span class="text-sm opacity-60">Contact Email</span>
+                    <p class="font-medium">@Model.ContactEmail</p>
+                </div>
+                <div>
+                    <span class="text-sm opacity-60">Registered</span>
+                    <p class="font-medium">@Model.CreatedAt.ToString("dd MMMM yyyy HH:mm")</p>
+                </div>
+                <div>
+                    <span class="text-sm opacity-60">Database</span>
+                    <p class="font-medium font-mono text-sm">db/tenants/@(Model.Slug).db</p>
+                </div>
+                <div>
+                    <span class="text-sm opacity-60">Tenant ID</span>
+                    <p class="font-medium font-mono text-sm">@Model.Id</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

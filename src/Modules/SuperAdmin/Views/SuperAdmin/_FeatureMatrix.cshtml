@@ -1,0 +1,51 @@
+@model saas.Modules.SuperAdmin.Services.FeatureMatrixModel
+
+<div class="overflow-x-auto">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Feature</th>
+                <th>Module</th>
+                <th>Global</th>
+                @foreach (var plan in Model.Plans)
+                {
+                    <th class="text-center">@plan.Name</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var feature in Model.Features)
+            {
+                <tr class="hover">
+                    <td class="font-medium">@feature.Name</td>
+                    <td class="opacity-70">@(feature.Module ?? "—")</td>
+                    <td>
+                        @if (feature.IsGlobal)
+                        {
+                            <span class="badge badge-info badge-sm">Global</span>
+                        }
+                    </td>
+                    @foreach (var plan in Model.Plans)
+                    {
+                        var isEnabled = Model.IsEnabled(plan.Id, feature.Id);
+                        <td class="text-center">
+                            @if (feature.IsGlobal)
+                            {
+                                <span class="text-success">✓</span>
+                            }
+                            else
+                            {
+                                <input type="checkbox"
+                                       class="toggle toggle-sm toggle-success"
+                                       @(isEnabled ? "checked" : "")
+                                       hx-post="/super-admin/features/@feature.Id/toggle"
+                                       hx-vals='{"planId": "@plan.Id"}'
+                                       hx-target="#feature-matrix" />
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

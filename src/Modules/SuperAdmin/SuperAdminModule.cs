@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using saas.Modules.SuperAdmin.Services;
 using saas.Shared;
 
 namespace saas.Modules.SuperAdmin;
@@ -14,6 +15,7 @@ public class SuperAdminModule : IModule
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddScoped<ISuperAdminService, SuperAdminService>();
     }
 
     public void RegisterMiddleware(IApplicationBuilder app)

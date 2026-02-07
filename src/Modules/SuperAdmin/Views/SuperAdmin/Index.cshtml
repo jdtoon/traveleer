@@ -1,8 +1,81 @@
+@model saas.Modules.SuperAdmin.Services.SuperAdminDashboardModel
 @{
-    ViewData["Title"] = "Super Admin";
+    ViewData["Title"] = "Dashboard";
 }
 
-<div class="mx-auto max-w-3xl">
-    <h1 class="text-2xl font-bold mb-4">Super Admin</h1>
-    <p>Dashboard will be implemented in Phase 6.</p>
+<div class="flex flex-col gap-6">
+    <div>
+        <h1 class="text-2xl font-bold">Dashboard</h1>
+        <p class="opacity-60">System overview</p>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="stat bg-base-100 shadow-sm border border-base-300 rounded-box">
+            <div class="stat-figure text-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+            </div>
+            <div class="stat-title">Total Tenants</div>
+            <div class="stat-value text-primary">@Model.TenantCount</div>
+        </div>
+
+        <div class="stat bg-base-100 shadow-sm border border-base-300 rounded-box">
+            <div class="stat-figure text-success">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div class="stat-title">Active Subscriptions</div>
+            <div class="stat-value text-success">@Model.ActiveSubscriptions</div>
+        </div>
+
+        <div class="stat bg-base-100 shadow-sm border border-base-300 rounded-box">
+            <div class="stat-figure text-info">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+            </div>
+            <div class="stat-title">Recent Registrations (30d)</div>
+            <div class="stat-value text-info">@Model.RecentRegistrations</div>
+        </div>
+    </div>
+
+    <!-- Recent Tenants -->
+    <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="card-title text-lg">Recent Tenants</h2>
+                <swap-nav to="/super-admin/tenants" class="btn btn-ghost btn-sm">View all →</swap-nav>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Slug</th>
+                            <th>Plan</th>
+                            <th>Status</th>
+                            <th>Registered</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var tenant in Model.RecentTenants)
+                        {
+                            <tr>
+                                <td class="font-medium">@tenant.Name</td>
+                                <td class="opacity-70">@tenant.Slug</td>
+                                <td>@tenant.PlanName</td>
+                                <td>
+                                    <partial name="_StatusBadge" model="tenant.Status" />
+                                </td>
+                                <td class="opacity-70">@tenant.CreatedAt.ToString("dd MMM yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>

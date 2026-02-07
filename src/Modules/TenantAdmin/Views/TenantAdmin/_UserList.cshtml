@@ -1,0 +1,85 @@
+@model List<UserListItem>
+@inject ITenantContext TenantContext
+@{
+    var slug = TenantContext.Slug;
+}
+
+<div class="overflow-x-auto">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Roles</th>
+                <th>Status</th>
+                <th>Last Login</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr>
+                    <td colspan="6" class="text-center opacity-60 py-8">No users found</td>
+                </tr>
+            }
+            @foreach (var user in Model)
+            {
+                <tr class="hover">
+                    <td class="font-medium">@user.Email</td>
+                    <td>@(user.DisplayName ?? "—")</td>
+                    <td>
+                        @foreach (var role in user.Roles)
+                        {
+                            <span class="badge badge-outline badge-sm mr-1">@role</span>
+                        }
+                        @if (user.Roles.Count == 0)
+                        {
+                            <span class="opacity-40">None</span>
+                        }
+                    </td>
+                    <td>
+                        @if (user.IsActive)
+                        {
+                            <span class="badge badge-success badge-sm">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-ghost badge-sm">Inactive</span>
+                        }
+                    </td>
+                    <td class="opacity-70">@(user.LastLoginAt?.ToString("dd MMM HH:mm") ?? "Never")</td>
+                    <td>
+                        <has-permission name="users.edit">
+                            <div class="dropdown dropdown-end">
+                                <label tabindex="0" class="btn btn-ghost btn-xs">⋯</label>
+                                <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-200 rounded-box shadow-lg z-10 w-40">
+                                    @if (user.IsActive)
+                                    {
+                                        <li>
+                                            <button hx-post="@Url.Action("DeactivateUser", "TenantAdmin", new { id = user.Id })"
+                                                    hx-target="#user-list"
+                                                    hx-confirm="Deactivate this user?"
+                                                    class="text-error">
+                                                Deactivate
+                                            </button>
+                                        </li>
+                                    }
+                                    else
+                                    {
+                                        <li>
+                                            <button hx-post="@Url.Action("ActivateUser", "TenantAdmin", new { id = user.Id })"
+                                                    hx-target="#user-list">
+                                                Activate
+                                            </button>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </has-permission>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

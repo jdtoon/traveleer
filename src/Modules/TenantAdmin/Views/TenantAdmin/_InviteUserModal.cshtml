@@ -1,0 +1,30 @@
+<dialog class="modal modal-open">
+    <div class="modal-box">
+        <form hx-post="@Url.Action("InviteUser", "TenantAdmin")" hx-target="#modal-container">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">Invite User</h3>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>
+            </div>
+
+            <div class="form-control w-full">
+                <label class="label" for="email">
+                    <span class="label-text">Email Address</span>
+                </label>
+                <input type="email" id="email" name="email"
+                       class="input input-bordered w-full"
+                       placeholder="user@example.com" required autofocus />
+                <label class="label">
+                    <span class="label-text-alt opacity-60">A magic link will be sent to this email</span>
+                </label>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Send Invite</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>
