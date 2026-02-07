@@ -74,6 +74,11 @@ public class TenantProvisionerTests : IAsyncLifetime
 
         services.AddSingleton<IEmailService, ConsoleEmailService>();
         services.AddSingleton<IBotProtection, MockBotProtection>();
+        services.AddSingleton<IReadOnlyList<IModule>>(new IModule[]
+        {
+            new saas.Modules.Notes.NotesModule(),
+            new saas.Modules.Audit.AuditModule()
+        });
         services.AddScoped<ITenantProvisioner, TenantProvisionerService>();
 
         _serviceProvider = services.BuildServiceProvider();
@@ -216,7 +221,7 @@ public class TenantProvisionerTests : IAsyncLifetime
         // Permissions seeded
         var permissions = await tenantDb.Permissions.ToListAsync();
         Assert.Equal(14, permissions.Count);
-        Assert.Contains(permissions, p => p.Key == PermissionDefinitions.NotesRead);
+        Assert.Contains(permissions, p => p.Key == saas.Modules.Notes.NotesPermissions.Read);
         Assert.Contains(permissions, p => p.Key == PermissionDefinitions.SettingsEdit);
 
         // RolePermissions: Admin has all 14

@@ -9,6 +9,11 @@ public class RegistrationModule : IModule
 {
     public string Name => "Registration";
 
+    public IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>
+    {
+        ["Registration"] = "Registration"
+    };
+
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<ITenantProvisioner, TenantProvisionerService>();

@@ -2,19 +2,18 @@ using Microsoft.AspNetCore.Mvc.Razor;
 
 namespace saas.Infrastructure;
 
+/// <summary>
+/// Teaches the Razor view engine where to find views for module-based controllers.
+/// The controller→module mapping is populated at startup from IModule.ControllerViewPaths.
+/// </summary>
 public class ModuleViewLocationExpander : IViewLocationExpander
 {
-    // Map controller names to module folders
-    private static readonly Dictionary<string, ModuleViewConfig> ControllerModuleMap = new(StringComparer.OrdinalIgnoreCase)
+    private readonly Dictionary<string, string> _controllerModuleMap;
+
+    public ModuleViewLocationExpander(IReadOnlyDictionary<string, string> controllerModuleMap)
     {
-        ["Notes"] = new("Notes"),
-        ["SuperAdminAuth"] = new("Auth"),
-        ["TenantAuth"] = new("Auth"),
-        ["SuperAdmin"] = new("SuperAdmin"),
-        ["Registration"] = new("Registration"),
-        // Add mappings as modules are created:
-        // ["ControllerName"] = new("ModuleFolderName"),
-    };
+        _controllerModuleMap = new Dictionary<string, string>(controllerModuleMap, StringComparer.OrdinalIgnoreCase);
+    }
 
     public void PopulateValues(ViewLocationExpanderContext context) { }
 
@@ -23,32 +22,27 @@ public class ModuleViewLocationExpander : IViewLocationExpander
         IEnumerable<string> viewLocations)
     {
         if (context.ControllerName != null &&
-            ControllerModuleMap.TryGetValue(context.ControllerName, out var config))
+            _controllerModuleMap.TryGetValue(context.ControllerName, out var moduleName))
         {
-            var moduleLocations = new List<string>
+            var moduleLocations = new[]
             {
-                $"/Modules/{config.ModuleName}/Views/{{0}}.cshtml",
-                $"/Modules/{config.ModuleName}/Views/Shared/{{0}}.cshtml"
+                $"/Modules/{moduleName}/Views/{{0}}.cshtml",
+                $"/Modules/{moduleName}/Views/Shared/{{0}}.cshtml"
             };
-
-            if (config.SubFolder != null)
-            {
-                moduleLocations.Insert(0, $"/Modules/{config.ModuleName}/Views/{config.SubFolder}/{{0}}.cshtml");
-            }
 
             return moduleLocations.Concat(viewLocations);
         }
 
         return viewLocations;
     }
-
-    private record ModuleViewConfig(string ModuleName, string? SubFolder = null);
 }
 
 public static class ModuleViewLocationExtensions
 {
-    public static void AddModuleViewLocations(this RazorViewEngineOptions options)
+    public static void AddModuleViewLocations(
+        this RazorViewEngineOptions options,
+        IReadOnlyDictionary<string, string> controllerModuleMap)
     {
-        options.ViewLocationExpanders.Add(new ModuleViewLocationExpander());
+        options.ViewLocationExpanders.Add(new ModuleViewLocationExpander(controllerModuleMap));
     }
 }

@@ -12,6 +12,12 @@ public class AuthModule : IModule
 {
     public string Name => "Auth";
 
+    public IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>
+    {
+        ["TenantAuth"] = "Auth",
+        ["SuperAdminAuth"] = "Auth"
+    };
+
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<MagicLinkService>();

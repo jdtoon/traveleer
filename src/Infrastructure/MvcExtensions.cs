@@ -5,7 +5,9 @@ namespace saas.Infrastructure;
 
 public static class MvcExtensions
 {
-    public static IServiceCollection AddMvcConfig(this IServiceCollection services)
+    public static IServiceCollection AddMvcConfig(
+        this IServiceCollection services,
+        IReadOnlyDictionary<string, string> controllerViewPaths)
     {
         services.AddControllersWithViews(options =>
         {
@@ -14,7 +16,7 @@ public static class MvcExtensions
 
         services.Configure<Microsoft.AspNetCore.Mvc.Razor.RazorViewEngineOptions>(options =>
         {
-            options.AddModuleViewLocations();
+            options.AddModuleViewLocations(controllerViewPaths);
         });
 
         return services;

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using saas.Data.Core;
 using saas.Data.Seeding;
+using saas.Shared;
 using Xunit;
 
 namespace saas.Tests;
@@ -29,8 +30,15 @@ public class MasterDataSeederTests
             })
             .Build();
 
-        await MasterDataSeeder.SeedAsync(db, config);
-        await MasterDataSeeder.SeedAsync(db, config);
+        // Module list provides module-owned features (Notes, Audit)
+        var modules = new IModule[]
+        {
+            new saas.Modules.Notes.NotesModule(),
+            new saas.Modules.Audit.AuditModule()
+        };
+
+        await MasterDataSeeder.SeedAsync(db, config, modules);
+        await MasterDataSeeder.SeedAsync(db, config, modules);
 
         Assert.Equal(4, await db.Plans.CountAsync());
         Assert.Equal(9, await db.Features.CountAsync());

@@ -51,12 +51,20 @@ foreach (var module in modules)
     builder.Logging.AddFilter("saas", LogLevel.Information);
 }
 
+// Register module list in DI for seeder/provisioner access
+builder.Services.AddSingleton<IReadOnlyList<IModule>>(modules);
+
+// Collect view paths from all modules for the Razor view locator
+var controllerViewPaths = modules
+    .SelectMany(m => m.ControllerViewPaths)
+    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value, StringComparer.OrdinalIgnoreCase);
+
 // =============================================================================
 // MVC & WEB
 // =============================================================================
 
 builder.Services.AddWebOptimizerConfig(builder.Environment);
-builder.Services.AddMvcConfig();
+builder.Services.AddMvcConfig(controllerViewPaths);
 builder.Services.AddSwapHtmxConfig();
 
 // =============================================================================

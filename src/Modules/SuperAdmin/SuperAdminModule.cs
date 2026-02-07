@@ -7,6 +7,11 @@ public class SuperAdminModule : IModule
 {
     public string Name => "SuperAdmin";
 
+    public IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>
+    {
+        ["SuperAdmin"] = "SuperAdmin"
+    };
+
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
     }

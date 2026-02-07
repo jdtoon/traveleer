@@ -6,12 +6,11 @@ using saas.Modules.Auth.Filters;
 using saas.Modules.Notes.Entities;
 using saas.Modules.Notes.Events;
 using saas.Modules.Notes.Services;
-using saas.Shared;
 
 namespace saas.Modules.Notes.Controllers;
 
 [Authorize(Policy = "TenantUser")]
-[RequireFeature(FeatureDefinitions.Notes)]
+[RequireFeature(NotesFeatures.Notes)]
 public class NotesController : SwapController
 {
     private readonly INotesService _service;
@@ -36,14 +35,14 @@ public class NotesController : SwapController
     }
 
     [HttpGet]
-    [HasPermission(PermissionDefinitions.NotesCreate)]
+    [HasPermission(NotesPermissions.Create)]
     public IActionResult Create()
     {
         return SwapView("_CreateModal");
     }
 
     [HttpPost]
-    [HasPermission(PermissionDefinitions.NotesCreate)]
+    [HasPermission(NotesPermissions.Create)]
     public async Task<IActionResult> Create(Note note)
     {
         if (!ModelState.IsValid)
@@ -61,7 +60,7 @@ public class NotesController : SwapController
     }
 
     [HttpGet]
-    [HasPermission(PermissionDefinitions.NotesEdit)]
+    [HasPermission(NotesPermissions.Edit)]
     public async Task<IActionResult> Edit(Guid id)
     {
         var note = await _service.GetByIdAsync(id);
@@ -71,7 +70,7 @@ public class NotesController : SwapController
     }
 
     [HttpPost]
-    [HasPermission(PermissionDefinitions.NotesEdit)]
+    [HasPermission(NotesPermissions.Edit)]
     public async Task<IActionResult> Edit(Guid id, Note note)
     {
         if (!ModelState.IsValid)
@@ -95,7 +94,7 @@ public class NotesController : SwapController
     }
 
     [HttpGet]
-    [HasPermission(PermissionDefinitions.NotesDelete)]
+    [HasPermission(NotesPermissions.Delete)]
     public async Task<IActionResult> DeleteConfirm(Guid id)
     {
         var note = await _service.GetByIdAsync(id);
@@ -105,7 +104,7 @@ public class NotesController : SwapController
     }
 
     [HttpPost]
-    [HasPermission(PermissionDefinitions.NotesDelete)]
+    [HasPermission(NotesPermissions.Delete)]
     public async Task<IActionResult> Delete(Guid id)
     {
         try
@@ -124,7 +123,7 @@ public class NotesController : SwapController
     }
 
     [HttpPost]
-    [HasPermission(PermissionDefinitions.NotesEdit)]
+    [HasPermission(NotesPermissions.Edit)]
     public async Task<IActionResult> TogglePin(Guid id)
     {
         try

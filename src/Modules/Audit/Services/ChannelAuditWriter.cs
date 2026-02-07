@@ -54,21 +54,28 @@ public sealed class ChannelAuditWriter : BackgroundService, IAuditWriter
     {
         _logger.LogInformation("Audit writer background consumer started");
 
-        await foreach (var entry in _channel.Reader.ReadAllAsync(stoppingToken))
+        try
         {
-            try
+            await foreach (var entry in _channel.Reader.ReadAllAsync(stoppingToken))
             {
-                using var scope = _scopeFactory.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
 
-                db.AuditEntries.Add(entry);
-                await db.SaveChangesAsync(stoppingToken);
+                    db.AuditEntries.Add(entry);
+                    await db.SaveChangesAsync(CancellationToken.None);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogError(ex, "Failed to persist audit entry for {EntityType} {EntityId}",
+                        entry.EntityType, entry.EntityId);
+                }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                _logger.LogError(ex, "Failed to persist audit entry for {EntityType} {EntityId}",
-                    entry.EntityType, entry.EntityId);
-            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Normal shutdown — host signalled cancellation, not an error
         }
 
         _logger.LogInformation("Audit writer background consumer stopped");

@@ -1,16 +1,19 @@
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Core;
+using saas.Modules.Audit;
+using saas.Modules.Notes;
 using saas.Shared;
 
 namespace saas.Data.Seeding;
 
 /// <summary>
 /// Seeds core database with plans, features, plan-feature mappings, and default super admin.
+/// Features are collected from IModule.Features + cross-cutting FeatureDefinitions.
 /// Idempotent — skips if data already exists.
 /// </summary>
 public static class MasterDataSeeder
 {
-    public static async Task SeedAsync(CoreDbContext db, IConfiguration configuration)
+    public static async Task SeedAsync(CoreDbContext db, IConfiguration configuration, IReadOnlyList<IModule> modules)
     {
         if (await db.Plans.AnyAsync())
             return;
@@ -74,8 +77,11 @@ public static class MasterDataSeeder
 
         db.Plans.AddRange(freePlan, starterPlan, professionalPlan, enterprisePlan);
 
-        // 2. Seed Features
-        var features = FeatureDefinitions.GetAll();
+        // 2. Seed Features — collected from modules + cross-cutting
+        var features = modules
+            .SelectMany(m => m.Features)
+            .Concat(FeatureDefinitions.GetAll())
+            .ToList();
         db.Features.AddRange(features);
 
         await db.SaveChangesAsync();
@@ -84,7 +90,7 @@ public static class MasterDataSeeder
         var featureLookup = features.ToDictionary(f => f.Key);
 
         // Starter gets: Notes, Projects, CustomRoles, ExportData
-        var starterFeatures = new[] { FeatureDefinitions.Notes, FeatureDefinitions.Projects, FeatureDefinitions.CustomRoles, FeatureDefinitions.ExportData };
+        var starterFeatures = new[] { NotesFeatures.Notes, FeatureDefinitions.Projects, FeatureDefinitions.CustomRoles, FeatureDefinitions.ExportData };
         foreach (var key in starterFeatures)
         {
             if (featureLookup.TryGetValue(key, out var feature))
@@ -92,7 +98,7 @@ public static class MasterDataSeeder
         }
 
         // Professional gets: everything Starter has + AdvancedReports, AuditLog
-        var professionalFeatures = new[] { FeatureDefinitions.Notes, FeatureDefinitions.Projects, FeatureDefinitions.CustomRoles, FeatureDefinitions.ExportData, FeatureDefinitions.AdvancedReports, FeatureDefinitions.AuditLog };
+        var professionalFeatures = new[] { NotesFeatures.Notes, FeatureDefinitions.Projects, FeatureDefinitions.CustomRoles, FeatureDefinitions.ExportData, FeatureDefinitions.AdvancedReports, AuditFeatures.AuditLog };
         foreach (var key in professionalFeatures)
         {
             if (featureLookup.TryGetValue(key, out var feature))

@@ -13,6 +13,7 @@ public partial class TenantProvisionerService : ITenantProvisioner
     private readonly CoreDbContext _coreDb;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<TenantProvisionerService> _logger;
+    private readonly IReadOnlyList<IModule> _modules;
     
     // Reserved slugs that cannot be used for tenant registration
     private static readonly HashSet<string> ReservedSlugs = new(StringComparer.OrdinalIgnoreCase)
@@ -25,11 +26,13 @@ public partial class TenantProvisionerService : ITenantProvisioner
     public TenantProvisionerService(
         CoreDbContext coreDb,
         IServiceProvider serviceProvider,
-        ILogger<TenantProvisionerService> logger)
+        ILogger<TenantProvisionerService> logger,
+        IReadOnlyList<IModule> modules)
     {
         _coreDb = coreDb;
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _modules = modules;
     }
 
     public async Task<TenantProvisioningResult> ProvisionTenantAsync(
@@ -145,8 +148,11 @@ public partial class TenantProvisionerService : ITenantProvisioner
                 await roleManager.CreateAsync(memberRole);
             }
 
-            // Seed permissions
-            var permissions = PermissionDefinitions.GetAll();
+            // Seed permissions — collected from modules + cross-cutting
+            var permissions = _modules
+                .SelectMany(m => m.Permissions)
+                .Concat(PermissionDefinitions.GetAll())
+                .ToList();
             tenantDb.Permissions.AddRange(permissions);
             await tenantDb.SaveChangesAsync();
 

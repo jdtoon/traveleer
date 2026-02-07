@@ -8,6 +8,7 @@ using saas.Data.Audit;
 using saas.Data.Seeding;
 using saas.Infrastructure.Middleware;
 using saas.Data.Tenant;
+using saas.Shared;
 using Swap.Htmx;
 
 namespace saas.Infrastructure;
@@ -40,8 +41,9 @@ public static class ApplicationBuilderExtensions
             // Initialize TenantDbContext for each existing tenant DB
             await ApplyTenantMigrationsAsync(scope.ServiceProvider, logger);
 
-            // Seed master data
-            await MasterDataSeeder.SeedAsync(coreDb, app.Configuration);
+            // Seed master data (features collected from modules + cross-cutting)
+            var modules = scope.ServiceProvider.GetRequiredService<IReadOnlyList<IModule>>();
+            await MasterDataSeeder.SeedAsync(coreDb, app.Configuration, modules);
 
             _initialized = true;
         }
