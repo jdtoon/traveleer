@@ -1,12 +1,17 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swap.Htmx;
 using Swap.Htmx.Events;
+using saas.Modules.Auth.Filters;
 using saas.Modules.Notes.Entities;
 using saas.Modules.Notes.Events;
 using saas.Modules.Notes.Services;
+using saas.Shared;
 
 namespace saas.Modules.Notes.Controllers;
 
+[Authorize(Policy = "TenantUser")]
+[RequireFeature(FeatureDefinitions.Notes)]
 public class NotesController : SwapController
 {
     private readonly INotesService _service;
@@ -31,12 +36,14 @@ public class NotesController : SwapController
     }
 
     [HttpGet]
+    [HasPermission(PermissionDefinitions.NotesCreate)]
     public IActionResult Create()
     {
         return SwapView("_CreateModal");
     }
 
     [HttpPost]
+    [HasPermission(PermissionDefinitions.NotesCreate)]
     public async Task<IActionResult> Create(Note note)
     {
         if (!ModelState.IsValid)
@@ -48,12 +55,13 @@ public class NotesController : SwapController
 
         return SwapResponse()
             .WithSuccessToast("Note created!")
-            .WithTrigger(NotesEvents.Notes.ListChanged)  // Triggers client refresh
+            .WithTrigger(NotesEvents.Notes.ListChanged)
             .WithView("_ModalClose")
             .Build();
     }
 
     [HttpGet]
+    [HasPermission(PermissionDefinitions.NotesEdit)]
     public async Task<IActionResult> Edit(Guid id)
     {
         var note = await _service.GetByIdAsync(id);
@@ -63,6 +71,7 @@ public class NotesController : SwapController
     }
 
     [HttpPost]
+    [HasPermission(PermissionDefinitions.NotesEdit)]
     public async Task<IActionResult> Edit(Guid id, Note note)
     {
         if (!ModelState.IsValid)
@@ -75,7 +84,7 @@ public class NotesController : SwapController
             await _service.UpdateAsync(id, note);
             return SwapResponse()
                 .WithSuccessToast("Note updated!")
-                .WithTrigger(NotesEvents.Notes.ListChanged)  // Triggers client refresh
+                .WithTrigger(NotesEvents.Notes.ListChanged)
                 .WithView("_ModalClose")
                 .Build();
         }
@@ -86,6 +95,7 @@ public class NotesController : SwapController
     }
 
     [HttpGet]
+    [HasPermission(PermissionDefinitions.NotesDelete)]
     public async Task<IActionResult> DeleteConfirm(Guid id)
     {
         var note = await _service.GetByIdAsync(id);
@@ -95,6 +105,7 @@ public class NotesController : SwapController
     }
 
     [HttpPost]
+    [HasPermission(PermissionDefinitions.NotesDelete)]
     public async Task<IActionResult> Delete(Guid id)
     {
         try
@@ -102,7 +113,7 @@ public class NotesController : SwapController
             await _service.DeleteAsync(id);
             return SwapResponse()
                 .WithSuccessToast("Note deleted!")
-                .WithTrigger(NotesEvents.Notes.ListChanged)  // Triggers client refresh
+                .WithTrigger(NotesEvents.Notes.ListChanged)
                 .WithView("_ModalClose")
                 .Build();
         }
@@ -113,13 +124,14 @@ public class NotesController : SwapController
     }
 
     [HttpPost]
+    [HasPermission(PermissionDefinitions.NotesEdit)]
     public async Task<IActionResult> TogglePin(Guid id)
     {
         try
         {
             await _service.TogglePinAsync(id);
             return SwapResponse()
-                .WithTrigger(NotesEvents.Notes.ListChanged)  // Triggers client refresh
+                .WithTrigger(NotesEvents.Notes.ListChanged)
                 .Build();
         }
         catch (InvalidOperationException)

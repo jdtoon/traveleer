@@ -40,7 +40,9 @@ var modules = new IModule[]
     new saas.Modules.Auth.AuthModule(),
     new saas.Modules.SuperAdmin.SuperAdminModule(),
     new saas.Modules.Registration.RegistrationModule(),
-    new saas.Modules.FeatureFlags.FeatureFlagsModule()
+    new saas.Modules.FeatureFlags.FeatureFlagsModule(),
+    new saas.Modules.Notes.NotesModule(),
+    new saas.Modules.Audit.AuditModule()
 };
 
 foreach (var module in modules)

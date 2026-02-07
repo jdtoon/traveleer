@@ -1,0 +1,130 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using saas.Data.Audit;
+using saas.Modules.Audit.Services;
+using Xunit;
+
+namespace saas.Tests;
+
+/// <summary>
+/// Tests that the ChannelAuditWriter background consumer persists entries to AuditDbContext.
+/// </summary>
+public class AuditWriterTests : IAsyncLifetime
+{
+    private SqliteConnection _connection = null!;
+    private ServiceProvider _serviceProvider = null!;
+    private ChannelAuditWriter _writer = null!;
+
+    public async Task InitializeAsync()
+    {
+        _connection = new SqliteConnection("Data Source=:memory:");
+        await _connection.OpenAsync();
+
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Warning));
+        services.AddDbContext<AuditDbContext>(opts => opts.UseSqlite(_connection));
+        _serviceProvider = services.BuildServiceProvider();
+
+        // Ensure schema is created
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+            await db.Database.EnsureCreatedAsync();
+        }
+
+        _writer = new ChannelAuditWriter(
+            _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+            _serviceProvider.GetRequiredService<ILogger<ChannelAuditWriter>>());
+
+        // Start the background consumer
+        await _writer.StartAsync(CancellationToken.None);
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _writer.StopAsync(CancellationToken.None);
+        _writer.Dispose();
+        await _serviceProvider.DisposeAsync();
+        await _connection.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task WriteAsync_PersistsEntryToDatabase()
+    {
+        var entry = new AuditEntry
+        {
+            TenantSlug = "test",
+            EntityType = "Widget",
+            EntityId = "123",
+            Action = "Created",
+            UserId = "user-1",
+            UserEmail = "test@test.com",
+            Timestamp = DateTime.UtcNow
+        };
+
+        await _writer.WriteAsync(entry);
+        await Task.Delay(300); // Allow background consumer to process
+
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+        var entries = await db.AuditEntries.ToListAsync();
+
+        Assert.Single(entries);
+        Assert.Equal("Widget", entries[0].EntityType);
+        Assert.Equal("Created", entries[0].Action);
+        Assert.Equal("test", entries[0].TenantSlug);
+    }
+
+    [Fact]
+    public async Task WriteAsync_MultipleEntries_AllPersisted()
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            await _writer.WriteAsync(new AuditEntry
+            {
+                TenantSlug = "bulk",
+                EntityType = "Item",
+                EntityId = i.ToString(),
+                Action = "Created",
+                Timestamp = DateTime.UtcNow
+            });
+        }
+
+        await Task.Delay(500);
+
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+        var count = await db.AuditEntries.CountAsync(e => e.TenantSlug == "bulk");
+
+        Assert.Equal(5, count);
+    }
+
+    [Fact]
+    public async Task WriteAsync_PreservesOldAndNewValues()
+    {
+        var entry = new AuditEntry
+        {
+            TenantSlug = "test",
+            EntityType = "Note",
+            EntityId = "abc",
+            Action = "Updated",
+            OldValues = "{\"Title\":\"Before\"}",
+            NewValues = "{\"Title\":\"After\"}",
+            AffectedColumns = "Title",
+            Timestamp = DateTime.UtcNow
+        };
+
+        await _writer.WriteAsync(entry);
+        await Task.Delay(300);
+
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+        var persisted = await db.AuditEntries.FirstAsync();
+
+        Assert.Equal("{\"Title\":\"Before\"}", persisted.OldValues);
+        Assert.Equal("{\"Title\":\"After\"}", persisted.NewValues);
+        Assert.Equal("Title", persisted.AffectedColumns);
+    }
+}

@@ -433,44 +433,44 @@ When I hand this over, verify:
 
 ### Steps
 
-- [ ] **5.1** Refactor `NotesModule` to implement `IModule`:
-  - [ ] Replace static `AddNotesModule()` extension method
-  - [ ] Implement `RegisterServices`, `RegisterMiddleware`, `RegisterMvc`
-- [ ] **5.2** Change `Note.Id` from `int` to `Guid`:
-  - [ ] Update entity
-  - [ ] Update service interface + implementation
-  - [ ] Update controller (all action parameters)
-  - [ ] Update views (all id references)
-- [ ] **5.3** Move Note entity to `TenantDbContext`:
-  - [ ] Remove from old AppDbContext references
-  - [ ] Update `NotesService` to inject `TenantDbContext`
-- [ ] **5.4** Add auth attributes to `NotesController`:
-  - [ ] `[Authorize(Policy = "TenantUser")]` on controller
-  - [ ] `[HasPermission("notes.create")]` on Create actions
-  - [ ] `[HasPermission("notes.edit")]` on Edit actions
-  - [ ] `[HasPermission("notes.delete")]` on Delete actions
-- [ ] **5.5** Add `[FeatureGate(FeatureDefinitions.Notes)]` to `NotesController`
-- [ ] **5.6** Update Notes views:
-  - [ ] `has-permission` tag helper on create/edit/delete buttons
-  - [ ] Tenant-scoped URLs (`/{slug}/notes/...`)
-- [ ] **5.7** Create `AuditModule` implementing `IModule`:
-  - [ ] Implement `AuditWriter` (`IAuditWriter`) using `Channel<AuditEntry>`
-  - [ ] Background consumer writes to `AuditDbContext`
-  - [ ] Replace `NullAuditWriter` registration
-- [ ] **5.8** Add audit calls to `NotesService`:
-  - [ ] Write entry on create (action: "Created", entity: "Note")
-  - [ ] Write entry on update (action: "Updated", include old/new values)
-  - [ ] Write entry on delete (action: "Deleted")
-- [ ] **5.9** Update Notes route to `/{slug}/notes/...`
-- [ ] **5.10** Register `NotesModule` + `AuditModule` in module array
-- [ ] **5.11** Rewrite `NotesControllerTests` for new tenant-scoped setup
+- [x] **5.1** Refactor `NotesModule` to implement `IModule`:
+  - [x] Replace static `AddNotesModule()` extension method
+  - [x] Implement `RegisterServices`, `RegisterMiddleware`, `RegisterMvc`
+- [x] **5.2** Change `Note.Id` from `int` to `Guid`:
+  - [x] Update entity
+  - [x] Update service interface + implementation
+  - [x] Update controller (all action parameters)
+  - [x] Update views (all id references)
+- [x] **5.3** Move Note entity to `TenantDbContext`:
+  - [x] Remove from old AppDbContext references
+  - [x] Update `NotesService` to inject `TenantDbContext`
+- [x] **5.4** Add auth attributes to `NotesController`:
+  - [x] `[Authorize(Policy = "TenantUser")]` on controller
+  - [x] `[HasPermission("notes.create")]` on Create actions
+  - [x] `[HasPermission("notes.edit")]` on Edit actions
+  - [x] `[HasPermission("notes.delete")]` on Delete actions
+- [x] **5.5** Add `[RequireFeature(FeatureDefinitions.Notes)]` to `NotesController` (custom attribute using IFeatureService — respects AllEnabledLocally dev override)
+- [x] **5.6** Update Notes views:
+  - [x] `has-permission` tag helper on create/edit/delete buttons
+  - [x] Tenant-scoped URLs (`/{slug}/notes/...`) — via existing tenant route in MapEndpoints
+- [x] **5.7** Create `AuditModule` implementing `IModule`:
+  - [x] Implement `ChannelAuditWriter` (`IAuditWriter`) using `Channel<AuditEntry>`
+  - [x] Background consumer writes to `AuditDbContext`
+  - [x] Replace `NullAuditWriter` registration
+- [x] **5.8** Add audit calls to `NotesService`:
+  - [x] Write entry on create (action: "Created", entity: "Note")
+  - [x] Write entry on update (action: "Updated", include old/new values)
+  - [x] Write entry on delete (action: "Deleted")
+- [x] **5.9** Update Notes route to `/{slug}/notes/...`
+- [x] **5.10** Register `NotesModule` + `AuditModule` in module array
+- [x] **5.11** Rewrite `NotesControllerTests` for new tenant-scoped setup
 
 ### Build & Test
 
-- [ ] `dotnet build` passes
-- [ ] `dotnet test` passes — new/updated tests:
-  - [ ] `NotesServiceTests` — CRUD operations work against TenantDbContext, audit entries written
-  - [ ] `AuditWriterTests` — entries appear in AuditDbContext after background processing
+- [x] `dotnet build` passes
+- [x] `dotnet test` passes — new/updated tests:
+  - [x] `NotesServiceTests` — CRUD operations work against TenantDbContext, audit entries written
+  - [x] `AuditWriterTests` — entries appear in AuditDbContext after background processing
   - [ ] Integration: authenticated tenant user → CRUD notes at /{slug}/notes; unauthenticated → redirect to login
   - [ ] Integration: audit entries in db/audit.db after note operations
 
