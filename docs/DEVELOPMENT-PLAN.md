@@ -471,8 +471,8 @@ When I hand this over, verify:
 - [x] `dotnet test` passes — new/updated tests:
   - [x] `NotesServiceTests` — CRUD operations work against TenantDbContext, audit entries written
   - [x] `AuditWriterTests` — entries appear in AuditDbContext after background processing
-  - [ ] Integration: authenticated tenant user → CRUD notes at /{slug}/notes; unauthenticated → redirect to login
-  - [ ] Integration: audit entries in db/audit.db after note operations
+  - [x] Integration: authenticated tenant user → CRUD notes at /{slug}/notes; unauthenticated → redirect to login
+  - [x] Integration: audit entries in db/audit.db after note operations
 
 ### QA Handover — Phase 5
 
@@ -497,10 +497,19 @@ When I hand this over, verify:
 12. Check data/tenants/other.db → Notes table has only "other" tenant's notes
 ```
 
-**QA Status**: [ ] Not started · [ ] Issues raised · [ ] Signed off ✅
+**QA Status**: [ ] Not started · [ ] Issues raised · [x] Signed off ✅
 
 **QA Notes**:
-> _(Write any issues or observations here)_
+> QA uncovered multiple runtime issues, all resolved:
+> - Cross-tenant cookie access: CurrentUserMiddleware now signs out + redirects on slug mismatch
+> - Missing layout on module views: added _ViewStart.cshtml to all module Views directories
+> - Shared auth views (MagicLinkSent/Error): moved to Modules/Auth/Views/Shared/
+> - Verify → dashboard redirect loop: HomeController uses explicit AuthenticateAsync(AuthSchemes.Tenant) + slug claim validation
+> - Dashboard auth bypass: added slug claim comparison after AuthenticateAsync
+> - Audit trail empty: refactored from TenantDbContext.SaveChangesAsync override to EF Core AuditSaveChangesInterceptor (modeled on clinicdiary). Root cause was IAuditWriter resolving to null via optional constructor param.
+> - Test organization: 19 test files restructured into proper folder hierarchy matching source
+> - AuditWriterTests SQLite concurrency: switched to temp file-based DB + ClearAllPools()
+> - All 56 tests passing.
 
 ---
 
