@@ -38,13 +38,21 @@ public sealed class ChannelAuditWriter : BackgroundService, IAuditWriter
     /// </summary>
     public ValueTask WriteAsync(AuditEntry entry)
     {
+        Enqueue(entry);
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Synchronous fire-and-forget enqueue. Used by the <see cref="AuditSaveChangesInterceptor"/>
+    /// which runs in synchronous EF Core hooks.
+    /// </summary>
+    public void Enqueue(AuditEntry entry)
+    {
         if (!_channel.Writer.TryWrite(entry))
         {
             _logger.LogWarning("Failed to enqueue audit entry for {EntityType} {EntityId}",
                 entry.EntityType, entry.EntityId);
         }
-
-        return ValueTask.CompletedTask;
     }
 
     /// <summary>

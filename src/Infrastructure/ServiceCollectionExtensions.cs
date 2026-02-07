@@ -9,6 +9,7 @@ using saas.Data.Audit;
 using saas.Data.Tenant;
 using saas.Infrastructure.Middleware;
 using saas.Infrastructure.Services;
+using saas.Modules.Audit.Services;
 using saas.Shared;
 
 namespace saas.Infrastructure;
@@ -92,6 +93,12 @@ public static class ServiceCollectionExtensions
             }
 
             options.AddInterceptors(walInterceptor);
+
+            // Audit interceptor — captures changes and enqueues to background writer.
+            // Registered as singleton; resolves scoped ITenantContext/ICurrentUser at call time.
+            var auditInterceptor = serviceProvider.GetService<AuditSaveChangesInterceptor>();
+            if (auditInterceptor is not null)
+                options.AddInterceptors(auditInterceptor);
         });
 
         return services;
@@ -111,7 +118,6 @@ public static class ServiceCollectionExtensions
         // Default providers (Phase 2)
         services.AddScoped<IEmailService, ConsoleEmailService>();
         services.AddScoped<IBotProtection, MockBotProtection>();
-        services.AddScoped<IAuditWriter, NullAuditWriter>();
         services.AddScoped<IBillingService, MockBillingService>();
 
         services.AddAuthentication();

@@ -21,10 +21,11 @@ public class AuditModule : IModule
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
-        // ChannelAuditWriter replaces the NullAuditWriter registered in AddCoreServices.
-        // Last registration wins in DI, so this takes precedence.
+        // ChannelAuditWriter — singleton channel + background consumer
         services.AddSingleton<ChannelAuditWriter>();
-        services.AddScoped<IAuditWriter>(sp => sp.GetRequiredService<ChannelAuditWriter>());
         services.AddHostedService(sp => sp.GetRequiredService<ChannelAuditWriter>());
+
+        // EF Core interceptor — singleton, resolves scoped services at call time via HttpContext
+        services.AddSingleton<AuditSaveChangesInterceptor>();
     }
 }

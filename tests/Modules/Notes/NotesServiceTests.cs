@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using saas.Data.Audit;
 using saas.Data.Tenant;
 using saas.Modules.Audit.Services;
@@ -14,14 +16,14 @@ namespace saas.Tests.Modules.Notes;
 
 /// <summary>
 /// Tests for NotesService CRUD operations against TenantDbContext.
-/// Audit trail entries are now generated automatically by TenantDbContext's
-/// SaveChangesAsync override — no manual audit code in services.
+/// Audit trail entries are generated automatically by the EF Core
+/// AuditSaveChangesInterceptor — no manual audit code in services.
 /// </summary>
 public class NotesServiceTests : IAsyncLifetime
 {
     private SqliteConnection _tenantConnection = null!;
     private TenantDbContext _tenantDb = null!;
-    private SqliteConnection _auditConnection = null!;
+    private string _auditDbPath = null!;
     private AuditDbContext _auditDb = null!;
     private NotesService _service = null!;
     private ChannelAuditWriter _auditWriter = null!;
@@ -29,41 +31,51 @@ public class NotesServiceTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        // Audit DB — SQLite in-memory
-        _auditConnection = new SqliteConnection("Data Source=:memory:");
-        await _auditConnection.OpenAsync();
-        var auditOptions = new DbContextOptionsBuilder<AuditDbContext>()
-            .UseSqlite(_auditConnection)
-            .Options;
-        _auditDb = new AuditDbContext(auditOptions);
-        await _auditDb.Database.EnsureCreatedAsync();
+        // Audit DB — temp file (avoids SQLite in-memory concurrency issues with background writer)
+        _auditDbPath = Path.Combine(Path.GetTempPath(), $"audit_test_{Guid.NewGuid():N}.db");
 
-        // Build a minimal DI container for ChannelAuditWriter
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Warning));
-        services.AddDbContext<AuditDbContext>(opts => opts.UseSqlite(_auditConnection));
+        services.AddDbContext<AuditDbContext>(opts => opts.UseSqlite($"Data Source={_auditDbPath}"));
         _serviceProvider = services.BuildServiceProvider();
+
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+            await db.Database.EnsureCreatedAsync();
+        }
 
         _auditWriter = new ChannelAuditWriter(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             _serviceProvider.GetRequiredService<ILogger<ChannelAuditWriter>>());
-
-        // Start the background consumer so audit entries get processed
         await _auditWriter.StartAsync(CancellationToken.None);
 
-        // Tenant DB — SQLite in-memory, with audit deps injected into TenantDbContext
+        // Create interceptor with fake HTTP context
+        var httpContextAccessor = new FakeHttpContextAccessor(
+            new FakeTenantContext("test-tenant"),
+            new FakeCurrentUser("user-1", "test@example.com"));
+        var interceptor = new AuditSaveChangesInterceptor(
+            _auditWriter,
+            httpContextAccessor,
+            NullLogger<AuditSaveChangesInterceptor>.Instance);
+
+        // Tenant DB — SQLite in-memory, with interceptor on options
         _tenantConnection = new SqliteConnection("Data Source=:memory:");
         await _tenantConnection.OpenAsync();
         var tenantOptions = new DbContextOptionsBuilder<TenantDbContext>()
             .UseSqlite(_tenantConnection)
+            .AddInterceptors(interceptor)
             .Options;
-        var tenantContext = new FakeTenantContext("test-tenant");
-        var currentUser = new FakeCurrentUser("user-1", "test@example.com");
 
-        _tenantDb = new TenantDbContext(tenantOptions, tenantContext, _auditWriter, currentUser);
+        _tenantDb = new TenantDbContext(tenantOptions);
         await _tenantDb.Database.EnsureCreatedAsync();
 
-        // NotesService only needs TenantDbContext — pure CRUD, no audit deps
+        // Separate AuditDbContext for assertions
+        var auditOptions = new DbContextOptionsBuilder<AuditDbContext>()
+            .UseSqlite($"Data Source={_auditDbPath}")
+            .Options;
+        _auditDb = new AuditDbContext(auditOptions);
+
         _service = new NotesService(_tenantDb);
     }
 
@@ -75,7 +87,10 @@ public class NotesServiceTests : IAsyncLifetime
         await _tenantDb.DisposeAsync();
         await _tenantConnection.DisposeAsync();
         await _auditDb.DisposeAsync();
-        await _auditConnection.DisposeAsync();
+
+        SqliteConnection.ClearAllPools();
+        if (File.Exists(_auditDbPath))
+            File.Delete(_auditDbPath);
     }
 
     [Fact]
@@ -232,7 +247,6 @@ public class NotesServiceTests : IAsyncLifetime
         var fromDb = await _tenantDb.Notes.FindAsync(note.Id);
         Assert.True(fromDb!.IsPinned);
 
-        // Detach to avoid tracking conflict, then re-fetch
         _tenantDb.Entry(fromDb).State = EntityState.Detached;
 
         await _service.TogglePinAsync(note.Id);
@@ -260,7 +274,7 @@ public class NotesServiceTests : IAsyncLifetime
     public async Task GetAllAsync_ReturnsPinnedFirst()
     {
         await _service.CreateAsync(new Note { Title = "Unpinned", IsPinned = false });
-        await Task.Delay(10); // ensure different CreatedAt
+        await Task.Delay(10);
         var pinned = new Note { Title = "Pinned", IsPinned = true };
         await _service.CreateAsync(pinned);
 
@@ -283,11 +297,7 @@ public class NotesServiceTests : IAsyncLifetime
 
     private class FakeCurrentUser : ICurrentUser
     {
-        public FakeCurrentUser(string userId, string email)
-        {
-            UserId = userId;
-            Email = email;
-        }
+        public FakeCurrentUser(string userId, string email) { UserId = userId; Email = email; }
         public string? UserId { get; }
         public string? Email { get; }
         public string? DisplayName => Email;
@@ -297,5 +307,29 @@ public class NotesServiceTests : IAsyncLifetime
         public IReadOnlyList<string> Permissions => ["notes.read", "notes.create", "notes.edit", "notes.delete"];
         public bool HasPermission(string permission) => Permissions.Contains(permission);
         public bool HasAnyPermission(params string[] permissions) => permissions.Any(p => Permissions.Contains(p));
+    }
+
+    /// <summary>
+    /// Fake IHttpContextAccessor that provides scoped services (ITenantContext, ICurrentUser)
+    /// to the AuditSaveChangesInterceptor in test scenarios (no real HTTP pipeline).
+    /// </summary>
+    private class FakeHttpContextAccessor : IHttpContextAccessor
+    {
+        private readonly HttpContext _context;
+
+        public FakeHttpContextAccessor(ITenantContext tenantContext, ICurrentUser currentUser)
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton(tenantContext);
+            services.AddSingleton(currentUser);
+
+            _context = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
+        }
+
+        public HttpContext? HttpContext
+        {
+            get => _context;
+            set { }
+        }
     }
 }
