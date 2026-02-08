@@ -1,3 +1,5 @@
+@model saas.Modules.TenantAdmin.Controllers.InviteUserViewModel
+
 <dialog class="modal modal-open">
     <div class="modal-box">
         <form hx-post="@Url.Action("InviteUser", "TenantAdmin")" hx-target="#modal-container">
@@ -6,7 +8,7 @@
                 <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>
             </div>
 
-            <div class="form-control w-full">
+            <div class="form-control w-full mb-4">
                 <label class="label" for="email">
                     <span class="label-text">Email Address</span>
                 </label>
@@ -16,6 +18,18 @@
                 <label class="label">
                     <span class="label-text-alt opacity-60">A magic link will be sent to this email</span>
                 </label>
+            </div>
+
+            <div class="form-control w-full">
+                <label class="label" for="roleId">
+                    <span class="label-text">Role</span>
+                </label>
+                <select id="roleId" name="roleId" class="select select-bordered w-full">
+                    @foreach (var role in Model.AvailableRoles)
+                    {
+                        <option value="@role.Id" selected="@(role.Name == "Member")">@role.Name</option>
+                    }
+                </select>
             </div>
 
             <div class="modal-action">

@@ -7,7 +7,7 @@ public interface ITenantAdminService
 {
     // Users
     Task<PaginatedList<UserListItem>> GetUsersAsync(int page = 1, int pageSize = 20);
-    Task<bool> InviteUserAsync(string email);
+    Task<bool> InviteUserAsync(string email, string? roleId = null);
     Task<bool> DeactivateUserAsync(string userId);
     Task<bool> ActivateUserAsync(string userId);
 
@@ -16,6 +16,12 @@ public interface ITenantAdminService
     Task<List<Permission>> GetPermissionsAsync();
     Task<bool> AssignRoleAsync(string userId, string roleId);
     Task<bool> RemoveRoleAsync(string userId, string roleId);
+    Task<RoleListItem?> CreateRoleAsync(string name, string? description);
+    Task<bool> UpdateRoleAsync(string roleId, string name, string? description);
+    Task<bool> DeleteRoleAsync(string roleId);
+    Task<bool> ToggleRolePermissionAsync(string roleId, Guid permissionId);
+    Task<List<string>> GetUserRoleIdsAsync(string userId);
+    Task<bool> SetUserRolesAsync(string userId, List<string> roleIds);
 }
 
 public class UserListItem

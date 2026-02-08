@@ -4,50 +4,21 @@
 }
 
 <div class="flex flex-col gap-6">
-    <div>
-        <h1 class="text-2xl font-bold">Roles</h1>
-        <p class="opacity-60">View roles and permissions</p>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold">Roles</h1>
+            <p class="opacity-60">Manage roles and permissions</p>
+        </div>
+        <has-permission name="roles.create">
+            <button class="btn btn-primary btn-sm"
+                    hx-get="@Url.Action("CreateRole")"
+                    hx-target="#modal-container">
+                + New Role
+            </button>
+        </has-permission>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        @foreach (var role in Model)
-        {
-            <div class="card bg-base-100 shadow-sm border border-base-300">
-                <div class="card-body">
-                    <div class="flex items-center gap-2">
-                        <h2 class="card-title text-lg">@role.Name</h2>
-                        @if (role.IsSystemRole)
-                        {
-                            <span class="badge badge-info badge-sm">System</span>
-                        }
-                    </div>
-                    @if (!string.IsNullOrEmpty(role.Description))
-                    {
-                        <p class="opacity-60 text-sm">@role.Description</p>
-                    }
-                    <div class="mt-2">
-                        <span class="text-sm font-medium">Permissions:</span>
-                        <div class="flex flex-wrap gap-1 mt-1">
-                            @if (role.Permissions.Count > 0)
-                            {
-                                @foreach (var perm in role.Permissions)
-                                {
-                                    <span class="badge badge-outline badge-xs">@perm</span>
-                                }
-                            }
-                            else
-                            {
-                                <span class="opacity-40 text-sm">No permissions</span>
-                            }
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
+    <div id="role-list">
+        <partial name="_RoleList" model="Model" />
     </div>
-
-    @if (Model.Count == 0)
-    {
-        <div class="text-center opacity-60 py-8">No roles defined</div>
-    }
 </div>

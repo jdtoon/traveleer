@@ -165,6 +165,22 @@ public partial class TenantProvisionerService : ITenantProvisioner
             tenantDb.RolePermissions.AddRange(rolePermissions);
             await tenantDb.SaveChangesAsync();
 
+            // Grant default permissions to Member role (notes read/create/edit)
+            var memberPermissionKeys = new HashSet<string> { "notes.read", "notes.create", "notes.edit" };
+            var memberRoleEntity = await roleManager.FindByNameAsync("Member");
+            if (memberRoleEntity is not null)
+            {
+                var memberPermissions = permissions
+                    .Where(p => memberPermissionKeys.Contains(p.Key))
+                    .Select(p => new RolePermission
+                    {
+                        RoleId = memberRoleEntity.Id,
+                        PermissionId = p.Id
+                    });
+                tenantDb.RolePermissions.AddRange(memberPermissions);
+                await tenantDb.SaveChangesAsync();
+            }
+
             _logger.LogInformation("Seeded {Count} permissions and Admin role-permissions for tenant {Slug}",
                 permissions.Count, tenant.Slug);
 

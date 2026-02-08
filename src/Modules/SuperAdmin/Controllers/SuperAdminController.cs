@@ -193,8 +193,11 @@ public class SuperAdminController : SwapController
         await _service.SaveTenantFeatureOverrideAsync(model);
         _cacheInvalidator.InvalidateTenant(model.TenantId);
 
+        var tenant = await _service.GetTenantDetailAsync(model.TenantId);
+
         return SwapResponse()
             .WithView("_ModalClose")
+            .AlsoUpdate("feature-access-table", "_FeatureAccessTable", tenant)
             .WithSuccessToast("Override saved")
             .Build();
     }

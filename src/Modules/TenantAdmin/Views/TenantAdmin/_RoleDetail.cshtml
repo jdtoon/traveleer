@@ -1,36 +1,63 @@
 @model RoleDetailViewModel
+@inject ITenantContext TenantContext
+@{
+    var slug = TenantContext.Slug;
+}
 
-<div class="card bg-base-100 shadow-sm border border-base-300">
+<div id="role-detail" class="card bg-base-100 shadow-sm border border-base-300">
     <div class="card-body">
-        <h3 class="card-title text-lg">@Model.Role.Name</h3>
+        <div class="flex items-center justify-between">
+            <h3 class="card-title text-lg">@Model.Role.Name</h3>
+            <button hx-get="@Url.Action("RoleList", "TenantAdmin")"
+                    hx-target="#role-detail"
+                    hx-swap="outerHTML"
+                    class="btn btn-sm btn-ghost">
+                ← Back to Roles
+            </button>
+        </div>
         @if (!string.IsNullOrEmpty(Model.Role.Description))
         {
             <p class="opacity-60">@Model.Role.Description</p>
         }
+        @if (Model.Role.IsSystemRole)
+        {
+            <span class="badge badge-neutral badge-sm">System Role</span>
+        }
         <div class="divider"></div>
-        <h4 class="font-medium mb-2">All Permissions</h4>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            @foreach (var group in Model.AllPermissions.GroupBy(p => p.Group))
+        <h4 class="font-medium mb-2">Permissions</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            @foreach (var group in Model.AllPermissions.GroupBy(p => p.Group).OrderBy(g => g.Key))
             {
-                <div>
-                    <span class="text-sm font-medium opacity-70">@group.Key</span>
-                    <ul class="ml-2 mt-1 space-y-1">
-                        @foreach (var perm in group)
+                <div class="bg-base-200 rounded-lg p-3">
+                    <span class="text-sm font-semibold opacity-70 uppercase tracking-wide">@group.Key</span>
+                    <div class="mt-2 space-y-1">
+                        @foreach (var perm in group.OrderBy(p => p.SortOrder))
                         {
                             var isGranted = Model.Role.Permissions.Contains(perm.Name);
-                            <li class="text-sm flex items-center gap-2">
-                                @if (isGranted)
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm">@perm.Name</span>
+                                @if (!Model.Role.IsSystemRole)
                                 {
-                                    <span class="text-success">✓</span>
+                                    <has-permission name="roles.edit">
+                                        <input type="checkbox"
+                                               class="toggle toggle-sm toggle-primary"
+                                               @(isGranted ? "checked" : "")
+                                               hx-post="@Url.Action("ToggleRolePermission", "TenantAdmin")"
+                                               hx-vals='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { roleId = Model.Role.Id, permissionId = perm.Id }))'
+                                               hx-target="#role-detail"
+                                               hx-swap="outerHTML" />
+                                    </has-permission>
+                                    <has-permission name="roles.edit" negate="true">
+                                        <span class="@(isGranted ? "text-success" : "opacity-30")">@(isGranted ? "✓" : "✗")</span>
+                                    </has-permission>
                                 }
                                 else
                                 {
-                                    <span class="opacity-30">✗</span>
+                                    <span class="@(isGranted ? "text-success" : "opacity-30")">@(isGranted ? "✓" : "✗")</span>
                                 }
-                                @perm.Name
-                            </li>
+                            </div>
                         }
-                    </ul>
+                    </div>
                 </div>
             }
         </div>

@@ -53,7 +53,13 @@
                         <has-permission name="users.edit">
                             <div class="dropdown dropdown-end">
                                 <label tabindex="0" class="btn btn-ghost btn-xs">⋯</label>
-                                <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-200 rounded-box shadow-lg z-10 w-40">
+                                <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-200 rounded-box shadow-lg z-10 w-44">
+                                    <li>
+                                        <button hx-get="@Url.Action("ManageUserRoles", "TenantAdmin", new { id = user.Id })"
+                                                hx-target="#modal-container">
+                                            Manage Roles
+                                        </button>
+                                    </li>
                                     @if (user.IsActive)
                                     {
                                         <li>

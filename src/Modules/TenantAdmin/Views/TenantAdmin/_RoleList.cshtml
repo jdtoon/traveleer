@@ -1,0 +1,79 @@
+@model List<RoleListItem>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    @foreach (var role in Model)
+    {
+        <div class="card bg-base-100 shadow-sm border border-base-300">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <h2 class="card-title text-lg">@role.Name</h2>
+                        @if (role.IsSystemRole)
+                        {
+                            <span class="badge badge-info badge-sm">System</span>
+                        }
+                    </div>
+                    @if (!role.IsSystemRole)
+                    {
+                        <has-permission name="roles.edit">
+                            <div class="dropdown dropdown-end">
+                                <label tabindex="0" class="btn btn-ghost btn-xs">⋯</label>
+                                <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-200 rounded-box shadow-lg z-10 w-36">
+                                    <li>
+                                        <button hx-get="@Url.Action("EditRole", "TenantAdmin", new { id = role.Id })"
+                                                hx-target="#modal-container">
+                                            Edit
+                                        </button>
+                                    </li>
+                                    <has-permission name="roles.delete">
+                                    <li>
+                                        <button hx-post="@Url.Action("DeleteRole", "TenantAdmin")"
+                                                hx-vals='{"id": "@role.Id"}'
+                                                hx-target="#role-list"
+                                                hx-confirm="Delete this role? This cannot be undone."
+                                                class="text-error">
+                                            Delete
+                                        </button>
+                                    </li>
+                                    </has-permission>
+                                </ul>
+                            </div>
+                        </has-permission>
+                    }
+                </div>
+                @if (!string.IsNullOrEmpty(role.Description))
+                {
+                    <p class="opacity-60 text-sm">@role.Description</p>
+                }
+                <div class="mt-2">
+                    <span class="text-sm font-medium">Permissions:</span>
+                    <div class="flex flex-wrap gap-1 mt-1">
+                        @if (role.Permissions.Count > 0)
+                        {
+                            @foreach (var perm in role.Permissions)
+                            {
+                                <span class="badge badge-outline badge-xs">@perm</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="opacity-40 text-sm">No permissions</span>
+                        }
+                    </div>
+                </div>
+                <div class="card-actions justify-end mt-2">
+                    <button class="btn btn-ghost btn-xs"
+                            hx-get="@Url.Action("RoleDetail", "TenantAdmin", new { id = role.Id })"
+                            hx-target="#role-list">
+                        Manage Permissions →
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="text-center opacity-60 py-8">No roles defined</div>
+}

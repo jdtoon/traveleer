@@ -52,7 +52,7 @@ public class TenantAdminService : ITenantAdminService
         return new PaginatedList<UserListItem>(result, totalCount, page, pageSize);
     }
 
-    public async Task<bool> InviteUserAsync(string email)
+    public async Task<bool> InviteUserAsync(string email, string? roleId = null)
     {
         if (string.IsNullOrWhiteSpace(email)) return false;
 
@@ -71,6 +71,16 @@ public class TenantAdminService : ITenantAdminService
 
         var result = await _userManager.CreateAsync(user);
         if (!result.Succeeded) return false;
+
+        // Assign role if specified
+        if (!string.IsNullOrEmpty(roleId))
+        {
+            var role = await _db.Roles.FindAsync(roleId);
+            if (role?.Name is not null)
+            {
+                await _userManager.AddToRoleAsync(user, role.Name);
+            }
+        }
 
         // Send magic link invitation
         var slug = _tenantContext.Slug;
@@ -149,5 +159,116 @@ public class TenantAdminService : ITenantAdminService
 
         var result = await _userManager.RemoveFromRoleAsync(user, role.Name);
         return result.Succeeded;
+    }
+
+    public async Task<RoleListItem?> CreateRoleAsync(string name, string? description)
+    {
+        var role = new AppRole
+        {
+            Name = name,
+            NormalizedName = name.ToUpperInvariant(),
+            Description = description,
+            IsSystemRole = false
+        };
+
+        var result = await _db.Roles.AddAsync(role);
+        await _db.SaveChangesAsync();
+
+        return new RoleListItem
+        {
+            Id = role.Id,
+            Name = role.Name ?? name,
+            Description = description,
+            IsSystemRole = false,
+            Permissions = []
+        };
+    }
+
+    public async Task<bool> UpdateRoleAsync(string roleId, string name, string? description)
+    {
+        var role = await _db.Roles.FindAsync(roleId);
+        if (role is null || role.IsSystemRole) return false;
+
+        role.Name = name;
+        role.NormalizedName = name.ToUpperInvariant();
+        role.Description = description;
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> DeleteRoleAsync(string roleId)
+    {
+        var role = await _db.Roles.FindAsync(roleId);
+        if (role is null || role.IsSystemRole) return false;
+
+        // Check if any users are assigned
+        var usersInRole = await _userManager.GetUsersInRoleAsync(role.Name!);
+        if (usersInRole.Count > 0) return false;
+
+        // Remove role-permissions first
+        var rps = await _db.RolePermissions.Where(rp => rp.RoleId == roleId).ToListAsync();
+        _db.RolePermissions.RemoveRange(rps);
+
+        _db.Roles.Remove(role);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> ToggleRolePermissionAsync(string roleId, Guid permissionId)
+    {
+        var existing = await _db.RolePermissions
+            .FirstOrDefaultAsync(rp => rp.RoleId == roleId && rp.PermissionId == permissionId);
+
+        if (existing is not null)
+        {
+            _db.RolePermissions.Remove(existing);
+        }
+        else
+        {
+            _db.RolePermissions.Add(new RolePermission
+            {
+                RoleId = roleId,
+                PermissionId = permissionId
+            });
+        }
+
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<List<string>> GetUserRoleIdsAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return [];
+
+        var roleNames = await _userManager.GetRolesAsync(user);
+        var roleIds = await _db.Roles
+            .Where(r => roleNames.Contains(r.Name!))
+            .Select(r => r.Id)
+            .ToListAsync();
+        return roleIds;
+    }
+
+    public async Task<bool> SetUserRolesAsync(string userId, List<string> roleIds)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return false;
+
+        // Remove all current roles
+        var currentRoles = await _userManager.GetRolesAsync(user);
+        if (currentRoles.Count > 0)
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+
+        // Add new roles
+        if (roleIds.Count > 0)
+        {
+            var roleNames = await _db.Roles
+                .Where(r => roleIds.Contains(r.Id))
+                .Select(r => r.Name!)
+                .ToListAsync();
+            await _userManager.AddToRolesAsync(user, roleNames);
+        }
+
+        return true;
     }
 }
