@@ -1,8 +1,12 @@
 @model string
+@inject Microsoft.Extensions.Options.IOptions<saas.Shared.TurnstileOptions> TurnstileOptions
 @{
     Layout = "_PublicLayout";
     ViewData["Title"] = "Tenant Login";
     var slug = ViewData["TenantSlug"]?.ToString() ?? "";
+    var turnstile = TurnstileOptions.Value;
+    var useTurnstile = string.Equals(turnstile.Provider, "Cloudflare", StringComparison.OrdinalIgnoreCase)
+        && !string.IsNullOrWhiteSpace(turnstile.SiteKey);
 }
 
 <div class="flex items-center justify-center p-4 py-12">
@@ -20,8 +24,34 @@
                     <span class="label-text">Email</span>
                     <input type="email" name="email" class="input input-bordered w-full" required />
                 </label>
+
+                <!-- Bot protection -->
+                <input type="hidden" name="captchaToken" id="tenant-login-captcha-token"
+                       value="@(useTurnstile ? string.Empty : "mock-captcha-token")">
+                @if (useTurnstile)
+                {
+                    <div class="cf-turnstile" data-sitekey="@turnstile.SiteKey"
+                         data-callback="onTenantLoginTurnstile"
+                         data-expired-callback="onTenantLoginTurnstileExpired"></div>
+                }
+
                 <button class="btn btn-primary w-full" type="submit">Send Magic Link</button>
             </form>
         </div>
     </div>
 </div>
+
+@if (useTurnstile)
+{
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script>
+        function onTenantLoginTurnstile(token) {
+            var input = document.getElementById("tenant-login-captcha-token");
+            if (input) input.value = token;
+        }
+        function onTenantLoginTurnstileExpired() {
+            var input = document.getElementById("tenant-login-captcha-token");
+            if (input) input.value = "";
+        }
+    </script>
+}

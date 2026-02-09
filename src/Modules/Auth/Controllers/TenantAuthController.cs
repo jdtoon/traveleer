@@ -15,17 +15,20 @@ public class TenantAuthController : SwapController
 {
     private readonly MagicLinkService _magicLinks;
     private readonly IEmailService _email;
+    private readonly IBotProtection _botProtection;
     private readonly UserManager<AppUser> _userManager;
     private readonly TenantDbContext _tenantDb;
 
     public TenantAuthController(
         MagicLinkService magicLinks, 
-        IEmailService email, 
+        IEmailService email,
+        IBotProtection botProtection,
         UserManager<AppUser> userManager,
         TenantDbContext tenantDb)
     {
         _magicLinks = magicLinks;
         _email = email;
+        _botProtection = botProtection;
         _userManager = userManager;
         _tenantDb = tenantDb;
     }
@@ -38,8 +41,14 @@ public class TenantAuthController : SwapController
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> LoginPost([FromRoute] string slug, [FromForm] string email)
+    public async Task<IActionResult> LoginPost([FromRoute] string slug, [FromForm] string email, [FromForm] string? captchaToken)
     {
+        if (!await _botProtection.ValidateAsync(captchaToken))
+        {
+            ViewData["TenantSlug"] = slug;
+            return SwapView("TenantLogin", model: "Bot verification failed. Please try again.");
+        }
+
         if (string.IsNullOrWhiteSpace(email))
         {
             ViewData["TenantSlug"] = slug;

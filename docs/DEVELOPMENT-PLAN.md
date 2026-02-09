@@ -700,73 +700,73 @@ When I hand this over, verify:
 
 ### Steps
 
-- [ ] **8.1** Implement `PaystackClient` (typed HttpClient):
-  - [ ] CreatePlan, ListPlans
-  - [ ] InitializeTransaction, VerifyTransaction
-  - [ ] CreateSubscription, DisableSubscription
-  - [ ] CreateCustomer
-- [ ] **8.2** Implement `PaystackBillingService` (`IBillingService`):
-  - [ ] Full `InitializeSubscriptionAsync` with Paystack API calls
-  - [ ] `ProcessWebhookAsync` with HMAC-SHA512 signature verification
-  - [ ] Webhook handlers: charge.success, subscription.create/not_renew/disable, invoice.create/payment_failed
-  - [ ] Idempotency guards on payment processing
-- [ ] **8.3** Create `PaystackWebhookController`:
-  - [ ] `POST /api/webhooks/paystack` — raw body read, signature verify, process
-  - [ ] Always returns 200 (Paystack retries on non-200)
-- [ ] **8.4** Implement `PaystackPlanSyncService` (BackgroundService):
-  - [ ] On startup: list Paystack plans, compare with DB, create missing, update PaystackPlanCode
-- [ ] **8.5** Implement `InvoiceGenerator`:
-  - [ ] Sequential `INV-{YEAR}-{NNNN}` numbering
-- [ ] **8.6** Create all Paystack DTOs:
-  - [ ] Request models (Initialize, CreatePlan, CreateSubscription, CreateCustomer)
-  - [ ] Response models (ApiResponse<T>, PlanResponse, TransactionResponse, etc.)
-  - [ ] Webhook models (WebhookEvent, WebhookData, WebhookSubscription)
-- [ ] **8.7** Add NuGet: `AWSSDK.SimpleEmailV2`
-- [ ] **8.8** Implement `SesEmailService`:
-  - [ ] Real AWS SES v2 API calls
-  - [ ] HTML email templates (magic link, welcome, payment receipt)
-  - [ ] Registered when `Email:Provider=SES`
-- [ ] **8.9** Implement `TurnstileBotProtection`:
-  - [ ] HTTP POST to Cloudflare verification endpoint
-  - [ ] Registered when `Turnstile:Provider=Cloudflare`
-- [ ] **8.10** Update registration + login views:
-  - [ ] Add Turnstile widget `<div class="cf-turnstile">` + hidden input
-  - [ ] Works with both standard and HTMX forms
-- [ ] **8.11** Implement `LitestreamConfigSyncService` (BackgroundService):
-  - [ ] Discovers tenant .db files every 5 minutes
-  - [ ] Regenerates Litestream YAML config
-  - [ ] Writes reload sentinel file
-- [ ] **8.12** Create `litestream-wrapper.sh`:
-  - [ ] Watches sentinel, restarts Litestream on config change
-- [ ] **8.13** Create `BackupModule` implementing `IModule`
-- [ ] **8.14** Finalize `Dockerfile` (multi-stage build):
-  - [ ] SDK stage: restore + publish
-  - [ ] Runtime stage: aspnet image + curl for health check
-  - [ ] Create data directories
-- [ ] **8.15** Finalize `docker-compose.yml`:
-  - [ ] App service with health check
-  - [ ] Litestream sidecar with wrapper script
-  - [ ] Shared volume for data/
-  - [ ] env_file reference
-- [ ] **8.16** Create `docker-compose.override.yml` for local Docker testing
-- [ ] **8.17** Create `.env.example` with all production environment variables
-- [ ] **8.18** Create `appsettings.Production.json`
-- [ ] **8.19** Switch to EF Migrations (from EnsureCreated):
-  - [ ] Generate initial migration for CoreDbContext
-  - [ ] Generate initial migration for TenantDbContext
-  - [ ] Generate initial migration for AuditDbContext
-  - [ ] Update startup to use `Migrate()` instead of `EnsureCreated()`
-- [ ] **8.20** Register `BackupModule` in module array
+- [x] **8.1** Implement `PaystackClient` (typed HttpClient):
+  - [x] CreatePlan, ListPlans
+  - [x] InitializeTransaction, VerifyTransaction
+  - [x] CreateSubscription, DisableSubscription
+  - [x] CreateCustomer
+- [x] **8.2** Implement `PaystackBillingService` (`IBillingService`):
+  - [x] Full `InitializeSubscriptionAsync` with Paystack API calls
+  - [x] `ProcessWebhookAsync` with HMAC-SHA512 signature verification
+  - [x] Webhook handlers: charge.success, subscription.create/not_renew/disable, invoice.create/payment_failed
+  - [x] Idempotency guards on payment processing
+- [x] **8.3** Create `PaystackWebhookController`:
+  - [x] `POST /api/webhooks/paystack` — raw body read, signature verify, process
+  - [x] Always returns 200 (Paystack retries on non-200)
+- [x] **8.4** Implement `PaystackPlanSyncService` (BackgroundService):
+  - [x] On startup: list Paystack plans, compare with DB, create missing, update PaystackPlanCode
+- [x] **8.5** Implement `InvoiceGenerator`:
+  - [x] Sequential `INV-{YEAR}-{NNNN}` numbering
+- [x] **8.6** Create all Paystack DTOs:
+  - [x] Request models (Initialize, CreatePlan, CreateSubscription, CreateCustomer)
+  - [x] Response models (ApiResponse<T>, PlanResponse, TransactionResponse, etc.)
+  - [x] Webhook models (WebhookEvent, WebhookData, WebhookSubscription)
+- [x] **8.7** Add NuGet: `AWSSDK.SimpleEmailV2`
+- [x] **8.8** Implement `SesEmailService`:
+  - [x] Real AWS SES v2 API calls
+  - [x] HTML email templates (magic link, welcome, payment receipt)
+  - [x] Registered when `Email:Provider=SES`
+- [x] **8.9** Implement `TurnstileBotProtection`:
+  - [x] HTTP POST to Cloudflare verification endpoint
+  - [x] Registered when `Turnstile:Provider=Cloudflare`
+- [x] **8.10** Update registration + login views:
+  - [x] Add Turnstile widget `<div class="cf-turnstile">` + hidden input
+  - [x] Works with both standard and HTMX forms
+- [x] **8.11** Implement `LitestreamConfigSyncService` (BackgroundService):
+  - [x] Discovers tenant .db files every 5 minutes
+  - [x] Regenerates Litestream YAML config
+  - [x] Writes reload sentinel file
+- [x] **8.12** Create `litestream-wrapper.sh`:
+  - [x] Watches sentinel, restarts Litestream on config change
+- [x] **8.13** Create `BackupModule` implementing `IModule`
+- [x] **8.14** Finalize `Dockerfile` (multi-stage build):
+  - [x] SDK stage: restore + publish
+  - [x] Runtime stage: aspnet image + curl for health check
+  - [x] Create data directories
+- [x] **8.15** Finalize `docker-compose.yml`:
+  - [x] App service with health check
+  - [x] Litestream sidecar with wrapper script
+  - [x] Shared volume for data/
+  - [x] env_file reference
+- [x] **8.16** Create `docker-compose.override.yml` for local Docker testing
+- [x] **8.17** Create `.env.example` with all production environment variables
+- [x] **8.18** Create `appsettings.Production.json`
+- [x] **8.19** Switch to EF Migrations (from EnsureCreated):
+  - [x] Generate initial migration for CoreDbContext
+  - [x] Generate initial migration for TenantDbContext
+  - [x] Generate initial migration for AuditDbContext
+  - [x] Update startup to use `Migrate()` instead of `EnsureCreated()`
+- [x] **8.20** Register `BackupModule` in module array
 
 ### Build & Test
 
-- [ ] `dotnet build` passes
-- [ ] `dotnet test` passes — new tests:
-  - [ ] `PaystackClientTests` — mock HttpMessageHandler for all API calls
-  - [ ] `PaystackBillingServiceTests` — valid signature accepted, invalid rejected; charge.success creates Payment (idempotent); payment_failed → PastDue
-  - [ ] `InvoiceGeneratorTests` — sequential numbering correct across calls
-  - [ ] `LitestreamConfigSyncTests` — generates correct YAML with discovered tenant files
-  - [ ] `TurnstileBotProtectionTests` — mock HTTP success → true, failure → false
+- [x] `dotnet build` passes
+- [x] `dotnet test` passes — new tests:
+  - [x] `PaystackClientTests` — mock HttpMessageHandler for all API calls
+  - [x] `PaystackBillingServiceTests` — valid signature accepted, invalid rejected; charge.success creates Payment (idempotent); payment_failed → PastDue
+  - [x] `InvoiceGeneratorTests` — sequential numbering correct across calls
+  - [x] `LitestreamConfigSyncTests` — generates correct YAML with discovered tenant files
+  - [x] `TurnstileBotProtectionTests` — mock HTTP success → true, failure → false
   - [ ] Integration: `docker compose up --build` → app starts, health check passes
 
 ### QA Handover — Phase 8

@@ -15,12 +15,14 @@ public class SuperAdminAuthController : SwapController
     private readonly CoreDbContext _coreDb;
     private readonly MagicLinkService _magicLinks;
     private readonly IEmailService _email;
+    private readonly IBotProtection _botProtection;
 
-    public SuperAdminAuthController(CoreDbContext coreDb, MagicLinkService magicLinks, IEmailService email)
+    public SuperAdminAuthController(CoreDbContext coreDb, MagicLinkService magicLinks, IEmailService email, IBotProtection botProtection)
     {
         _coreDb = coreDb;
         _magicLinks = magicLinks;
         _email = email;
+        _botProtection = botProtection;
     }
 
     [HttpGet("login")]
@@ -30,8 +32,11 @@ public class SuperAdminAuthController : SwapController
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> LoginPost([FromForm] string email)
+    public async Task<IActionResult> LoginPost([FromForm] string email, [FromForm] string? captchaToken)
     {
+        if (!await _botProtection.ValidateAsync(captchaToken))
+            return SwapView("SuperAdminLogin", model: "Bot verification failed. Please try again.");
+
         if (string.IsNullOrWhiteSpace(email))
             return SwapView("SuperAdminLogin", model: "Email is required.");
 
