@@ -1,0 +1,20 @@
+# docker-compose.override.yml — Local Docker testing overrides
+# Automatically merged with docker-compose.yml when running `docker compose up`
+# To run production-only: docker compose -f docker-compose.yml up
+
+services:
+  app:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Email__Provider=Console
+      - Billing__Provider=Mock
+      - Turnstile__Provider=Mock
+      - FeatureFlags__AllEnabledLocally=true
+      - SuperAdmin__Email=admin@localhost
+    ports:
+      - "8080:8080"
+
+  # Disable litestream sidecar for local development
+  litestream:
+    profiles:
+      - production

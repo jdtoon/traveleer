@@ -46,7 +46,8 @@ var modules = new IModule[]
     new saas.Modules.Dashboard.DashboardModule(),
     new saas.Modules.Notes.NotesModule(),
     new saas.Modules.Audit.AuditModule(),
-    new saas.Modules.TenantAdmin.TenantAdminModule()
+    new saas.Modules.TenantAdmin.TenantAdminModule(),
+    new saas.Modules.Backup.BackupModule()
 };
 
 foreach (var module in modules)

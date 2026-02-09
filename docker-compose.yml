@@ -1,16 +1,41 @@
 services:
   app:
-    container_name: saas_app
+    container_name: saas-app
     build:
       context: ./src
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     volumes:
-      - sqlite-data:/app/db
+      - app-data:/app/db
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  litestream:
+    image: litestream/litestream:0.3
+    container_name: saas-litestream
+    restart: unless-stopped
+    volumes:
+      - app-data:/app/db
+      - ./litestream-wrapper.sh:/usr/local/bin/litestream-wrapper.sh:ro
+    environment:
+      - LITESTREAM_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - LITESTREAM_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+    entrypoint: /bin/sh
+    command: /usr/local/bin/litestream-wrapper.sh
+    depends_on:
+      app:
+        condition: service_healthy
 
 volumes:
-  sqlite-data:
+  app-data:
