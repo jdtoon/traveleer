@@ -1,6 +1,10 @@
 @model saas.Modules.Marketing.Models.ContactRequest
+@inject Microsoft.Extensions.Options.IOptions<saas.Shared.TurnstileOptions> TurnstileOptions
 @{
     ViewData["Title"] = "Contact";
+    var turnstile = TurnstileOptions.Value;
+    var useTurnstile = string.Equals(turnstile.Provider, "Cloudflare", StringComparison.OrdinalIgnoreCase)
+        && !string.IsNullOrWhiteSpace(turnstile.SiteKey);
 }
 
 <section class="mx-auto max-w-4xl px-4 py-16">
@@ -32,7 +36,17 @@
                 <textarea class="textarea textarea-bordered" name="Message" rows="6" required maxlength="2000">@Model.Message</textarea>
             </label>
 
-            <input type="hidden" name="CaptchaToken" value="mock-captcha-token" />
+            <input type="hidden" name="CaptchaToken" id="contact-captcha-token"
+                   value="@(useTurnstile ? string.Empty : "mock-captcha-token")" />
+
+            @if (useTurnstile)
+            {
+                <div class="mt-2">
+                    <div class="cf-turnstile" data-sitekey="@turnstile.SiteKey"
+                         data-callback="onContactTurnstile"
+                         data-expired-callback="onContactTurnstileExpired"></div>
+                </div>
+            }
 
             <button class="btn btn-primary w-full md:w-auto" type="submit">Send message</button>
         </form>
@@ -40,3 +54,23 @@
         <div id="contact-result" class="mt-6"></div>
     </div>
 </section>
+
+@if (useTurnstile)
+{
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script>
+        function onContactTurnstile(token) {
+            var input = document.getElementById("contact-captcha-token");
+            if (input) {
+                input.value = token;
+            }
+        }
+
+        function onContactTurnstileExpired() {
+            var input = document.getElementById("contact-captcha-token");
+            if (input) {
+                input.value = "";
+            }
+        }
+    </script>
+}

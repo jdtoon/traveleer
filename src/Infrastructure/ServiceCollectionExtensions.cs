@@ -4,9 +4,11 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using saas.Data.Core;
 using saas.Data.Audit;
 using saas.Data.Tenant;
+using Amazon.SimpleEmailV2;
 using saas.Infrastructure.Middleware;
 using saas.Infrastructure.Services;
 using saas.Modules.Audit.Services;
@@ -104,7 +106,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddCoreServices(this IServiceCollection services)
+    public static IServiceCollection AddCoreServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHttpContextAccessor();
         services.AddScoped<ITenantContext, TenantContext>();
@@ -115,10 +117,46 @@ public static class ServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        // Default providers (Phase 2) — Email & BotProtection registered here;
-        // IBillingService is registered in BillingModule with provider switching.
-        services.AddScoped<IEmailService, ConsoleEmailService>();
-        services.AddScoped<IBotProtection, MockBotProtection>();
+        services.AddOptions<EmailOptions>()
+            .BindConfiguration(EmailOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddOptions<TurnstileOptions>()
+            .BindConfiguration(TurnstileOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // Provider switching for Email & BotProtection
+        var emailProvider = configuration.GetValue<string>("Email:Provider") ?? "Console";
+        if (emailProvider.Equals("SES", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<IAmazonSimpleEmailServiceV2>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<EmailOptions>>().Value;
+                var regionName = string.IsNullOrWhiteSpace(options.SesRegion)
+                    ? "us-east-1"
+                    : options.SesRegion;
+                return new AmazonSimpleEmailServiceV2Client(
+                    Amazon.RegionEndpoint.GetBySystemName(regionName));
+            });
+            services.AddScoped<IEmailService, SesEmailService>();
+        }
+        else
+        {
+            services.AddScoped<IEmailService, ConsoleEmailService>();
+        }
+
+        var turnstileProvider = configuration.GetValue<string>("Turnstile:Provider") ?? "Mock";
+        if (turnstileProvider.Equals("Cloudflare", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddHttpClient<TurnstileBotProtection>();
+            services.AddScoped<IBotProtection, TurnstileBotProtection>();
+        }
+        else
+        {
+            services.AddScoped<IBotProtection, MockBotProtection>();
+        }
 
         services.AddAuthentication();
         services.AddAuthorization();

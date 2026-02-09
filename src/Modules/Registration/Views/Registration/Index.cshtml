@@ -1,9 +1,13 @@
 @model saas.Modules.Registration.Models.RegistrationViewModel
 @inject Microsoft.Extensions.Options.IOptions<saas.Shared.SiteSettings> SiteOptions
+@inject Microsoft.Extensions.Options.IOptions<saas.Shared.TurnstileOptions> TurnstileOptions
 @{
     ViewData["Title"] = "Create Your Workspace";
     var site = SiteOptions.Value;
     var displayUrl = new Uri(site.BaseUrl).Host;
+    var turnstile = TurnstileOptions.Value;
+    var useTurnstile = string.Equals(turnstile.Provider, "Cloudflare", StringComparison.OrdinalIgnoreCase)
+        && !string.IsNullOrWhiteSpace(turnstile.SiteKey);
 }
 
 <div class="flex items-center justify-center p-4 py-12">
@@ -106,8 +110,17 @@
                     </div>
                 </div>
 
-                <!-- Hidden captcha token (bot protection will be mock for now) -->
-                <input type="hidden" name="captchaToken" value="mock-captcha-token">
+                <!-- Bot protection -->
+                <input type="hidden" name="captchaToken" id="registration-captcha-token"
+                       value="@(useTurnstile ? string.Empty : "mock-captcha-token")">
+                @if (useTurnstile)
+                {
+                    <div class="mt-4">
+                        <div class="cf-turnstile" data-sitekey="@turnstile.SiteKey"
+                             data-callback="onRegistrationTurnstile"
+                             data-expired-callback="onRegistrationTurnstileExpired"></div>
+                    </div>
+                }
 
                 <!-- Submit Button -->
                 <div class="form-control">
@@ -125,3 +138,23 @@
         </div>
     </div>
 </div>
+
+@if (useTurnstile)
+{
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script>
+        function onRegistrationTurnstile(token) {
+            var input = document.getElementById("registration-captcha-token");
+            if (input) {
+                input.value = token;
+            }
+        }
+
+        function onRegistrationTurnstileExpired() {
+            var input = document.getElementById("registration-captcha-token");
+            if (input) {
+                input.value = "";
+            }
+        }
+    </script>
+}

@@ -29,7 +29,7 @@ builder.Services.AddDatabaseConfig(builder.Configuration);
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<CoreDbContext>("core-database")
     .AddCheck<TenantDirectoryHealthCheck>("tenant-directory");
-builder.Services.AddCoreServices();
+builder.Services.AddCoreServices(builder.Configuration);
 
 // =============================================================================
 // DOMAIN MODULES
