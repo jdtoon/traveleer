@@ -223,6 +223,97 @@ public class PaystackBillingServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ProcessWebhook_SubscriptionCreate_UpdatesCodeFromTopLevel()
+    {
+        // Simulate the state after InitializeSubscriptionAsync: 
+        // subscription stored with transaction reference, not real SUB_ code
+        var transactionRef = "txn_ref_abc";
+        _db.Subscriptions.Add(new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _proPlanId,
+            Status = SubscriptionStatus.Active,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow,
+            PaystackSubscriptionCode = transactionRef
+        });
+        await _db.SaveChangesAsync();
+
+        var service = CreateService();
+
+        // Paystack subscription.create puts subscription_code at data level, not nested
+        var webhookPayload = new PaystackWebhookEvent
+        {
+            Event = "subscription.create",
+            Data = new PaystackWebhookData
+            {
+                Reference = transactionRef,
+                SubscriptionCode = "SUB_real_code",
+                Customer = new PaystackWebhookCustomer
+                {
+                    Code = "CUS_test_123",
+                    Email = "admin@test.com"
+                }
+            }
+        };
+
+        var payload = JsonSerializer.Serialize(webhookPayload);
+        var signature = ComputeSignature(payload, _options.WebhookSecret);
+
+        var result = await service.ProcessWebhookAsync(payload, signature);
+
+        Assert.True(result.Success);
+
+        var updated = await _db.Subscriptions.FirstAsync(s => s.TenantId == _tenantId);
+        Assert.Equal("SUB_real_code", updated.PaystackSubscriptionCode);
+        Assert.Equal("CUS_test_123", updated.PaystackCustomerCode);
+    }
+
+    [Fact]
+    public async Task ProcessWebhook_SubscriptionCreate_FindsByCustomerEmail()
+    {
+        // Subscription with non-SUB_ code (transaction reference) and no matching reference in webhook
+        _db.Subscriptions.Add(new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _proPlanId,
+            Status = SubscriptionStatus.Active,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow,
+            PaystackSubscriptionCode = "some_old_ref"
+        });
+        await _db.SaveChangesAsync();
+
+        var service = CreateService();
+
+        // Webhook has no matching reference, but customer email matches tenant
+        var webhookPayload = new PaystackWebhookEvent
+        {
+            Event = "subscription.create",
+            Data = new PaystackWebhookData
+            {
+                Reference = "different_ref",
+                SubscriptionCode = "SUB_found_by_email",
+                Customer = new PaystackWebhookCustomer
+                {
+                    Code = "CUS_email_match",
+                    Email = "admin@test.com" // matches _tenant.ContactEmail
+                }
+            }
+        };
+
+        var payload = JsonSerializer.Serialize(webhookPayload);
+        var signature = ComputeSignature(payload, _options.WebhookSecret);
+
+        var result = await service.ProcessWebhookAsync(payload, signature);
+
+        Assert.True(result.Success);
+
+        var updated = await _db.Subscriptions.FirstAsync(s => s.TenantId == _tenantId);
+        Assert.Equal("SUB_found_by_email", updated.PaystackSubscriptionCode);
+    }
+
+    [Fact]
     public async Task ProcessWebhook_InvoiceCreate_LooksUpBySubscriptionCode()
     {
         var subscriptionCode = "SUB_invoice_test";

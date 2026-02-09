@@ -23,17 +23,23 @@ public class PaystackPlanSyncService : BackgroundService
         // Small delay to let the app fully start
         await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
 
-        try
+        while (!stoppingToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Starting Paystack plan sync...");
-            using var scope = _scopeFactory.CreateScope();
-            var billing = scope.ServiceProvider.GetRequiredService<IBillingService>();
-            await billing.SyncPlansAsync();
-            _logger.LogInformation("Paystack plan sync completed.");
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogError(ex, "Paystack plan sync failed");
+            try
+            {
+                _logger.LogInformation("Starting Paystack plan sync...");
+                using var scope = _scopeFactory.CreateScope();
+                var billing = scope.ServiceProvider.GetRequiredService<IBillingService>();
+                await billing.SyncPlansAsync();
+                _logger.LogInformation("Paystack plan sync completed.");
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Paystack plan sync failed");
+            }
+
+            // Re-sync every 60 minutes
+            await Task.Delay(TimeSpan.FromMinutes(60), stoppingToken);
         }
     }
 }

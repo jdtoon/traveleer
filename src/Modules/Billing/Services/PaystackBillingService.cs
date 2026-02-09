@@ -388,15 +388,32 @@ public class PaystackBillingService : IBillingService
     private async Task<WebhookResult> HandleSubscriptionCreatedAsync(PaystackWebhookEvent webhookEvent)
     {
         var data = webhookEvent.Data;
-        var subscriptionCode = data.Subscription?.Code;
+        // For subscription.create events, subscription_code is at the data level
+        var subscriptionCode = data.SubscriptionCode ?? data.Subscription?.Code;
 
         if (string.IsNullOrEmpty(subscriptionCode))
+        {
+            _logger.LogWarning("subscription.create webhook missing subscription_code");
             return new WebhookResult(true);
+        }
 
-        // Find subscription by Paystack reference
+        // Strategy 1: Find by the transaction reference initially stored as PaystackSubscriptionCode
         var subscription = await _coreDb.Subscriptions
             .FirstOrDefaultAsync(s => s.PaystackSubscriptionCode == data.Reference
                 || s.PaystackSubscriptionCode == subscriptionCode);
+
+        // Strategy 2: Find by customer email + active subscription without a real SUB_ code
+        if (subscription is null && data.Customer is not null)
+        {
+            subscription = await _coreDb.Subscriptions
+                .Include(s => s.Tenant)
+                .Where(s => s.Tenant!.ContactEmail == data.Customer.Email
+                    && s.Status == SubscriptionStatus.Active
+                    && (s.PaystackSubscriptionCode == null
+                        || !s.PaystackSubscriptionCode.StartsWith("SUB_")))
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefaultAsync();
+        }
 
         if (subscription is not null)
         {
@@ -407,6 +424,16 @@ public class PaystackBillingService : IBillingService
                 subscription.PaystackCustomerCode = data.Customer.Code;
 
             await _coreDb.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Subscription {Code} linked to tenant {TenantId}",
+                subscriptionCode, subscription.TenantId);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Could not find matching subscription for subscription.create {Code}",
+                subscriptionCode);
         }
 
         return new WebhookResult(true);
@@ -414,7 +441,7 @@ public class PaystackBillingService : IBillingService
 
     private async Task<WebhookResult> HandleSubscriptionNotRenewAsync(PaystackWebhookEvent webhookEvent)
     {
-        var subscriptionCode = webhookEvent.Data.Subscription?.Code;
+        var subscriptionCode = webhookEvent.Data.SubscriptionCode ?? webhookEvent.Data.Subscription?.Code;
         if (string.IsNullOrEmpty(subscriptionCode))
             return new WebhookResult(true);
 
@@ -433,7 +460,7 @@ public class PaystackBillingService : IBillingService
 
     private async Task<WebhookResult> HandleSubscriptionDisabledAsync(PaystackWebhookEvent webhookEvent)
     {
-        var subscriptionCode = webhookEvent.Data.Subscription?.Code;
+        var subscriptionCode = webhookEvent.Data.SubscriptionCode ?? webhookEvent.Data.Subscription?.Code;
         if (string.IsNullOrEmpty(subscriptionCode))
             return new WebhookResult(true);
 
@@ -458,7 +485,7 @@ public class PaystackBillingService : IBillingService
         // Invoice events may not carry the original transaction metadata.
         // Look up subscription by subscription_code first, then fall back to metadata.
         Subscription? subscription = null;
-        var subscriptionCode = data.Subscription?.Code;
+        var subscriptionCode = data.SubscriptionCode ?? data.Subscription?.Code;
 
         if (!string.IsNullOrEmpty(subscriptionCode))
         {
@@ -521,7 +548,7 @@ public class PaystackBillingService : IBillingService
 
     private async Task<WebhookResult> HandlePaymentFailedAsync(PaystackWebhookEvent webhookEvent)
     {
-        var subscriptionCode = webhookEvent.Data.Subscription?.Code;
+        var subscriptionCode = webhookEvent.Data.SubscriptionCode ?? webhookEvent.Data.Subscription?.Code;
         if (string.IsNullOrEmpty(subscriptionCode))
             return new WebhookResult(true);
 
