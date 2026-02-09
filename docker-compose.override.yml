@@ -5,12 +5,28 @@
 services:
   app:
     environment:
+      # --- Core ---
       - ASPNETCORE_ENVIRONMENT=Development
+      - Site__BaseUrl=http://localhost:8080
+      - Site__Name=SaaS App (Local)
+      - Site__SupportEmail=support@localhost
+      - SuperAdmin__Email=admin@localhost
+      # --- Database (defaults from Dockerfile, repeated for clarity) ---
+      - ConnectionStrings__CoreDatabase=Data Source=/app/db/core.db
+      - ConnectionStrings__AuditDatabase=Data Source=/app/db/audit.db
+      - Tenancy__DatabasePath=/app/db/tenants
+      # --- Providers (all mocked for local) ---
       - Email__Provider=Console
+      - Email__FromAddress=no-reply@localhost
       - Billing__Provider=Mock
+      - Billing__Paystack__CallbackBaseUrl=http://localhost:8080
       - Turnstile__Provider=Mock
       - FeatureFlags__AllEnabledLocally=true
-      - SuperAdmin__Email=admin@localhost
+      # --- Backup (writes config to shared volume) ---
+      - Backup__LitestreamConfigPath=/app/db/litestream.yml
+      - Backup__SentinelPath=/app/db/.litestream-reload
+      - Backup__R2Bucket=dev-bucket
+      - Backup__R2Endpoint=
     ports:
       - "8080:8080"
 

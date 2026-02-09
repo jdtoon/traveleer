@@ -31,6 +31,8 @@ services:
     environment:
       - LITESTREAM_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
       - LITESTREAM_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_ENDPOINT=${R2_ENDPOINT}
+      - R2_BUCKET=${R2_BUCKET}
     entrypoint: /bin/sh
     command: /usr/local/bin/litestream-wrapper.sh
     depends_on:
