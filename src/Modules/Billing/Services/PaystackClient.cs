@@ -94,6 +94,19 @@ public class PaystackClient
         return response.IsSuccessStatusCode;
     }
 
+    /// <summary>
+    /// Fetch subscription details including the email_token needed for disable.
+    /// </summary>
+    public async Task<PaystackSubscriptionDetailResponse?> FetchSubscriptionAsync(string subscriptionCode)
+    {
+        _logger.LogInformation("Fetching Paystack subscription: {Code}", subscriptionCode);
+        var response = await _httpClient.GetAsync($"subscription/{Uri.EscapeDataString(subscriptionCode)}");
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content
+            .ReadFromJsonAsync<PaystackApiResponse<PaystackSubscriptionDetailResponse>>();
+        return result?.Data;
+    }
+
     // ── Customers ──────────────────────────────────────────────────
 
     public async Task<PaystackCustomerResponse?> CreateCustomerAsync(

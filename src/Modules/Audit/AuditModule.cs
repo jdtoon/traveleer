@@ -23,6 +23,7 @@ public class AuditModule : IModule
     {
         // ChannelAuditWriter — singleton channel + background consumer
         services.AddSingleton<ChannelAuditWriter>();
+        services.AddSingleton<IAuditWriter>(sp => sp.GetRequiredService<ChannelAuditWriter>());
         services.AddHostedService(sp => sp.GetRequiredService<ChannelAuditWriter>());
 
         // EF Core interceptor — singleton, resolves scoped services at call time via HttpContext

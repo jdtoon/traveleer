@@ -127,14 +127,24 @@ public class PaystackBillingService : IBillingService
             return false;
 
         // Cancel in Paystack if we have the subscription code
-        if (!string.IsNullOrEmpty(subscription.PaystackSubscriptionCode)
-            && !string.IsNullOrEmpty(subscription.PaystackCustomerCode))
+        if (!string.IsNullOrEmpty(subscription.PaystackSubscriptionCode))
         {
             try
             {
+                // Fetch the subscription to get the email_token required for disabling
+                var subDetail = await _paystack.FetchSubscriptionAsync(
+                    subscription.PaystackSubscriptionCode);
+
+                if (subDetail is null || string.IsNullOrEmpty(subDetail.EmailToken))
+                {
+                    _logger.LogError("Could not fetch email_token for subscription {Code}",
+                        subscription.PaystackSubscriptionCode);
+                    return false;
+                }
+
                 await _paystack.DisableSubscriptionAsync(
                     subscription.PaystackSubscriptionCode,
-                    subscription.PaystackCustomerCode);
+                    subDetail.EmailToken);
             }
             catch (HttpRequestException ex)
             {
@@ -302,6 +312,7 @@ public class PaystackBillingService : IBillingService
             "subscription.not_renew" => await HandleSubscriptionNotRenewAsync(webhookEvent),
             "subscription.disable" => await HandleSubscriptionDisabledAsync(webhookEvent),
             "invoice.create" => await HandleInvoiceCreatedAsync(webhookEvent),
+            "invoice.update" => await HandleInvoiceUpdatedAsync(webhookEvent),
             "invoice.payment_failed" => await HandlePaymentFailedAsync(webhookEvent),
             _ => new WebhookResult(true) // Acknowledge unhandled events
         };
@@ -444,19 +455,33 @@ public class PaystackBillingService : IBillingService
     {
         var data = webhookEvent.Data;
 
-        if (data.Metadata is null || !data.Metadata.TryGetValue("tenant_id", out var tenantIdObj)
-            || !Guid.TryParse(tenantIdObj.ToString(), out var tenantId))
-            return new WebhookResult(true);
+        // Invoice events may not carry the original transaction metadata.
+        // Look up subscription by subscription_code first, then fall back to metadata.
+        Subscription? subscription = null;
+        var subscriptionCode = data.Subscription?.Code;
 
-        var subscription = await _coreDb.Subscriptions
-            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
-            .OrderByDescending(s => s.StartDate)
-            .FirstOrDefaultAsync();
+        if (!string.IsNullOrEmpty(subscriptionCode))
+        {
+            subscription = await _coreDb.Subscriptions
+                .FirstOrDefaultAsync(s => s.PaystackSubscriptionCode == subscriptionCode
+                    && s.Status == SubscriptionStatus.Active);
+        }
+
+        // Fall back to metadata-based lookup if subscription code didn't match
+        if (subscription is null && data.Metadata is not null
+            && data.Metadata.TryGetValue("tenant_id", out var tenantIdObj)
+            && Guid.TryParse(tenantIdObj.ToString(), out var tenantId))
+        {
+            subscription = await _coreDb.Subscriptions
+                .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefaultAsync();
+        }
 
         if (subscription is not null)
         {
             var invoice = await _invoiceGenerator.GenerateAsync(
-                tenantId,
+                subscription.TenantId,
                 subscription.Id,
                 data.Amount / 100m,
                 data.Currency?.ToUpperInvariant() ?? "ZAR");
@@ -465,6 +490,32 @@ public class PaystackBillingService : IBillingService
             await _coreDb.SaveChangesAsync();
         }
 
+        return new WebhookResult(true);
+    }
+
+    private async Task<WebhookResult> HandleInvoiceUpdatedAsync(PaystackWebhookEvent webhookEvent)
+    {
+        var data = webhookEvent.Data;
+
+        // Update the invoice status based on the final charge result.
+        if (!string.IsNullOrEmpty(data.Reference))
+        {
+            var invoice = await _coreDb.Invoices
+                .FirstOrDefaultAsync(i => i.PaystackReference == data.Reference);
+
+            if (invoice is not null)
+            {
+                // If status is "success" or paid is true, mark as paid
+                if (data.Status == "success")
+                {
+                    invoice.Status = InvoiceStatus.Paid;
+                    invoice.PaidDate = DateTime.UtcNow;
+                }
+                await _coreDb.SaveChangesAsync();
+            }
+        }
+
+        _logger.LogInformation("Processed invoice.update for reference {Reference}", data.Reference);
         return new WebhookResult(true);
     }
 

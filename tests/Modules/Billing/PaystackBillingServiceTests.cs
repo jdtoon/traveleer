@@ -190,6 +190,127 @@ public class PaystackBillingServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task CancelSubscription_WithPaystackCode_FetchesEmailTokenAndDisables()
+    {
+        _db.Subscriptions.Add(new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _proPlanId,
+            Status = SubscriptionStatus.Active,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow,
+            PaystackSubscriptionCode = "SUB_test_cancel"
+        });
+        await _db.SaveChangesAsync();
+
+        // Use a handler that returns proper subscription detail with email_token
+        var handler = new RoutingHttpHandler(new Dictionary<string, string>
+        {
+            ["subscription/SUB_test_cancel"] = """{"status":true,"data":{"subscription_code":"SUB_test_cancel","email_token":"tok_test123","status":"active"}}""",
+            ["subscription/disable"] = """{"status":true,"message":"Subscription disabled"}"""
+        });
+        var httpClient = new HttpClient(handler);
+        var client = new PaystackClient(httpClient,
+            Options.Create(new PaystackOptions { SecretKey = "sk_test" }),
+            NullLogger<PaystackClient>.Instance);
+
+        var service = CreateService(client);
+        var result = await service.CancelSubscriptionAsync(_tenantId);
+
+        Assert.True(result);
+        var subscription = await _db.Subscriptions.FirstAsync(s => s.TenantId == _tenantId);
+        Assert.Equal(SubscriptionStatus.Cancelled, subscription.Status);
+    }
+
+    [Fact]
+    public async Task ProcessWebhook_InvoiceCreate_LooksUpBySubscriptionCode()
+    {
+        var subscriptionCode = "SUB_invoice_test";
+        _db.Subscriptions.Add(new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _proPlanId,
+            Status = SubscriptionStatus.Active,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow,
+            PaystackSubscriptionCode = subscriptionCode
+        });
+        await _db.SaveChangesAsync();
+
+        var service = CreateService();
+
+        // Invoice event with subscription code but no metadata
+        var webhookPayload = new PaystackWebhookEvent
+        {
+            Event = "invoice.create",
+            Data = new PaystackWebhookData
+            {
+                Reference = "inv_ref_123",
+                Amount = 49900,
+                Currency = "ZAR",
+                Subscription = new PaystackWebhookSubscription { Code = subscriptionCode }
+                // No metadata — testing the subscription code lookup path
+            }
+        };
+
+        var payload = JsonSerializer.Serialize(webhookPayload);
+        var signature = ComputeSignature(payload, _options.WebhookSecret);
+
+        var result = await service.ProcessWebhookAsync(payload, signature);
+
+        Assert.True(result.Success);
+
+        // Verify invoice was generated via subscription code lookup
+        var invoice = await _db.Invoices.FirstOrDefaultAsync(i => i.PaystackReference == "inv_ref_123");
+        Assert.NotNull(invoice);
+        Assert.Equal(499m, invoice.Amount);
+    }
+
+    [Fact]
+    public async Task ProcessWebhook_InvoiceUpdate_UpdatesInvoiceStatus()
+    {
+        // Create a subscription and invoice first
+        var subscription = new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _proPlanId,
+            Status = SubscriptionStatus.Active,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow,
+            PaystackSubscriptionCode = "SUB_inv_update"
+        };
+        _db.Subscriptions.Add(subscription);
+        await _db.SaveChangesAsync();
+
+        var invoice = await _invoiceGenerator.GenerateAsync(_tenantId, subscription.Id, 499m, "ZAR");
+        invoice.PaystackReference = "inv_update_ref";
+        await _db.SaveChangesAsync();
+
+        var service = CreateService();
+
+        var webhookPayload = new PaystackWebhookEvent
+        {
+            Event = "invoice.update",
+            Data = new PaystackWebhookData
+            {
+                Reference = "inv_update_ref",
+                Status = "success",
+                Amount = 49900
+            }
+        };
+
+        var payload = JsonSerializer.Serialize(webhookPayload);
+        var signature = ComputeSignature(payload, _options.WebhookSecret);
+
+        var result = await service.ProcessWebhookAsync(payload, signature);
+
+        Assert.True(result.Success);
+
+        var updatedInvoice = await _db.Invoices.FirstAsync(i => i.PaystackReference == "inv_update_ref");
+        Assert.Equal(InvoiceStatus.Paid, updatedInvoice.Status);
+    }
+
+    [Fact]
     public async Task CancelSubscription_NoSubscription_ReturnsFalse()
     {
         var service = CreateService();
@@ -449,6 +570,39 @@ public class PaystackBillingServiceTests : IAsyncDisposable
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
             // Return a generic success response
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"status":true,"data":{}}""",
+                    System.Text.Encoding.UTF8, "application/json")
+            });
+        }
+    }
+
+    /// <summary>
+    /// HTTP handler that routes requests to specific JSON responses based on URL path matching.
+    /// </summary>
+    private class RoutingHttpHandler : HttpMessageHandler
+    {
+        private readonly Dictionary<string, string> _routes;
+
+        public RoutingHttpHandler(Dictionary<string, string> routes) => _routes = routes;
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var path = request.RequestUri?.PathAndQuery.TrimStart('/') ?? "";
+            foreach (var route in _routes)
+            {
+                if (path.Contains(route.Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(route.Value,
+                            System.Text.Encoding.UTF8, "application/json")
+                    });
+                }
+            }
+
             return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
             {
                 Content = new StringContent("""{"status":true,"data":{}}""",

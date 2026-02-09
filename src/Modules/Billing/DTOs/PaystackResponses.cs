@@ -81,6 +81,28 @@ public class PaystackSubscriptionResponse
 
     [JsonPropertyName("email_token")]
     public string? EmailToken { get; set; }
+
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+}
+
+/// <summary>
+/// Extended subscription detail returned by GET /subscription/:id_or_code.
+/// Includes email_token needed for disabling a subscription.
+/// </summary>
+public class PaystackSubscriptionDetailResponse
+{
+    [JsonPropertyName("subscription_code")]
+    public string SubscriptionCode { get; set; } = string.Empty;
+
+    [JsonPropertyName("email_token")]
+    public string EmailToken { get; set; } = string.Empty;
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("customer")]
+    public PaystackCustomerResponse? Customer { get; set; }
 }
 
 public class PaystackCustomerResponse
