@@ -44,16 +44,18 @@ public class MarketingController : SwapController
     }
 
     [HttpGet]
-    public async Task<IActionResult> Pricing()
+    public async Task<IActionResult> Pricing([FromQuery] string? mode)
     {
-        var plans = await _coreDb.Plans
-            .Where(p => p.IsActive)
-            .OrderBy(p => p.SortOrder)
-            .ThenBy(p => p.MonthlyPrice)
-            .ToListAsync();
-
+        var model = await BuildPricingModelAsync(mode);
         ViewData["Title"] = "Pricing";
-        return SwapView(plans);
+        return SwapView(model);
+    }
+
+    [HttpGet("/pricing/content")]
+    public async Task<IActionResult> PricingContent([FromQuery] string? mode)
+    {
+        var model = await BuildPricingModelAsync(mode);
+        return PartialView("_PricingContent", model);
     }
 
     [HttpGet]
@@ -204,5 +206,24 @@ public class MarketingController : SwapController
     private static bool IsValidSlug(string slug)
     {
         return slug.Length is >= 3 and <= 63 && SlugPattern.IsMatch(slug);
+    }
+
+    private async Task<MarketingPricingViewModel> BuildPricingModelAsync(string? mode)
+    {
+        var plans = await _coreDb.Plans
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.MonthlyPrice)
+            .ToListAsync();
+
+        var normalized = string.Equals(mode, "annual", StringComparison.OrdinalIgnoreCase)
+            ? "annual"
+            : "monthly";
+
+        return new MarketingPricingViewModel
+        {
+            Plans = plans,
+            BillingCycle = normalized
+        };
     }
 }
