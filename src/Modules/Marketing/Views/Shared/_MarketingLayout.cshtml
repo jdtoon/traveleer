@@ -16,10 +16,6 @@
     <meta property="og:description" content="@ogDescription" />
     <meta property="og:type" content="website" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
-
     <link rel="stylesheet" href="/css/styles.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/_content/Swap.Htmx/css/swap.css" asp-append-version="true" />
 
@@ -32,12 +28,12 @@
             --brand-warm: #b45309;
         }
         body {
-            font-family: "Space Grotesk", sans-serif;
+            font-family: "Segoe UI", "Trebuchet MS", "Verdana", sans-serif;
             background: var(--brand-sand);
             color: var(--brand-ink);
         }
         h1, h2, h3, .display-font {
-            font-family: "Fraunces", serif;
+            font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
             letter-spacing: -0.02em;
         }
         .marketing-surface {
@@ -72,13 +68,13 @@
         <header class="relative z-10 border-b border-black/5 bg-white/70 backdrop-blur">
             <div class="navbar mx-auto max-w-6xl px-4">
                 <div class="flex-1">
-                    <a href="/" class="text-xl font-bold tracking-tight">@site.Name</a>
+                    <swap-nav to="/" class="text-xl font-bold tracking-tight">@site.Name</swap-nav>
                 </div>
                 <div class="hidden lg:flex items-center gap-6">
-                    <a class="nav-link" href="/pricing">Pricing</a>
-                    <a class="nav-link" href="/about">About</a>
-                    <a class="nav-link" href="/contact">Contact</a>
-                    <a class="btn btn-sm btn-ghost" href="/register">Get Started</a>
+                    <swap-nav class="nav-link" to="/pricing">Pricing</swap-nav>
+                    <swap-nav class="nav-link" to="/about">About</swap-nav>
+                    <swap-nav class="nav-link" to="/contact">Contact</swap-nav>
+                    <swap-nav class="btn btn-sm btn-ghost" to="/register">Get Started</swap-nav>
                     <a class="btn btn-sm btn-outline"
                        href="/login-redirect"
                        hx-get="/login-modal"
@@ -95,10 +91,10 @@
                             </svg>
                         </label>
                         <ul tabindex="0" class="menu dropdown-content mt-3 z-[1] w-52 rounded-box bg-base-100 p-2 shadow">
-                            <li><a href="/pricing">Pricing</a></li>
-                            <li><a href="/about">About</a></li>
-                            <li><a href="/contact">Contact</a></li>
-                            <li><a href="/register">Get Started</a></li>
+                            <li><swap-nav to="/pricing">Pricing</swap-nav></li>
+                            <li><swap-nav to="/about">About</swap-nav></li>
+                            <li><swap-nav to="/contact">Contact</swap-nav></li>
+                            <li><swap-nav to="/register">Get Started</swap-nav></li>
                             <li>
                                 <a href="/login-redirect"
                                    hx-get="/login-modal"
@@ -113,7 +109,7 @@
             </div>
         </header>
 
-        <main class="relative z-10">
+        <main class="relative z-10" id="main-content">
             @RenderBody()
         </main>
 
@@ -124,13 +120,13 @@
                     <p class="text-sm opacity-70 mt-2">Launch a multi-tenant SaaS with confidence.</p>
                 </div>
                 <div class="grid gap-2 text-sm">
-                    <a class="nav-link" href="/pricing">Pricing</a>
-                    <a class="nav-link" href="/about">About</a>
-                    <a class="nav-link" href="/contact">Contact</a>
+                    <swap-nav class="nav-link" to="/pricing">Pricing</swap-nav>
+                    <swap-nav class="nav-link" to="/about">About</swap-nav>
+                    <swap-nav class="nav-link" to="/contact">Contact</swap-nav>
                 </div>
                 <div class="grid gap-2 text-sm">
-                    <a class="nav-link" href="/legal/terms">Terms</a>
-                    <a class="nav-link" href="/legal/privacy">Privacy</a>
+                    <swap-nav class="nav-link" to="/legal/terms">Terms</swap-nav>
+                    <swap-nav class="nav-link" to="/legal/privacy">Privacy</swap-nav>
                     <span class="opacity-60">Copyright @DateTime.UtcNow.Year</span>
                 </div>
             </div>

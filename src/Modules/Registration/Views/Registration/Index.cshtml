@@ -1,7 +1,6 @@
 @model saas.Modules.Registration.Models.RegistrationViewModel
 @inject Microsoft.Extensions.Options.IOptions<saas.Shared.SiteSettings> SiteOptions
 @{
-    Layout = "_PublicLayout";
     ViewData["Title"] = "Create Your Workspace";
     var site = SiteOptions.Value;
     var displayUrl = new Uri(site.BaseUrl).Host;
