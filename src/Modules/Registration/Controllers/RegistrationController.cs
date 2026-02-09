@@ -88,6 +88,77 @@ public class RegistrationController : SwapController
             return PartialView("_RegistrationError", new { Message = "Bot protection verification failed" });
         }
 
+        // Look up the selected plan
+        var plan = await _coreDb.Plans.FindAsync(request.PlanId);
+        if (plan is null)
+        {
+            return PartialView("_RegistrationError", new { Message = "Invalid plan selected" });
+        }
+
+        // ── Paid plan: create tenant as PendingSetup, redirect to Paystack ──
+        if (plan.MonthlyPrice > 0)
+        {
+            // Validate slug uniqueness before creating the pending tenant
+            var slugValidation = await _provisioner.ValidateSlugAsync(request.Slug);
+            if (!slugValidation.IsValid)
+            {
+                return PartialView("_RegistrationError", new { Message = slugValidation.ErrorMessage });
+            }
+
+            // Create tenant in PendingSetup state (not fully provisioned yet)
+            var tenant = new Tenant
+            {
+                Id = Guid.NewGuid(),
+                Slug = request.Slug.ToLowerInvariant(),
+                Name = request.Slug,
+                ContactEmail = request.Email,
+                PlanId = request.PlanId,
+                Status = TenantStatus.PendingSetup,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _coreDb.Tenants.Add(tenant);
+            await _coreDb.SaveChangesAsync();
+
+            // Initialize payment with Paystack
+            var billingResult = await _billingService.InitializeSubscriptionAsync(
+                new SubscriptionInitRequest(
+                    tenant.Id,
+                    request.Email,
+                    request.PlanId,
+                    BillingCycle.Monthly));
+
+            if (!billingResult.Success || string.IsNullOrEmpty(billingResult.PaymentUrl))
+            {
+                _logger.LogError("Billing initialization failed for {Slug}: {Error}",
+                    request.Slug, billingResult.Error);
+
+                // Clean up the pending tenant
+                _coreDb.Tenants.Remove(tenant);
+                await _coreDb.SaveChangesAsync();
+
+                return PartialView("_RegistrationError", new
+                {
+                    Message = billingResult.Error ?? "Payment initialization failed. Please try again."
+                });
+            }
+
+            _logger.LogInformation(
+                "Redirecting tenant {Slug} to Paystack checkout: {Url}",
+                request.Slug, billingResult.PaymentUrl);
+
+            // Redirect the browser to Paystack checkout.
+            // For HTMX requests, use HX-Redirect header (full page navigation).
+            // For regular form submits, use a standard redirect.
+            if (Request.Headers.ContainsKey("HX-Request"))
+            {
+                Response.Headers["HX-Redirect"] = billingResult.PaymentUrl;
+                return Ok();
+            }
+            return Redirect(billingResult.PaymentUrl);
+        }
+
+        // ── Free plan: provision immediately ──
         var result = await _provisioner.ProvisionTenantAsync(request.Slug, request.Email, request.PlanId);
 
         if (!result.Success)
