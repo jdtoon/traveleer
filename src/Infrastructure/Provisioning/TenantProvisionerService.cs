@@ -62,43 +62,64 @@ public partial class TenantProvisionerService : ITenantProvisioner
 
         try
         {
-            // Create tenant record in Core database
-            var tenant = new Tenant
+            // Check if tenant already exists (paid-plan flow creates tenant in PendingSetup first)
+            var existingTenant = await _coreDb.Tenants.FirstOrDefaultAsync(t => t.Slug == slug.ToLowerInvariant());
+            Tenant tenant;
+
+            if (existingTenant is not null)
             {
-                Id = Guid.NewGuid(),
-                Slug = slug.ToLowerInvariant(),
-                Name = slug, // Can be updated later by admin
-                ContactEmail = adminEmail,
-                PlanId = planId,
-                Status = TenantStatus.Active,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                // Tenant already exists (created during paid registration) — just activate it
+                tenant = existingTenant;
+                tenant.Status = TenantStatus.Active;
+                tenant.UpdatedAt = DateTime.UtcNow;
+                await _coreDb.SaveChangesAsync();
 
-            _coreDb.Tenants.Add(tenant);
-            await _coreDb.SaveChangesAsync();
-
-            _logger.LogInformation("Created tenant record: {TenantId} ({Slug})", tenant.Id, tenant.Slug);
-
-            // Create subscription
-            var subscription = new Subscription
+                _logger.LogInformation("Activating existing tenant: {TenantId} ({Slug})", tenant.Id, tenant.Slug);
+            }
+            else
             {
-                Id = Guid.NewGuid(),
-                TenantId = tenant.Id,
-                PlanId = planId,
-                Status = SubscriptionStatus.Trialing,
-                BillingCycle = BillingCycle.Monthly,
-                StartDate = DateTime.UtcNow,
-                NextBillingDate = DateTime.UtcNow.AddDays(14), // 14-day trial
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                // Create new tenant record (free plan flow)
+                tenant = new Tenant
+                {
+                    Id = Guid.NewGuid(),
+                    Slug = slug.ToLowerInvariant(),
+                    Name = slug,
+                    ContactEmail = adminEmail,
+                    PlanId = planId,
+                    Status = TenantStatus.Active,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
 
-            _coreDb.Subscriptions.Add(subscription);
-            await _coreDb.SaveChangesAsync();
+                _coreDb.Tenants.Add(tenant);
+                await _coreDb.SaveChangesAsync();
 
-            _logger.LogInformation("Created subscription: {SubscriptionId} for tenant {TenantId}", 
-                subscription.Id, tenant.Id);
+                _logger.LogInformation("Created tenant record: {TenantId} ({Slug})", tenant.Id, tenant.Slug);
+            }
+
+            // Create subscription only if one doesn't already exist for this tenant
+            var hasSubscription = await _coreDb.Subscriptions.AnyAsync(s => s.TenantId == tenant.Id);
+            if (!hasSubscription)
+            {
+                var subscription = new Subscription
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenant.Id,
+                    PlanId = planId,
+                    Status = SubscriptionStatus.Trialing,
+                    BillingCycle = BillingCycle.Monthly,
+                    StartDate = DateTime.UtcNow,
+                    NextBillingDate = DateTime.UtcNow.AddDays(14),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _coreDb.Subscriptions.Add(subscription);
+                await _coreDb.SaveChangesAsync();
+
+                _logger.LogInformation("Created subscription: {SubscriptionId} for tenant {TenantId}",
+                    subscription.Id, tenant.Id);
+            }
 
             // Create tenant database
             var dbPath = Path.Combine("db", "tenants", $"{tenant.Slug}.db");

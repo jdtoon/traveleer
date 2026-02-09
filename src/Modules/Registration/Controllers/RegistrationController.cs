@@ -177,7 +177,7 @@ public class RegistrationController : SwapController
 
     /// <summary>
     /// Callback endpoint for Paystack redirect after payment.
-    /// Verifies payment status and provisions the tenant if needed.
+    /// This is a full-page GET request (not HTMX), so it returns a full SwapView.
     /// </summary>
     [HttpGet("/register/callback")]
     public async Task<IActionResult> Callback([FromQuery] string? reference, [FromQuery] string? trxref)
@@ -188,7 +188,8 @@ public class RegistrationController : SwapController
         if (string.IsNullOrEmpty(ref_))
         {
             _logger.LogWarning("Registration callback received without reference parameter");
-            return PartialView("_RegistrationError", new { Message = "Invalid payment reference. Please contact support." });
+            return SwapView("Callback", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                ErrorMessage = "Invalid payment reference. Please contact support." });
         }
 
         // Find the subscription by Paystack reference
@@ -199,7 +200,8 @@ public class RegistrationController : SwapController
         if (subscription is null)
         {
             _logger.LogWarning("Registration callback: no subscription found for reference {Reference}", ref_);
-            return PartialView("_RegistrationError", new { Message = "Could not find your registration. Please contact support." });
+            return SwapView("Callback", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                ErrorMessage = "Could not find your registration. Please contact support." });
         }
 
         var tenant = subscription.Tenant;
@@ -214,10 +216,8 @@ public class RegistrationController : SwapController
             {
                 _logger.LogError("Post-payment provisioning failed for {Slug}: {Error}",
                     tenant.Slug, provisionResult.ErrorMessage);
-                return PartialView("_RegistrationError", new
-                {
-                    Message = "Account setup is in progress. You'll receive an email shortly."
-                });
+                return SwapView("Callback", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                    ErrorMessage = "Account setup is in progress. You'll receive an email shortly." });
             }
         }
 
@@ -226,6 +226,7 @@ public class RegistrationController : SwapController
 
         _logger.LogInformation("Payment callback successful for tenant {Slug}", tenant.Slug);
 
-        return PartialView("_RegistrationSuccess", new { Slug = tenant.Slug, Email = tenant.ContactEmail });
+        return SwapView("Callback", new { Success = true, Slug = tenant.Slug, Email = tenant.ContactEmail,
+            ErrorMessage = (string?)null });
     }
 }
