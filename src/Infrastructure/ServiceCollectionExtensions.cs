@@ -115,10 +115,10 @@ public static class ServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        // Default providers (Phase 2)
+        // Default providers (Phase 2) — Email & BotProtection registered here;
+        // IBillingService is registered in BillingModule with provider switching.
         services.AddScoped<IEmailService, ConsoleEmailService>();
         services.AddScoped<IBotProtection, MockBotProtection>();
-        services.AddScoped<IBillingService, MockBillingService>();
 
         services.AddAuthentication();
         services.AddAuthorization();
