@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using saas.Data.Core;
 using saas.Data.Audit;
 using saas.Data.Tenant;
+using Amazon.Runtime;
 using Amazon.SimpleEmailV2;
 using saas.Infrastructure.Middleware;
 using saas.Infrastructure.Services;
@@ -134,11 +135,17 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IAmazonSimpleEmailServiceV2>(sp =>
             {
                 var options = sp.GetRequiredService<IOptions<EmailOptions>>().Value;
-                var regionName = string.IsNullOrWhiteSpace(options.SesRegion)
-                    ? "us-east-1"
-                    : options.SesRegion;
-                return new AmazonSimpleEmailServiceV2Client(
-                    Amazon.RegionEndpoint.GetBySystemName(regionName));
+                var ses = options.SES;
+
+                if (string.IsNullOrWhiteSpace(ses.AccessKey) || string.IsNullOrWhiteSpace(ses.SecretKey))
+                    throw new InvalidOperationException(
+                        "Email:Provider is set to SES but Email:SES:AccessKey and Email:SES:SecretKey are not configured.");
+
+                var credentials = new BasicAWSCredentials(ses.AccessKey, ses.SecretKey);
+                var region = Amazon.RegionEndpoint.GetBySystemName(
+                    string.IsNullOrWhiteSpace(ses.Region) ? "us-east-1" : ses.Region);
+
+                return new AmazonSimpleEmailServiceV2Client(credentials, region);
             });
             services.AddScoped<IEmailService, SesEmailService>();
         }
