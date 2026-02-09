@@ -40,11 +40,17 @@ public partial class TenantProvisionerService : ITenantProvisioner
         string adminEmail, 
         Guid planId)
     {
-        // Validate slug
-        var slugValidation = await ValidateSlugAsync(slug);
-        if (!slugValidation.IsValid)
+        // Check if tenant already exists (paid-plan flow creates tenant in PendingSetup first)
+        var existingTenant = await _coreDb.Tenants.FirstOrDefaultAsync(t => t.Slug == slug.ToLowerInvariant());
+
+        // Only validate slug uniqueness when there is no existing tenant
+        if (existingTenant is null)
         {
-            return new TenantProvisioningResult(false, ErrorMessage: slugValidation.ErrorMessage);
+            var slugValidation = await ValidateSlugAsync(slug);
+            if (!slugValidation.IsValid)
+            {
+                return new TenantProvisioningResult(false, ErrorMessage: slugValidation.ErrorMessage);
+            }
         }
 
         // Validate plan exists
@@ -62,8 +68,6 @@ public partial class TenantProvisionerService : ITenantProvisioner
 
         try
         {
-            // Check if tenant already exists (paid-plan flow creates tenant in PendingSetup first)
-            var existingTenant = await _coreDb.Tenants.FirstOrDefaultAsync(t => t.Slug == slug.ToLowerInvariant());
             Tenant tenant;
 
             if (existingTenant is not null)
