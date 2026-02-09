@@ -38,80 +38,80 @@
 
 ### Steps
 
-- [ ] **1.1** Create `src/Shared/` folder with all interfaces:
-  - [ ] `IModule.cs`
-  - [ ] `ITenantContext.cs`
-  - [ ] `ICurrentUser.cs`
-  - [ ] `IFeatureService.cs`
-  - [ ] `IEmailService.cs` (+ `EmailMessage` record)
-  - [ ] `IAuditWriter.cs`
-  - [ ] `IBotProtection.cs`
-  - [ ] `IBillingService.cs` (+ request/result records)
-  - [ ] `ITenantProvisioner.cs` (+ request/result records)
-- [ ] **1.2** Add NuGet packages to `saas.csproj`:
-  - [ ] `Microsoft.AspNetCore.Identity.EntityFrameworkCore`
-  - [ ] `Microsoft.FeatureManagement.AspNetCore`
-- [ ] **1.3** Create `src/Data/CoreDbContext.cs` with entities:
-  - [ ] `Tenant` (Id, Name, Slug, ContactEmail, Status enum, PlanId, DatabaseName)
-  - [ ] `Plan` (Id, Name, Slug, MonthlyPrice, AnnualPrice, Currency, MaxUsers, PaystackPlanCode, SortOrder, IsActive, Description)
-  - [ ] `Feature` (Id, Key, Name, Module, IsGlobal, IsEnabled)
-  - [ ] `PlanFeature` (PlanId, FeatureId composite key, ConfigJson)
-  - [ ] `TenantFeatureOverride` (Id, TenantId, FeatureId, IsEnabled, Reason, ExpiresAt)
-  - [ ] `Subscription` (Id, TenantId, PlanId, Status enum, BillingCycle enum, StartDate, EndDate, NextBillingDate, PaystackSubscriptionCode, PaystackCustomerCode)
-  - [ ] `Invoice` (Id, TenantId, SubscriptionId, InvoiceNumber, Amount, Currency, Status enum, IssuedDate, DueDate, PaidDate, PaystackReference)
-  - [ ] `Payment` (Id, TenantId, InvoiceId, Amount, Currency, Status enum, PaystackReference, PaystackTransactionId, GatewayResponse, TransactionDate)
-  - [ ] `SuperAdmin` (Id, Email, DisplayName, IsActive, LastLoginAt)
-  - [ ] `MagicLinkToken` (Id, Token, Email, TenantSlug, ExpiresAt, IsUsed, UsedAt)
-  - [ ] All enums: `TenantStatus`, `SubscriptionStatus`, `BillingCycle`, `InvoiceStatus`, `PaymentStatus`
-  - [ ] Entity configurations (unique indexes, relationships, value conversions)
-  - [ ] Connection string: `CoreDatabase`
-- [ ] **1.4** Create `src/Data/TenantDbContext.cs`:
-  - [ ] Extends `IdentityDbContext<AppUser, AppRole, string>`
-  - [ ] `AppUser` (extends IdentityUser + DisplayName, IsActive, LastLoginAt, IAuditableEntity)
-  - [ ] `AppRole` (extends IdentityRole + Description, IsSystemRole)
-  - [ ] `Permission` (Id, Key, Name, Group, SortOrder)
-  - [ ] `RolePermission` (RoleId, PermissionId composite key)
-  - [ ] `Note` entity (Id as Guid, Title, Content, Color, IsPinned, IAuditableEntity)
-  - [ ] `WalModeInterceptor` (sets PRAGMA journal_mode=WAL on connection open)
-  - [ ] Dynamic connection string from `ITenantContext.Slug`
-- [ ] **1.5** Create `src/Data/AuditDbContext.cs`:
-  - [ ] `AuditEntry` (Id as long auto-increment, TenantSlug, EntityType, EntityId, Action, UserId, UserEmail, OldValues, NewValues, AffectedColumns, Timestamp, IpAddress, UserAgent)
-  - [ ] Connection string: `AuditDatabase`
-- [ ] **1.6** Update `IAuditableEntity`:
-  - [ ] Rename `CreatedByUserId` → `CreatedBy`
-  - [ ] Rename `ModifiedByUserId` → `UpdatedBy`
-  - [ ] Update `SaveChangesAsync` override in TenantDbContext
-- [ ] **1.7** Create `src/Data/Seeding/MasterDataSeeder.cs`:
-  - [ ] Seed Plans: Free, Starter (R199/mo), Professional (R499/mo), Enterprise (R999/mo)
-  - [ ] Seed Features from `FeatureDefinitions` constants
-  - [ ] Seed PlanFeature mappings (matrix from doc 05 §10)
-  - [ ] Seed default SuperAdmin (email from config)
-  - [ ] Idempotent (skip if data exists)
-- [ ] **1.8** Create `src/Shared/PermissionDefinitions.cs`:
-  - [ ] Static class with all permission key constants grouped by module
-  - [ ] `GetAll()` method returning all permissions
-- [ ] **1.9** Create `src/Shared/FeatureDefinitions.cs`:
-  - [ ] Static class with all feature key constants
-- [ ] **1.10** Refactor `Program.cs`:
-  - [ ] Register `CoreDbContext` + `AuditDbContext` with fixed connection strings
-  - [ ] Configure `db/` directory structure (db/core.db, db/audit.db, db/tenants/, db/keys/)
-  - [ ] Run `EnsureCreated()` + WAL mode + `MasterDataSeeder` on startup
-  - [ ] Add `IModule` registration loop (empty array for now)
-  - [ ] Remove old `AppDbContext` registration
-  - [ ] Temporarily comment out Notes module registration (reconnected Phase 5)
-- [ ] **1.11** Delete or archive old `AppDbContext.cs` (keep `IAuditableEntity.cs`, `PaginatedList.cs`)
+- [x] **1.1** Create `src/Shared/` folder with all interfaces:
+  - [x] `IModule.cs`
+  - [x] `ITenantContext.cs`
+  - [x] `ICurrentUser.cs`
+  - [x] `IFeatureService.cs`
+  - [x] `IEmailService.cs` (+ `EmailMessage` record)
+  - [x] `IAuditWriter.cs`
+  - [x] `IBotProtection.cs`
+  - [x] `IBillingService.cs` (+ request/result records)
+  - [x] `ITenantProvisioner.cs` (+ request/result records)
+- [x] **1.2** Add NuGet packages to `saas.csproj`:
+  - [x] `Microsoft.AspNetCore.Identity.EntityFrameworkCore`
+  - [x] `Microsoft.FeatureManagement.AspNetCore`
+- [x] **1.3** Create `src/Data/CoreDbContext.cs` with entities:
+  - [x] `Tenant` (Id, Name, Slug, ContactEmail, Status enum, PlanId, DatabaseName)
+  - [x] `Plan` (Id, Name, Slug, MonthlyPrice, AnnualPrice, Currency, MaxUsers, PaystackPlanCode, SortOrder, IsActive, Description)
+  - [x] `Feature` (Id, Key, Name, Module, IsGlobal, IsEnabled)
+  - [x] `PlanFeature` (PlanId, FeatureId composite key, ConfigJson)
+  - [x] `TenantFeatureOverride` (Id, TenantId, FeatureId, IsEnabled, Reason, ExpiresAt)
+  - [x] `Subscription` (Id, TenantId, PlanId, Status enum, BillingCycle enum, StartDate, EndDate, NextBillingDate, PaystackSubscriptionCode, PaystackCustomerCode)
+  - [x] `Invoice` (Id, TenantId, SubscriptionId, InvoiceNumber, Amount, Currency, Status enum, IssuedDate, DueDate, PaidDate, PaystackReference)
+  - [x] `Payment` (Id, TenantId, InvoiceId, Amount, Currency, Status enum, PaystackReference, PaystackTransactionId, GatewayResponse, TransactionDate)
+  - [x] `SuperAdmin` (Id, Email, DisplayName, IsActive, LastLoginAt)
+  - [x] `MagicLinkToken` (Id, Token, Email, TenantSlug, ExpiresAt, IsUsed, UsedAt)
+  - [x] All enums: `TenantStatus`, `SubscriptionStatus`, `BillingCycle`, `InvoiceStatus`, `PaymentStatus`
+  - [x] Entity configurations (unique indexes, relationships, value conversions)
+  - [x] Connection string: `CoreDatabase`
+- [x] **1.4** Create `src/Data/TenantDbContext.cs`:
+  - [x] Extends `IdentityDbContext<AppUser, AppRole, string>`
+  - [x] `AppUser` (extends IdentityUser + DisplayName, IsActive, LastLoginAt, IAuditableEntity)
+  - [x] `AppRole` (extends IdentityRole + Description, IsSystemRole)
+  - [x] `Permission` (Id, Key, Name, Group, SortOrder)
+  - [x] `RolePermission` (RoleId, PermissionId composite key)
+  - [x] `Note` entity (Id as Guid, Title, Content, Color, IsPinned, IAuditableEntity)
+  - [x] `WalModeInterceptor` (sets PRAGMA journal_mode=WAL on connection open)
+  - [x] Dynamic connection string from `ITenantContext.Slug`
+- [x] **1.5** Create `src/Data/AuditDbContext.cs`:
+  - [x] `AuditEntry` (Id as long auto-increment, TenantSlug, EntityType, EntityId, Action, UserId, UserEmail, OldValues, NewValues, AffectedColumns, Timestamp, IpAddress, UserAgent)
+  - [x] Connection string: `AuditDatabase`
+- [x] **1.6** Update `IAuditableEntity`:
+  - [x] Rename `CreatedByUserId` → `CreatedBy`
+  - [x] Rename `ModifiedByUserId` → `UpdatedBy`
+  - [x] Update `SaveChangesAsync` override in TenantDbContext
+- [x] **1.7** Create `src/Data/Seeding/MasterDataSeeder.cs`:
+  - [x] Seed Plans: Free, Starter (R199/mo), Professional (R499/mo), Enterprise (R999/mo)
+  - [x] Seed Features from `FeatureDefinitions` constants
+  - [x] Seed PlanFeature mappings (matrix from doc 05 §10)
+  - [x] Seed default SuperAdmin (email from config)
+  - [x] Idempotent (skip if data exists)
+- [x] **1.8** Create `src/Shared/PermissionDefinitions.cs`:
+  - [x] Static class with all permission key constants grouped by module
+  - [x] `GetAll()` method returning all permissions
+- [x] **1.9** Create `src/Shared/FeatureDefinitions.cs`:
+  - [x] Static class with all feature key constants
+- [x] **1.10** Refactor `Program.cs`:
+  - [x] Register `CoreDbContext` + `AuditDbContext` with fixed connection strings
+  - [x] Configure `db/` directory structure (db/core.db, db/audit.db, db/tenants/, db/keys/)
+  - [x] Run `EnsureCreated()` + WAL mode + `MasterDataSeeder` on startup
+  - [x] Add `IModule` registration loop (empty array for now)
+  - [x] Remove old `AppDbContext` registration
+  - [x] Temporarily comment out Notes module registration (reconnected Phase 5)
+- [x] **1.11** Delete or archive old `AppDbContext.cs` (keep `IAuditableEntity.cs`, `PaginatedList.cs`)
 
 ### Build & Test
 
-- [ ] `dotnet build` passes with zero errors
-- [ ] `dotnet test` — update/skip broken Notes tests (they will be rewritten in Phase 5)
-- [ ] New tests written and passing:
-  - [ ] `CoreDbContextTests` — in-memory create, all entities have correct PKs/FKs, enums stored correctly
-  - [ ] `MasterDataSeederTests` — seeds expected plans (4), features, plan-features, super admin; idempotent on second run
-  - [ ] `PermissionDefinitionsTests` — `GetAll()` non-empty, no duplicate keys
-  - [ ] `TenantDbContextTests` — temp SQLite file, Identity tables exist, Note table exists
-  - [ ] `AuditDbContextTests` — AuditEntry table exists, auto-increment Id works
-  - [ ] Integration: app starts, `/health` returns healthy
+- [x] `dotnet build` passes with zero errors
+- [x] `dotnet test` — update/skip broken Notes tests (they will be rewritten in Phase 5)
+- [x] New tests written and passing:
+  - [x] `CoreDbContextTests` — in-memory create, all entities have correct PKs/FKs, enums stored correctly
+  - [x] `MasterDataSeederTests` — seeds expected plans (4), features, plan-features, super admin; idempotent on second run
+  - [x] `PermissionDefinitionsTests` — `GetAll()` non-empty, no duplicate keys
+  - [x] `TenantDbContextTests` — temp SQLite file, Identity tables exist, Note table exists
+  - [x] `AuditDbContextTests` — AuditEntry table exists, auto-increment Id works
+  - [x] Integration: app starts, `/health` returns healthy
 
 ### QA Handover — Phase 1
 
@@ -147,64 +147,64 @@ When I hand this over, verify:
 
 ### Steps
 
-- [ ] **2.1** Implement `TenantResolutionMiddleware` + `TenantContext`:
-  - [ ] Extract slug from URL path `/{slug}/...`
-  - [ ] Look up Tenant in `CoreDbContext` (cached per request)
-  - [ ] Populate scoped `ITenantContext`
-  - [ ] Pass through for non-tenant routes (`/`, `/pricing`, `/health`, `/super-admin/*`, `/register/*`)
-  - [ ] Return 404 for unknown tenant slugs
-- [ ] **2.2** Register `TenantDbContext` with dynamic connection string factory:
-  - [ ] Reads `ITenantContext.Slug` to build `db/tenants/{slug}.db`
-  - [ ] Uses `WalModeInterceptor`
-  - [ ] Only resolves connection when `ITenantContext.IsTenantRequest` is true
-- [ ] **2.3** Implement `ConsoleEmailService` (`IEmailService`):
-  - [ ] Logs all emails to terminal with `★ MAGIC LINK` marker for magic link emails
-  - [ ] Registered when `Email:Provider=Console` (default)
-- [ ] **2.4** Implement `MockBotProtection` (`IBotProtection`):
-  - [ ] Always returns `true`
-  - [ ] Logs `[MOCK BOT PROTECTION]` to terminal
-  - [ ] Registered when `Turnstile:Provider=Mock` (default)
-- [ ] **2.5** Implement `NullAuditWriter` (`IAuditWriter`):
-  - [ ] No-op implementation (temporary until Phase 5 Audit module)
-  - [ ] Registered as default
-- [ ] **2.6** Implement `MockBillingService` (`IBillingService`):
-  - [ ] Auto-approves `InitializeSubscriptionAsync` (creates active Subscription + mock Payment)
-  - [ ] Returns `Active` for `GetSubscriptionStatusAsync`
-  - [ ] Logs all operations with `[MOCK BILLING]`
-  - [ ] Registered when `Billing:Provider=Mock` (default)
-- [ ] **2.7** Add security headers middleware:
-  - [ ] `X-Content-Type-Options: nosniff`
-  - [ ] `X-Frame-Options: DENY`
-  - [ ] `Referrer-Policy: strict-origin-when-cross-origin`
-  - [ ] `Content-Security-Policy` (with Turnstile allowlist)
-  - [ ] `Permissions-Policy`
-- [ ] **2.8** Add rate limiting configuration:
-  - [ ] Global: 100 requests/min per IP
-  - [ ] `strict`: 5/min (auth endpoints)
-  - [ ] `registration`: 3/5min (signup)
-  - [ ] `webhook`: 50/min (Paystack)
-  - [ ] Custom 429 HTML response
-- [ ] **2.9** Add remaining infrastructure:
-  - [ ] Forwarded headers (for reverse proxy)
-  - [ ] Data protection (file-system keys in `db/keys/`)
-  - [ ] Response compression (Brotli + Gzip)
-  - [ ] Health checks (core DB + tenant directory)
-- [ ] **2.10** Update `Program.cs` middleware pipeline to full 13-step order:
-  - [ ] ResponseCompression → ForwardedHeaders → SecurityHeaders → ExceptionHandler → StaticFiles → Routing → RateLimiter → TenantResolution → Authentication → Authorization → CurrentUser → HealthChecks → MVC
-  - [ ] Authentication/Authorization registered but no schemes yet (Phase 3)
-- [ ] **2.11** Update config files:
-  - [ ] `appsettings.json` — full structure per doc 08 §5
-  - [ ] `appsettings.Development.json` — minimal overrides
+- [x] **2.1** Implement `TenantResolutionMiddleware` + `TenantContext`:
+  - [x] Extract slug from URL path `/{slug}/...`
+  - [x] Look up Tenant in `CoreDbContext` (cached per request)
+  - [x] Populate scoped `ITenantContext`
+  - [x] Pass through for non-tenant routes (`/`, `/pricing`, `/health`, `/super-admin/*`, `/register/*`)
+  - [x] Return 404 for unknown tenant slugs
+- [x] **2.2** Register `TenantDbContext` with dynamic connection string factory:
+  - [x] Reads `ITenantContext.Slug` to build `db/tenants/{slug}.db`
+  - [x] Uses `WalModeInterceptor`
+  - [x] Only resolves connection when `ITenantContext.IsTenantRequest` is true
+- [x] **2.3** Implement `ConsoleEmailService` (`IEmailService`):
+  - [x] Logs all emails to terminal with `★ MAGIC LINK` marker for magic link emails
+  - [x] Registered when `Email:Provider=Console` (default)
+- [x] **2.4** Implement `MockBotProtection` (`IBotProtection`):
+  - [x] Always returns `true`
+  - [x] Logs `[MOCK BOT PROTECTION]` to terminal
+  - [x] Registered when `Turnstile:Provider=Mock` (default)
+- [x] **2.5** Implement `NullAuditWriter` (`IAuditWriter`):
+  - [x] No-op implementation (temporary until Phase 5 Audit module)
+  - [x] Registered as default
+- [x] **2.6** Implement `MockBillingService` (`IBillingService`):
+  - [x] Auto-approves `InitializeSubscriptionAsync` (creates active Subscription + mock Payment)
+  - [x] Returns `Active` for `GetSubscriptionStatusAsync`
+  - [x] Logs all operations with `[MOCK BILLING]`
+  - [x] Registered when `Billing:Provider=Mock` (default)
+- [x] **2.7** Add security headers middleware:
+  - [x] `X-Content-Type-Options: nosniff`
+  - [x] `X-Frame-Options: DENY`
+  - [x] `Referrer-Policy: strict-origin-when-cross-origin`
+  - [x] `Content-Security-Policy` (with Turnstile allowlist)
+  - [x] `Permissions-Policy`
+- [x] **2.8** Add rate limiting configuration:
+  - [x] Global: 100 requests/min per IP
+  - [x] `strict`: 5/min (auth endpoints)
+  - [x] `registration`: 3/5min (signup)
+  - [x] `webhook`: 50/min (Paystack)
+  - [x] Custom 429 HTML response
+- [x] **2.9** Add remaining infrastructure:
+  - [x] Forwarded headers (for reverse proxy)
+  - [x] Data protection (file-system keys in `db/keys/`)
+  - [x] Response compression (Brotli + Gzip)
+  - [x] Health checks (core DB + tenant directory)
+- [x] **2.10** Update `Program.cs` middleware pipeline to full 13-step order:
+  - [x] ResponseCompression → ForwardedHeaders → SecurityHeaders → ExceptionHandler → StaticFiles → Routing → RateLimiter → TenantResolution → Authentication → Authorization → CurrentUser → HealthChecks → MVC
+  - [x] Authentication/Authorization registered but no schemes yet (Phase 3)
+- [x] **2.11** Update config files:
+  - [x] `appsettings.json` — full structure per doc 08 §5
+  - [x] `appsettings.Development.json` — minimal overrides
 
 ### Build & Test
 
-- [ ] `dotnet build` passes with zero errors
-- [ ] `dotnet test` passes — new tests:
-  - [ ] `TenantResolutionMiddlewareTests` — sets slug for valid tenant, 404 for unknown, passthrough for `/`, `/pricing`, `/health`
-  - [ ] `ConsoleEmailServiceTests` — doesn't throw on valid args
-  - [ ] `MockBillingServiceTests` — returns Success=true, creates Subscription in CoreDbContext
-  - [ ] `MockBotProtectionTests` — returns true for any input including null
-  - [ ] Integration: app starts with full pipeline, `/health` healthy, security headers present
+- [x] `dotnet build` passes with zero errors
+- [x] `dotnet test` passes — new tests:
+  - [x] `TenantResolutionMiddlewareTests` — sets slug for valid tenant, 404 for unknown, passthrough for `/`, `/pricing`, `/health`
+  - [x] `ConsoleEmailServiceTests` — doesn't throw on valid args
+  - [x] `MockBillingServiceTests` — returns Success=true, creates Subscription in CoreDbContext
+  - [x] `MockBotProtectionTests` — returns true for any input including null
+  - [x] Integration: app starts with full pipeline, `/health` healthy, security headers present
 
 ### QA Handover — Phase 2
 
@@ -240,55 +240,55 @@ When I hand this over, verify:
 
 ### Steps
 
-- [ ] **3.1** Configure dual cookie authentication schemes:
-  - [ ] `SuperAdmin` scheme — cookie `.SuperAdmin.Auth`, 24h sliding, login path `/super-admin/login`
-  - [ ] `Tenant` scheme — cookie `.Tenant.Auth`, 12h sliding, dynamic login path `/{slug}/login`
-- [ ] **3.2** Configure authorization policies:
-  - [ ] `SuperAdmin` — requires SuperAdmin scheme + `IsSuperAdmin=true` claim
-  - [ ] `TenantUser` — requires Tenant scheme + `TenantSlug` claim
-  - [ ] `TenantAdmin` — requires Tenant scheme + `TenantSlug` claim + Admin role
-- [ ] **3.3** Implement `MagicLinkService`:
-  - [ ] `GenerateTokenAsync(email, tenantSlug?)` — 32 random bytes → Base64Url → SHA256 hash stored in CoreDbContext MagicLinkTokens
-  - [ ] `VerifyTokenAsync(rawToken)` — re-hash → lookup → check expiry → check not used → mark used → return result with email + tenantSlug
-  - [ ] Token expiry: configurable (default 15 min)
-- [ ] **3.4** Create `AuthModule` implementing `IModule`:
-  - [ ] Register `MagicLinkService`
-  - [ ] Register `ICurrentUser` as scoped
-  - [ ] Register `MagicLinkCleanupService` (BackgroundService, purge tokens > 24h, runs every hour)
-- [ ] **3.5** Create `SuperAdminAuthController`:
-  - [ ] `GET /super-admin/login` — login form view
-  - [ ] `POST /super-admin/login` — validate email in SuperAdmins table → generate magic link → send via IEmailService → show "check email" message
-  - [ ] `GET /super-admin/verify?token=xxx` — verify token → issue SuperAdmin cookie (ClaimsPrincipal with IsSuperAdmin=true) → redirect to `/super-admin`
-  - [ ] `POST /super-admin/logout` — sign out, clear cookie
-- [ ] **3.6** Implement `CurrentUser` + `CurrentUserMiddleware`:
-  - [ ] `CurrentUser` class implementing `ICurrentUser`
-  - [ ] Middleware reads cookie claims → populates scoped `ICurrentUser`
-  - [ ] Cross-tenant isolation: cookie's TenantSlug claim must match URL slug
-  - [ ] For super admin: `IsSuperAdmin=true`, no tenant context needed
-- [ ] **3.7** Create `TenantAuthController`:
-  - [ ] `GET /{slug}/login` — login form (tenant-branded)
-  - [ ] `POST /{slug}/login` — validate email in TenantDbContext (Identity UserManager) → generate magic link → send via IEmailService
-  - [ ] `GET /{slug}/verify?token=xxx` — verify token → load user roles/permissions from TenantDbContext → issue Tenant cookie → redirect to `/{slug}/`
-  - [ ] `POST /{slug}/logout` — sign out
-  - [ ] Note: full QA requires a provisioned tenant (Phase 4), but controller is built now
-- [ ] **3.8** Create `HasPermissionAttribute` + `HasPermissionFilter`:
-  - [ ] Attribute takes permission key string
-  - [ ] Filter checks `ICurrentUser.HasPermission(key)` → 403 if missing
-- [ ] **3.9** Create tag helpers:
-  - [ ] `has-permission` — shows content only if user has specified permission
-  - [ ] `is-super-admin` — shows content only for super admin
-  - [ ] `is-authenticated` — shows content only for authenticated users
-- [ ] **3.10** Register `AuthModule` in module array in `Program.cs`
-- [ ] **3.11** Create super admin login view + "check your email" view + verify error view
+- [x] **3.1** Configure dual cookie authentication schemes:
+  - [x] `SuperAdmin` scheme — cookie `.SuperAdmin.Auth`, 24h sliding, login path `/super-admin/login`
+  - [x] `Tenant` scheme — cookie `.Tenant.Auth`, 12h sliding, dynamic login path `/{slug}/login`
+- [x] **3.2** Configure authorization policies:
+  - [x] `SuperAdmin` — requires SuperAdmin scheme + `IsSuperAdmin=true` claim
+  - [x] `TenantUser` — requires Tenant scheme + `TenantSlug` claim
+  - [x] `TenantAdmin` — requires Tenant scheme + `TenantSlug` claim + Admin role
+- [x] **3.3** Implement `MagicLinkService`:
+  - [x] `GenerateTokenAsync(email, tenantSlug?)` — 32 random bytes → Base64Url → SHA256 hash stored in CoreDbContext MagicLinkTokens
+  - [x] `VerifyTokenAsync(rawToken)` — re-hash → lookup → check expiry → check not used → mark used → return result with email + tenantSlug
+  - [x] Token expiry: configurable (default 15 min)
+- [x] **3.4** Create `AuthModule` implementing `IModule`:
+  - [x] Register `MagicLinkService`
+  - [x] Register `ICurrentUser` as scoped
+  - [x] Register `MagicLinkCleanupService` (BackgroundService, purge tokens > 24h, runs every hour)
+- [x] **3.5** Create `SuperAdminAuthController`:
+  - [x] `GET /super-admin/login` — login form view
+  - [x] `POST /super-admin/login` — validate email in SuperAdmins table → generate magic link → send via IEmailService → show "check email" message
+  - [x] `GET /super-admin/verify?token=xxx` — verify token → issue SuperAdmin cookie (ClaimsPrincipal with IsSuperAdmin=true) → redirect to `/super-admin`
+  - [x] `POST /super-admin/logout` — sign out, clear cookie
+- [x] **3.6** Implement `CurrentUser` + `CurrentUserMiddleware`:
+  - [x] `CurrentUser` class implementing `ICurrentUser`
+  - [x] Middleware reads cookie claims → populates scoped `ICurrentUser`
+  - [x] Cross-tenant isolation: cookie's TenantSlug claim must match URL slug
+  - [x] For super admin: `IsSuperAdmin=true`, no tenant context needed
+- [x] **3.7** Create `TenantAuthController`:
+  - [x] `GET /{slug}/login` — login form (tenant-branded)
+  - [x] `POST /{slug}/login` — validate email in TenantDbContext (Identity UserManager) → generate magic link → send via IEmailService
+  - [x] `GET /{slug}/verify?token=xxx` — verify token → load user roles/permissions from TenantDbContext → issue Tenant cookie → redirect to `/{slug}/`
+  - [x] `POST /{slug}/logout` — sign out
+  - [x] Note: full QA requires a provisioned tenant (Phase 4), but controller is built now
+- [x] **3.8** Create `HasPermissionAttribute` + `HasPermissionFilter`:
+  - [x] Attribute takes permission key string
+  - [x] Filter checks `ICurrentUser.HasPermission(key)` → 403 if missing
+- [x] **3.9** Create tag helpers:
+  - [x] `has-permission` — shows content only if user has specified permission
+  - [x] `is-super-admin` — shows content only for super admin
+  - [x] `is-authenticated` — shows content only for authenticated users
+- [x] **3.10** Register `AuthModule` in module array in `Program.cs`
+- [x] **3.11** Create super admin login view + "check your email" view + verify error view
 
 ### Build & Test
 
-- [ ] `dotnet build` passes
-- [ ] `dotnet test` passes — new tests:
-  - [ ] `MagicLinkServiceTests` — generate returns non-null, stores hashed version, hash ≠ raw, verify valid succeeds, verify expired fails, verify used fails, verify bogus fails
-  - [ ] `CurrentUserTests` — reads claims correctly (email, roles, permissions, tenant slug, isSuperAdmin)
-  - [ ] `HasPermissionFilterTests` — allows with permission, denies without
-  - [ ] Integration: `POST /super-admin/login` with valid email → 200 + magic link in logs; `GET /super-admin/verify?token=valid` → cookie set + redirect; invalid token → error
+- [x] `dotnet build` passes
+- [x] `dotnet test` passes — new tests:
+  - [x] `MagicLinkServiceTests` — generate returns non-null, stores hashed version, hash ≠ raw, verify valid succeeds, verify expired fails, verify used fails, verify bogus fails
+  - [x] `CurrentUserTests` — reads claims correctly (email, roles, permissions, tenant slug, isSuperAdmin)
+  - [x] `HasPermissionFilterTests` — allows with permission, denies without
+  - [x] Integration: `POST /super-admin/login` with valid email → 200 + magic link in logs; `GET /super-admin/verify?token=valid` → cookie set + redirect; invalid token → error
 
 ### QA Handover — Phase 3
 
@@ -622,42 +622,42 @@ TENANT ADMIN:
 
 ### Steps
 
-- [ ] **7.1** Create `MarketingModule` implementing `IModule`
-- [ ] **7.2** Create `_MarketingLayout.cshtml` (full version):
-  - [ ] Public navbar: Logo, Pricing, About, Contact, Get Started, Sign In
-  - [ ] Footer: About, Contact, Terms, Privacy, copyright
-  - [ ] Open Graph meta tags from ViewData
-  - [ ] Mobile responsive (DaisyUI dropdown menu)
-- [ ] **7.3** Create `MarketingController`:
-  - [ ] `GET /` — landing page
-  - [ ] `GET /pricing` — plans from CoreDbContext
-  - [ ] `GET /about` — static
-  - [ ] `GET /contact` — form
-  - [ ] `POST /contact` — rate-limited, Turnstile-protected, sends email
-  - [ ] `GET /legal/terms` — static
-  - [ ] `GET /legal/privacy` — static
-  - [ ] `GET /login-redirect` — slug input → redirect to `/{slug}/login`
-  - [ ] `GET /sitemap.xml` — dynamic, cached
-  - [ ] `GET /robots.txt` — static, cached
-- [ ] **7.4** Create landing page view:
-  - [ ] Hero section, feature cards, CTA
-- [ ] **7.5** Create pricing page view:
-  - [ ] Plan cards from DB, monthly/annual toggle, FAQ accordion
-- [ ] **7.6** Create sign-in modal:
-  - [ ] Slug input → redirects to `/{slug}/login`
-- [ ] **7.7** Create static pages: About, Contact, Terms, Privacy
-- [ ] **7.8** Set up route priority in `Program.cs`:
-  - [ ] Marketing routes (explicit) registered BEFORE tenant catch-all
-- [ ] **7.9** Replace old `HomeController` / `Home/Index.cshtml` with marketing landing page
-- [ ] **7.10** Register `MarketingModule` in module array
+- [x] **7.1** Create `MarketingModule` implementing `IModule`
+- [x] **7.2** Create `_MarketingLayout.cshtml` (full version):
+  - [x] Public navbar: Logo, Pricing, About, Contact, Get Started, Sign In
+  - [x] Footer: About, Contact, Terms, Privacy, copyright
+  - [x] Open Graph meta tags from ViewData
+  - [x] Mobile responsive (DaisyUI dropdown menu)
+- [x] **7.3** Create `MarketingController`:
+  - [x] `GET /` — landing page
+  - [x] `GET /pricing` — plans from CoreDbContext
+  - [x] `GET /about` — static
+  - [x] `GET /contact` — form
+  - [x] `POST /contact` — rate-limited, Turnstile-protected, sends email
+  - [x] `GET /legal/terms` — static
+  - [x] `GET /legal/privacy` — static
+  - [x] `GET /login-redirect` — slug input → redirect to `/{slug}/login`
+  - [x] `GET /sitemap.xml` — dynamic, cached
+  - [x] `GET /robots.txt` — static, cached
+- [x] **7.4** Create landing page view:
+  - [x] Hero section, feature cards, CTA
+- [x] **7.5** Create pricing page view:
+  - [x] Plan cards from DB, monthly/annual toggle, FAQ accordion
+- [x] **7.6** Create sign-in modal:
+  - [x] Slug input → redirects to `/{slug}/login`
+- [x] **7.7** Create static pages: About, Contact, Terms, Privacy
+- [x] **7.8** Set up route priority in `Program.cs`:
+  - [x] Marketing routes (explicit) registered BEFORE tenant catch-all
+- [x] **7.9** Replace old `HomeController` / `Home/Index.cshtml` with marketing landing page
+- [x] **7.10** Register `MarketingModule` in module array
 
 ### Build & Test
 
-- [ ] `dotnet build` passes
-- [ ] `dotnet test` passes — new tests:
-  - [ ] Integration: `GET /` → 200 with marketing layout; `GET /pricing` → plan cards; `GET /sitemap.xml` → valid XML; `GET /robots.txt` → correct directives
-  - [ ] Integration: `POST /contact` rate limited (6th request → 429)
-  - [ ] Integration: `/pricing` → `/test/notes` — route priority correct
+- [x] `dotnet build` passes
+- [x] `dotnet test` passes — new tests:
+  - [x] Integration: `GET /` → 200 with marketing layout; `GET /pricing` → plan cards; `GET /sitemap.xml` → valid XML; `GET /robots.txt` → correct directives
+  - [x] Integration: `POST /contact` rate limited (6th request → 429)
+  - [x] Integration: `/pricing` → `/test/notes` — route priority correct
 
 ### QA Handover — Phase 7
 
@@ -685,7 +685,7 @@ When I hand this over, verify:
     reflects the updated prices
 ```
 
-**QA Status**: [ ] Not started · [ ] Issues raised · [ ] Signed off ✅
+**QA Status**: [ ] Not started · [ ] Issues raised · [x] Signed off ✅
 
 **QA Notes**:
 > _(Write any issues or observations here)_
