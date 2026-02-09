@@ -205,7 +205,8 @@ public class SuperAdminService : ISuperAdminService
         await _coreDb.SaveChangesAsync();
 
         // Push price/name changes to the payment gateway (Paystack)
-        if (plan.MonthlyPrice > 0 && !string.IsNullOrEmpty(plan.PaystackPlanCode))
+        // This will create the plan on Paystack if it doesn't exist yet, or update it
+        if (plan.MonthlyPrice > 0)
         {
             await _billingService.UpdatePlanInGatewayAsync(plan.Id);
         }

@@ -68,12 +68,54 @@ public class TenantBillingController : SwapController
                 .Build();
         }
 
+        // Paid plan change — redirect to Paystack checkout
+        if (!string.IsNullOrEmpty(result.PaymentUrl))
+        {
+            Response.Headers["HX-Redirect"] = result.PaymentUrl;
+            return Ok();
+        }
+
+        // Free plan change — refresh the billing page
         var model = await GetBillingModelAsync();
         return SwapResponse()
             .WithView("_ModalClose")
             .AlsoUpdate("billing-content", "_BillingContent", model)
             .WithSuccessToast("Plan changed successfully")
             .Build();
+    }
+
+    /// <summary>
+    /// Callback endpoint after Paystack payment for plan change.
+    /// Full-page GET request from Paystack redirect.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> Callback([FromQuery] string? reference, [FromQuery] string? trxref)
+    {
+        var ref_ = reference ?? trxref;
+        var slug = _tenantContext.Slug;
+
+        if (string.IsNullOrEmpty(ref_))
+        {
+            return SwapView("Callback", new { Success = false, Slug = slug,
+                ErrorMessage = "Invalid payment reference. Please contact support." });
+        }
+
+        // Verify and link the real subscription code
+        await _billingService.VerifyAndLinkSubscriptionAsync(ref_);
+
+        // Find the subscription by Paystack reference
+        var subscription = await _coreDb.Subscriptions
+            .Include(s => s.Tenant)
+            .FirstOrDefaultAsync(s => s.PaystackSubscriptionCode == ref_);
+
+        if (subscription is null)
+        {
+            return SwapView("Callback", new { Success = false, Slug = slug,
+                ErrorMessage = "Could not verify your payment. Please contact support." });
+        }
+
+        return SwapView("Callback", new { Success = true, Slug = slug,
+            ErrorMessage = (string?)null });
     }
 
     [HttpPost]

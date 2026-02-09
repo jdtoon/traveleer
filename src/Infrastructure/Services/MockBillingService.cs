@@ -77,10 +77,41 @@ public class MockBillingService : IBillingService
         return true;
     }
 
-    public Task<PlanChangeResult> ChangePlanAsync(Guid tenantId, Guid newPlanId)
+    public async Task<PlanChangeResult> ChangePlanAsync(Guid tenantId, Guid newPlanId)
     {
         _logger.LogInformation("[MOCK BILLING] ChangePlan tenant={TenantId} plan={PlanId}", tenantId, newPlanId);
-        return Task.FromResult(new PlanChangeResult(true));
+
+        // Update tenant plan
+        var tenant = await _db.Tenants.FindAsync(tenantId);
+        if (tenant is not null) tenant.PlanId = newPlanId;
+
+        // Update existing subscription in-place (1-to-1 relationship)
+        var existingSub = await _db.Subscriptions
+            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+            .OrderByDescending(s => s.StartDate)
+            .FirstOrDefaultAsync();
+
+        if (existingSub is not null)
+        {
+            existingSub.PlanId = newPlanId;
+            existingSub.StartDate = DateTime.UtcNow;
+            existingSub.NextBillingDate = DateTime.UtcNow.AddMonths(1);
+        }
+        else
+        {
+            _db.Subscriptions.Add(new Subscription
+            {
+                TenantId = tenantId,
+                PlanId = newPlanId,
+                Status = SubscriptionStatus.Active,
+                BillingCycle = BillingCycle.Monthly,
+                StartDate = DateTime.UtcNow,
+                NextBillingDate = DateTime.UtcNow.AddMonths(1)
+            });
+        }
+
+        await _db.SaveChangesAsync();
+        return new PlanChangeResult(true);
     }
 
     public Task SyncPlansAsync()

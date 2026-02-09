@@ -52,9 +52,7 @@ public class PaystackBillingService : IBillingService
         }
 
         // Calculate amount in kobo/cents (Paystack requires integer cents)
-        var amount = request.BillingCycle == BillingCycle.Annual && plan.AnnualPrice.HasValue
-            ? plan.AnnualPrice.Value * 100
-            : plan.MonthlyPrice * 100;
+        var amount = plan.MonthlyPrice * 100;
 
         var callbackUrl = request.CallbackUrl
             ?? $"{_options.CallbackBaseUrl}/register/callback";
@@ -180,26 +178,88 @@ public class PaystackBillingService : IBillingService
         if (tenant is null)
             return new PlanChangeResult(false, Error: "Tenant not found");
 
+        // Find existing active subscription (1-to-1 per tenant)
+        var existingSub = await _coreDb.Subscriptions
+            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+            .OrderByDescending(s => s.StartDate)
+            .FirstOrDefaultAsync();
+
+        // Cancel any existing Paystack subscription first
+        if (existingSub is not null
+            && !string.IsNullOrEmpty(existingSub.PaystackSubscriptionCode)
+            && existingSub.PaystackSubscriptionCode.StartsWith("SUB_"))
+        {
+            try
+            {
+                var subDetail = await _paystack.FetchSubscriptionAsync(
+                    existingSub.PaystackSubscriptionCode);
+
+                if (subDetail is not null && !string.IsNullOrEmpty(subDetail.EmailToken))
+                {
+                    await _paystack.DisableSubscriptionAsync(
+                        existingSub.PaystackSubscriptionCode,
+                        subDetail.EmailToken);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "Failed to disable old Paystack subscription {Code} during plan change",
+                    existingSub.PaystackSubscriptionCode);
+                // Continue anyway — the plan change should proceed
+            }
+        }
+
         // Update the tenant's plan
         tenant.PlanId = newPlanId;
 
-        // If free plan, just update directly
+        // ── Free plan: update subscription locally, no payment needed ──
         if (plan.MonthlyPrice == 0)
         {
+            if (existingSub is not null)
+            {
+                existingSub.PlanId = newPlanId;
+                existingSub.PaystackSubscriptionCode = null;
+                existingSub.PaystackCustomerCode = existingSub.PaystackCustomerCode; // preserve
+                existingSub.StartDate = DateTime.UtcNow;
+            }
+            else
+            {
+                _coreDb.Subscriptions.Add(new Subscription
+                {
+                    TenantId = tenantId,
+                    PlanId = newPlanId,
+                    Status = SubscriptionStatus.Active,
+                    BillingCycle = BillingCycle.Monthly,
+                    StartDate = DateTime.UtcNow
+                });
+            }
+
             await _coreDb.SaveChangesAsync();
+
+            await _audit.WriteAsync(new AuditEntry
+            {
+                EntityType = "Subscription",
+                EntityId = existingSub?.Id.ToString() ?? tenantId.ToString(),
+                Action = "PlanChanged",
+                NewValues = $"Switched to free plan {plan.Name}",
+                Timestamp = DateTime.UtcNow
+            });
+
             return new PlanChangeResult(true);
         }
 
-        // For paid plan changes, initialize a new payment
+        // ── Paid plan: redirect to Paystack checkout ──
         var amount = plan.MonthlyPrice * 100;
         try
         {
+            var callbackUrl = $"{_options.CallbackBaseUrl}/{tenant.Slug}/billing/callback";
+
             var paystackResult = await _paystack.InitializeTransactionAsync(new PaystackInitializeRequest
             {
                 Email = tenant.ContactEmail,
                 Amount = (int)amount,
                 Currency = plan.Currency ?? "ZAR",
-                CallbackUrl = $"{_options.CallbackBaseUrl}/{tenant.Slug}/billing",
+                CallbackUrl = callbackUrl,
                 Plan = plan.PaystackPlanCode,
                 Metadata = new Dictionary<string, object>
                 {
@@ -209,9 +269,36 @@ public class PaystackBillingService : IBillingService
                 }
             });
 
+            if (paystackResult is null)
+                return new PlanChangeResult(false, Error: "Payment initialization failed");
+
+            // Update existing subscription or create new one with the Paystack reference
+            if (existingSub is not null)
+            {
+                existingSub.PlanId = newPlanId;
+                existingSub.PaystackSubscriptionCode = paystackResult.Reference;
+                existingSub.StartDate = DateTime.UtcNow;
+            }
+            else
+            {
+                _coreDb.Subscriptions.Add(new Subscription
+                {
+                    TenantId = tenantId,
+                    PlanId = newPlanId,
+                    Status = SubscriptionStatus.Active,
+                    BillingCycle = BillingCycle.Monthly,
+                    StartDate = DateTime.UtcNow,
+                    PaystackSubscriptionCode = paystackResult.Reference
+                });
+            }
+
             await _coreDb.SaveChangesAsync();
 
-            return new PlanChangeResult(true, PaymentUrl: paystackResult?.AuthorizationUrl);
+            _logger.LogInformation(
+                "Plan change initialized for tenant {TenantId}: new plan {PlanId}, reference {Reference}",
+                tenantId, newPlanId, paystackResult.Reference);
+
+            return new PlanChangeResult(true, PaymentUrl: paystackResult.AuthorizationUrl);
         }
         catch (HttpRequestException ex)
         {
@@ -255,18 +342,6 @@ public class PaystackBillingService : IBillingService
                     dbPlan.PaystackPlanCode = monthlyResult.PlanCode;
                     _logger.LogInformation("Created Paystack plan {PlanCode} for {Name}",
                         monthlyResult.PlanCode, dbPlan.Name);
-                }
-
-                // Create annual plan if different price exists
-                if (dbPlan.AnnualPrice.HasValue)
-                {
-                    await _paystack.CreatePlanAsync(new PaystackCreatePlanRequest
-                    {
-                        Name = $"{dbPlan.Name} (Annual)",
-                        Interval = "annually",
-                        Amount = (int)(dbPlan.AnnualPrice.Value * 100),
-                        Currency = dbPlan.Currency ?? "ZAR"
-                    });
                 }
             }
 
@@ -666,11 +741,36 @@ public class PaystackBillingService : IBillingService
     public async Task<bool> UpdatePlanInGatewayAsync(Guid planId)
     {
         var plan = await _coreDb.Plans.FindAsync(planId);
-        if (plan is null || string.IsNullOrEmpty(plan.PaystackPlanCode))
+        if (plan is null || plan.MonthlyPrice <= 0)
             return false;
 
         try
         {
+            // If no Paystack plan code yet, create a new plan on Paystack
+            if (string.IsNullOrEmpty(plan.PaystackPlanCode))
+            {
+                var createResult = await _paystack.CreatePlanAsync(new PaystackCreatePlanRequest
+                {
+                    Name = $"{plan.Name} (Monthly)",
+                    Interval = "monthly",
+                    Amount = (int)(plan.MonthlyPrice * 100),
+                    Currency = plan.Currency ?? "ZAR"
+                });
+
+                if (createResult is not null)
+                {
+                    plan.PaystackPlanCode = createResult.PlanCode;
+                    await _coreDb.SaveChangesAsync();
+                    _logger.LogInformation("Created Paystack plan {PlanCode} for {Name}",
+                        createResult.PlanCode, plan.Name);
+                    return true;
+                }
+
+                _logger.LogWarning("Failed to create Paystack plan for {Name}", plan.Name);
+                return false;
+            }
+
+            // Existing plan — update name/amount on Paystack
             var result = await _paystack.UpdatePlanAsync(plan.PaystackPlanCode, new PaystackUpdatePlanRequest
             {
                 Name = $"{plan.Name} (Monthly)",
@@ -687,7 +787,7 @@ public class PaystackBillingService : IBillingService
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "Failed to update Paystack plan {PlanCode}", plan.PaystackPlanCode);
+            _logger.LogError(ex, "Failed to update/create Paystack plan for {Name}", plan.Name);
             return false;
         }
     }

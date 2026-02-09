@@ -626,6 +626,157 @@ public class PaystackBillingServiceTests : IAsyncDisposable
         Assert.Equal(TenantStatus.Active, updatedTenant!.Status);
     }
 
+    // ── ChangePlan Tests ────────────────────────────────────────────
+
+    [Fact]
+    public async Task ChangePlan_ToFreePlan_CancelsPaystackAndUpdatesSubscription()
+    {
+        // Set up an active paid subscription
+        _db.Subscriptions.Add(new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _proPlanId,
+            Status = SubscriptionStatus.Active,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow.AddMonths(-1),
+            PaystackSubscriptionCode = "SUB_old_paid"
+        });
+
+        // Update tenant to pro plan
+        var tenant = await _db.Tenants.FindAsync(_tenantId);
+        tenant!.PlanId = _proPlanId;
+        await _db.SaveChangesAsync();
+
+        // Set up routing handler for subscription fetch + disable
+        var handler = new RoutingHttpHandler(new Dictionary<string, string>
+        {
+            ["subscription/SUB_old_paid"] = """{"status":true,"data":{"subscription_code":"SUB_old_paid","email_token":"tok_change","status":"active"}}""",
+            ["subscription/disable"] = """{"status":true,"message":"Subscription disabled"}"""
+        });
+        var httpClient = new HttpClient(handler);
+        var client = new PaystackClient(httpClient,
+            Options.Create(new PaystackOptions { SecretKey = "sk_test" }),
+            NullLogger<PaystackClient>.Instance);
+
+        var service = CreateService(client);
+        var result = await service.ChangePlanAsync(_tenantId, _freePlanId);
+
+        Assert.True(result.Success);
+        Assert.Null(result.PaymentUrl); // Free plan — no Paystack redirect
+
+        // Subscription should be updated in-place to the free plan
+        var sub = await _db.Subscriptions
+            .FirstOrDefaultAsync(s => s.TenantId == _tenantId);
+        Assert.NotNull(sub);
+        Assert.Equal(_freePlanId, sub.PlanId);
+        Assert.Equal(SubscriptionStatus.Active, sub.Status);
+        Assert.Null(sub.PaystackSubscriptionCode); // Paystack code cleared
+
+        // Tenant's PlanId should be updated
+        var updatedTenant = await _db.Tenants.FindAsync(_tenantId);
+        Assert.Equal(_freePlanId, updatedTenant!.PlanId);
+    }
+
+    [Fact]
+    public async Task ChangePlan_ToPaidPlan_UpdatesSubAndReturnsPaymentUrl()
+    {
+        // Set up an active free subscription
+        _db.Subscriptions.Add(new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _freePlanId,
+            Status = SubscriptionStatus.Active,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow.AddMonths(-1)
+        });
+        await _db.SaveChangesAsync();
+
+        // Set up handler for transaction initialization
+        var handler = new RoutingHttpHandler(new Dictionary<string, string>
+        {
+            ["transaction/initialize"] = """{"status":true,"data":{"authorization_url":"https://paystack.com/pay/test","reference":"ref_change_123","access_code":"ac_test"}}"""
+        });
+        var httpClient = new HttpClient(handler);
+        var client = new PaystackClient(httpClient,
+            Options.Create(new PaystackOptions { SecretKey = "sk_test" }),
+            NullLogger<PaystackClient>.Instance);
+
+        var service = CreateService(client);
+        var result = await service.ChangePlanAsync(_tenantId, _proPlanId);
+
+        Assert.True(result.Success);
+        Assert.Equal("https://paystack.com/pay/test", result.PaymentUrl);
+
+        // Subscription should be updated in-place with the new plan + Paystack reference
+        var sub = await _db.Subscriptions
+            .FirstOrDefaultAsync(s => s.TenantId == _tenantId);
+        Assert.NotNull(sub);
+        Assert.Equal(_proPlanId, sub.PlanId);
+        Assert.Equal(SubscriptionStatus.Active, sub.Status);
+        Assert.Equal("ref_change_123", sub.PaystackSubscriptionCode);
+
+        // Tenant's PlanId should be updated
+        var updatedTenant = await _db.Tenants.FindAsync(_tenantId);
+        Assert.Equal(_proPlanId, updatedTenant!.PlanId);
+    }
+
+    [Fact]
+    public async Task ChangePlan_InvalidPlan_ReturnsError()
+    {
+        var service = CreateService();
+        var result = await service.ChangePlanAsync(_tenantId, Guid.NewGuid());
+
+        Assert.False(result.Success);
+        Assert.Equal("Plan not found", result.Error);
+    }
+
+    // ── UpdatePlanInGateway Tests ───────────────────────────────────
+
+    [Fact]
+    public async Task UpdatePlanInGateway_NoPlanCode_CreatesPlanOnPaystack()
+    {
+        // Add a paid plan with no Paystack code
+        var newPlanId = Guid.NewGuid();
+        _db.Plans.Add(new Plan
+        {
+            Id = newPlanId,
+            Name = "Starter",
+            Slug = "starter",
+            MonthlyPrice = 199,
+            Currency = "ZAR",
+            SortOrder = 2,
+            IsActive = true
+        });
+        await _db.SaveChangesAsync();
+
+        var handler = new RoutingHttpHandler(new Dictionary<string, string>
+        {
+            ["plan"] = """{"status":true,"data":{"plan_code":"PLN_new_created","name":"Starter (Monthly)"}}"""
+        });
+        var httpClient = new HttpClient(handler);
+        var client = new PaystackClient(httpClient,
+            Options.Create(new PaystackOptions { SecretKey = "sk_test" }),
+            NullLogger<PaystackClient>.Instance);
+
+        var service = CreateService(client);
+        var result = await service.UpdatePlanInGatewayAsync(newPlanId);
+
+        Assert.True(result);
+
+        // Plan should now have the Paystack code
+        var updatedPlan = await _db.Plans.FindAsync(newPlanId);
+        Assert.Equal("PLN_new_created", updatedPlan!.PaystackPlanCode);
+    }
+
+    [Fact]
+    public async Task UpdatePlanInGateway_FreePlan_ReturnsFalse()
+    {
+        var service = CreateService();
+        var result = await service.UpdatePlanInGatewayAsync(_freePlanId);
+
+        Assert.False(result);
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────
 
     private static string ComputeSignature(string payload, string secret)
