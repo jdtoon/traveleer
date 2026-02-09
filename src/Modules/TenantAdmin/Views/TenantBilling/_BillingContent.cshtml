@@ -20,6 +20,7 @@
                                 saas.Data.Core.SubscriptionStatus.Active => "badge-success",
                                 saas.Data.Core.SubscriptionStatus.Cancelled => "badge-error",
                                 saas.Data.Core.SubscriptionStatus.PastDue => "badge-warning",
+                                saas.Data.Core.SubscriptionStatus.NonRenewing => "badge-warning",
                                 saas.Data.Core.SubscriptionStatus.Trialing => "badge-info",
                                 _ => "badge-ghost"
                             };
@@ -46,13 +47,24 @@
                         hx-target="#modal-container">
                     Change Plan
                 </button>
-                @if (Model.SubscriptionStatus == saas.Data.Core.SubscriptionStatus.Active)
+                @if (Model.SubscriptionStatus == saas.Data.Core.SubscriptionStatus.Active
+                    || Model.SubscriptionStatus == saas.Data.Core.SubscriptionStatus.NonRenewing)
                 {
                     <button class="btn btn-outline btn-error btn-sm"
                             hx-post="@Url.Action("Cancel", "TenantBilling")"
                             hx-target="#billing-content"
                             hx-confirm="Are you sure you want to cancel your subscription?">
                         Cancel
+                    </button>
+                }
+                @if (Model.HasPaystackSubscription
+                    && (Model.SubscriptionStatus == saas.Data.Core.SubscriptionStatus.Active
+                        || Model.SubscriptionStatus == saas.Data.Core.SubscriptionStatus.NonRenewing))
+                {
+                    <button class="btn btn-outline btn-sm"
+                            hx-post="@Url.Action("ManageSubscription", "TenantBilling")"
+                            hx-swap="none">
+                        Update Card
                     </button>
                 }
             </div>

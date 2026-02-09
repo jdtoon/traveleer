@@ -137,4 +137,16 @@ public class MockBillingService : IBillingService
         _logger.LogInformation("[MOCK BILLING] UpdatePlanInGateway plan={PlanId}", planId);
         return Task.FromResult(true);
     }
+
+    public Task<string?> GetManageLinkAsync(Guid tenantId)
+    {
+        _logger.LogInformation("[MOCK BILLING] GetManageLink tenant={TenantId}", tenantId);
+        return Task.FromResult<string?>(null);
+    }
+
+    public Task ReconcileSubscriptionsAsync()
+    {
+        _logger.LogInformation("[MOCK BILLING] ReconcileSubscriptions");
+        return Task.CompletedTask;
+    }
 }

@@ -73,6 +73,8 @@ public class SuperAdminServiceTests : IAsyncLifetime
         public Task<WebhookResult> ProcessWebhookAsync(string p, string s) => Task.FromResult(new WebhookResult(true));
         public Task VerifyAndLinkSubscriptionAsync(string reference) => Task.CompletedTask;
         public Task<bool> UpdatePlanInGatewayAsync(Guid planId) => Task.FromResult(true);
+        public Task<string?> GetManageLinkAsync(Guid tenantId) => Task.FromResult<string?>(null);
+        public Task ReconcileSubscriptionsAsync() => Task.CompletedTask;
     }
 
     public async Task DisposeAsync()

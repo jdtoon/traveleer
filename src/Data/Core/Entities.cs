@@ -130,7 +130,8 @@ public enum SubscriptionStatus
     PastDue,
     Cancelled,
     Expired,
-    Trialing
+    Trialing,
+    NonRenewing
 }
 
 public enum BillingCycle

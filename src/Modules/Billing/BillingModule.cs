@@ -36,6 +36,9 @@ public class BillingModule : IModule
 
             // Background plan sync — only in Paystack mode
             services.AddHostedService<PaystackPlanSyncService>();
+
+            // Background subscription reconciliation — every 6 hours
+            services.AddHostedService<PaystackSubscriptionSyncService>();
         }
         else
         {

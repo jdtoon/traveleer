@@ -20,6 +20,7 @@ public class PaystackBillingService : IBillingService
     private readonly InvoiceGenerator _invoiceGenerator;
     private readonly PaystackOptions _options;
     private readonly IAuditWriter _audit;
+    private readonly IEmailService _emailService;
     private readonly ILogger<PaystackBillingService> _logger;
 
     public PaystackBillingService(
@@ -28,6 +29,7 @@ public class PaystackBillingService : IBillingService
         InvoiceGenerator invoiceGenerator,
         IOptions<PaystackOptions> options,
         IAuditWriter audit,
+        IEmailService emailService,
         ILogger<PaystackBillingService> logger)
     {
         _paystack = paystack;
@@ -35,6 +37,7 @@ public class PaystackBillingService : IBillingService
         _invoiceGenerator = invoiceGenerator;
         _options = options.Value;
         _audit = audit;
+        _emailService = emailService;
         _logger = logger;
     }
 
@@ -178,9 +181,12 @@ public class PaystackBillingService : IBillingService
         if (tenant is null)
             return new PlanChangeResult(false, Error: "Tenant not found");
 
-        // Find existing active subscription (1-to-1 per tenant)
+        // Find existing subscription (Active, NonRenewing, or PastDue — all valid for plan change)
         var existingSub = await _coreDb.Subscriptions
-            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+            .Where(s => s.TenantId == tenantId
+                && (s.Status == SubscriptionStatus.Active
+                    || s.Status == SubscriptionStatus.NonRenewing
+                    || s.Status == SubscriptionStatus.PastDue))
             .OrderByDescending(s => s.StartDate)
             .FirstOrDefaultAsync();
 
@@ -199,6 +205,10 @@ public class PaystackBillingService : IBillingService
                     await _paystack.DisableSubscriptionAsync(
                         existingSub.PaystackSubscriptionCode,
                         subDetail.EmailToken);
+
+                    _logger.LogInformation(
+                        "Cancelled previous Paystack subscription {Code} during plan change for tenant {TenantId}",
+                        existingSub.PaystackSubscriptionCode, tenantId);
                 }
             }
             catch (HttpRequestException ex)
@@ -209,8 +219,13 @@ public class PaystackBillingService : IBillingService
             }
         }
 
-        // Update the tenant's plan
+        // Update the tenant's plan and ensure active status
         tenant.PlanId = newPlanId;
+        if (tenant.Status == TenantStatus.Suspended)
+        {
+            tenant.Status = TenantStatus.Active;
+            _logger.LogInformation("Reactivated suspended tenant {TenantId} during plan change", tenantId);
+        }
 
         // ── Free plan: update subscription locally, no payment needed ──
         if (plan.MonthlyPrice == 0)
@@ -218,6 +233,7 @@ public class PaystackBillingService : IBillingService
             if (existingSub is not null)
             {
                 existingSub.PlanId = newPlanId;
+                existingSub.Status = SubscriptionStatus.Active;
                 existingSub.PaystackSubscriptionCode = null;
                 existingSub.PaystackCustomerCode = existingSub.PaystackCustomerCode; // preserve
                 existingSub.StartDate = DateTime.UtcNow;
@@ -276,8 +292,11 @@ public class PaystackBillingService : IBillingService
             if (existingSub is not null)
             {
                 existingSub.PlanId = newPlanId;
+                existingSub.Status = SubscriptionStatus.Active;
                 existingSub.PaystackSubscriptionCode = paystackResult.Reference;
                 existingSub.StartDate = DateTime.UtcNow;
+                existingSub.EndDate = null;
+                existingSub.CancelledAt = null;
             }
             else
             {
@@ -386,6 +405,7 @@ public class PaystackBillingService : IBillingService
             "subscription.create" => await HandleSubscriptionCreatedAsync(webhookEvent),
             "subscription.not_renew" => await HandleSubscriptionNotRenewAsync(webhookEvent),
             "subscription.disable" => await HandleSubscriptionDisabledAsync(webhookEvent),
+            "subscription.expiring_cards" => await HandleExpiringCardsAsync(webhookEvent),
             "invoice.create" => await HandleInvoiceCreatedAsync(webhookEvent),
             "invoice.update" => await HandleInvoiceUpdatedAsync(webhookEvent),
             "invoice.payment_failed" => await HandlePaymentFailedAsync(webhookEvent),
@@ -529,9 +549,21 @@ public class PaystackBillingService : IBillingService
 
         if (subscription is not null)
         {
-            subscription.Status = SubscriptionStatus.Cancelled;
-            subscription.EndDate = DateTime.UtcNow;
+            subscription.Status = SubscriptionStatus.NonRenewing;
             await _coreDb.SaveChangesAsync();
+
+            await _audit.WriteAsync(new AuditEntry
+            {
+                EntityType = "Subscription",
+                EntityId = subscription.Id.ToString(),
+                Action = "NonRenewing",
+                NewValues = "Subscription will not renew at end of billing period",
+                Timestamp = DateTime.UtcNow
+            });
+
+            _logger.LogInformation(
+                "Subscription {Code} marked as non-renewing for tenant {TenantId}",
+                subscriptionCode, subscription.TenantId);
         }
 
         return new WebhookResult(true);
@@ -549,9 +581,24 @@ public class PaystackBillingService : IBillingService
 
         if (subscription is not null)
         {
+            var previousStatus = subscription.Status;
             subscription.Status = SubscriptionStatus.Cancelled;
             subscription.EndDate = DateTime.UtcNow;
+            subscription.CancelledAt = DateTime.UtcNow;
             await _coreDb.SaveChangesAsync();
+
+            await _audit.WriteAsync(new AuditEntry
+            {
+                EntityType = "Subscription",
+                EntityId = subscription.Id.ToString(),
+                Action = "Disabled",
+                NewValues = $"Subscription disabled (was {previousStatus})",
+                Timestamp = DateTime.UtcNow
+            });
+
+            _logger.LogInformation(
+                "Subscription {Code} disabled for tenant {TenantId} (was {PreviousStatus})",
+                subscriptionCode, subscription.TenantId, previousStatus);
         }
 
         return new WebhookResult(true);
@@ -648,6 +695,70 @@ public class PaystackBillingService : IBillingService
         return new WebhookResult(true);
     }
 
+    private async Task<WebhookResult> HandleExpiringCardsAsync(PaystackWebhookEvent webhookEvent)
+    {
+        var subscriptionCode = webhookEvent.Data.SubscriptionCode ?? webhookEvent.Data.Subscription?.Code;
+        if (string.IsNullOrEmpty(subscriptionCode))
+            return new WebhookResult(true);
+
+        var subscription = await _coreDb.Subscriptions
+            .Include(s => s.Tenant)
+            .FirstOrDefaultAsync(s => s.PaystackSubscriptionCode == subscriptionCode);
+
+        if (subscription?.Tenant is null)
+        {
+            _logger.LogWarning("subscription.expiring_cards: no tenant found for {Code}", subscriptionCode);
+            return new WebhookResult(true);
+        }
+
+        var tenant = subscription.Tenant;
+
+        try
+        {
+            // Fetch manage link so tenant can update their card
+            var manageUrl = "";
+            try
+            {
+                var subDetail = await _paystack.FetchSubscriptionAsync(subscriptionCode);
+                manageUrl = subDetail?.ManageLink ?? "";
+            }
+            catch (HttpRequestException)
+            {
+                // Non-critical — send email without link
+            }
+
+            var updateCardSection = !string.IsNullOrEmpty(manageUrl)
+                ? $"<p><a href=\"{manageUrl}\" style=\"display:inline-block;padding:10px 20px;background-color:#570df8;color:#ffffff;text-decoration:none;border-radius:6px;\">Update Card Now</a></p>"
+                : "<p>Please log in to your billing page to update your card details.</p>";
+
+            await _emailService.SendAsync(new EmailMessage(
+                To: tenant.ContactEmail,
+                Subject: "Action required: Your card is expiring soon",
+                HtmlBody: $"""
+                    <h2>Card Expiring Soon</h2>
+                    <p>Hi,</p>
+                    <p>The card on file for your <strong>{tenant.Name}</strong> subscription is expiring soon.
+                    Please update your payment details to avoid any interruption in service.</p>
+                    {updateCardSection}
+                    <p>If you have any questions, please contact our support team.</p>
+                    """,
+                PlainTextBody: $"The card on file for your {tenant.Name} subscription is expiring soon. " +
+                    "Please update your payment details to avoid any interruption in service."
+            ));
+
+            _logger.LogInformation(
+                "Expiring card notification sent to {Email} for tenant {TenantId}",
+                tenant.ContactEmail, tenant.Id);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Failed to send expiring card notification for tenant {TenantId}",
+                subscription.TenantId);
+        }
+
+        return new WebhookResult(true);
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────
 
     private async Task CreateFreeSubscriptionAsync(Guid tenantId, Plan plan, BillingCycle billingCycle)
@@ -738,6 +849,31 @@ public class PaystackBillingService : IBillingService
         }
     }
 
+    public async Task<string?> GetManageLinkAsync(Guid tenantId)
+    {
+        var subscription = await _coreDb.Subscriptions
+            .Where(s => s.TenantId == tenantId
+                && s.PaystackSubscriptionCode != null
+                && s.PaystackSubscriptionCode.StartsWith("SUB_"))
+            .OrderByDescending(s => s.StartDate)
+            .FirstOrDefaultAsync();
+
+        if (subscription is null)
+            return null;
+
+        try
+        {
+            var detail = await _paystack.FetchSubscriptionAsync(subscription.PaystackSubscriptionCode!);
+            return detail?.ManageLink;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch manage link for subscription {Code}",
+                subscription.PaystackSubscriptionCode);
+            return null;
+        }
+    }
+
     public async Task<bool> UpdatePlanInGatewayAsync(Guid planId)
     {
         var plan = await _coreDb.Plans.FindAsync(planId);
@@ -791,6 +927,84 @@ public class PaystackBillingService : IBillingService
             return false;
         }
     }
+
+    public async Task ReconcileSubscriptionsAsync()
+    {
+        _logger.LogInformation("Starting subscription reconciliation...");
+
+        var subscriptions = await _coreDb.Subscriptions
+            .Include(s => s.Tenant)
+            .Where(s => s.PaystackSubscriptionCode != null
+                && s.PaystackSubscriptionCode.StartsWith("SUB_")
+                && (s.Status == SubscriptionStatus.Active
+                    || s.Status == SubscriptionStatus.NonRenewing
+                    || s.Status == SubscriptionStatus.PastDue))
+            .ToListAsync();
+
+        var reconciled = 0;
+
+        foreach (var sub in subscriptions)
+        {
+            try
+            {
+                var detail = await _paystack.FetchSubscriptionAsync(sub.PaystackSubscriptionCode!);
+                if (detail is null) continue;
+
+                var gatewayStatus = MapPaystackStatus(detail.Status);
+                if (gatewayStatus == sub.Status) continue;
+
+                var previousStatus = sub.Status;
+                sub.Status = gatewayStatus;
+
+                if (gatewayStatus == SubscriptionStatus.Cancelled)
+                {
+                    sub.EndDate ??= DateTime.UtcNow;
+                    sub.CancelledAt ??= DateTime.UtcNow;
+                }
+
+                await _audit.WriteAsync(new AuditEntry
+                {
+                    EntityType = "Subscription",
+                    EntityId = sub.Id.ToString(),
+                    Action = "Reconciled",
+                    NewValues = $"Status changed from {previousStatus} to {gatewayStatus} (gateway: {detail.Status})",
+                    Timestamp = DateTime.UtcNow
+                });
+
+                reconciled++;
+
+                _logger.LogInformation(
+                    "Reconciled subscription {Code} for tenant {TenantId}: {Old} → {New}",
+                    sub.PaystackSubscriptionCode, sub.TenantId, previousStatus, gatewayStatus);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to reconcile subscription {Code} for tenant {TenantId}",
+                    sub.PaystackSubscriptionCode, sub.TenantId);
+            }
+        }
+
+        if (reconciled > 0)
+            await _coreDb.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Subscription reconciliation complete. {Reconciled}/{Total} updated.",
+            reconciled, subscriptions.Count);
+    }
+
+    /// <summary>
+    /// Map Paystack subscription status strings to our SubscriptionStatus enum.
+    /// </summary>
+    private static SubscriptionStatus MapPaystackStatus(string paystackStatus) => paystackStatus switch
+    {
+        "active" => SubscriptionStatus.Active,
+        "non-renewing" => SubscriptionStatus.NonRenewing,
+        "attention" => SubscriptionStatus.PastDue,
+        "completed" => SubscriptionStatus.Cancelled,
+        "cancelled" => SubscriptionStatus.Cancelled,
+        _ => SubscriptionStatus.Active
+    };
 
     /// <summary>
     /// Try to link the real subscription code by verifying the transaction reference with Paystack.

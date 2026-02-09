@@ -130,5 +130,9 @@ public class TenantBillingTests : IAsyncLifetime
         public Task VerifyAndLinkSubscriptionAsync(string reference) => Task.CompletedTask;
 
         public Task<bool> UpdatePlanInGatewayAsync(Guid planId) => Task.FromResult(true);
+
+        public Task<string?> GetManageLinkAsync(Guid tenantId) => Task.FromResult<string?>(null);
+
+        public Task ReconcileSubscriptionsAsync() => Task.CompletedTask;
     }
 }

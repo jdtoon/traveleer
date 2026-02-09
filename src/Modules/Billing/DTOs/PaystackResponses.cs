@@ -107,6 +107,9 @@ public class PaystackSubscriptionDetailResponse
     [JsonPropertyName("status")]
     public string Status { get; set; } = string.Empty;
 
+    [JsonPropertyName("manage_link")]
+    public string? ManageLink { get; set; }
+
     [JsonPropertyName("customer")]
     public PaystackCustomerResponse? Customer { get; set; }
 }

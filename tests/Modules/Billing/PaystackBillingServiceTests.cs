@@ -20,6 +20,7 @@ public class PaystackBillingServiceTests : IAsyncDisposable
     private readonly InvoiceGenerator _invoiceGenerator;
     private readonly PaystackOptions _options;
     private readonly StubAuditWriter _auditWriter;
+    private readonly StubEmailService _emailService;
 
     // Test data
     private readonly Guid _tenantId = Guid.NewGuid();
@@ -47,6 +48,7 @@ public class PaystackBillingServiceTests : IAsyncDisposable
             CallbackBaseUrl = "https://localhost:5001"
         };
         _auditWriter = new StubAuditWriter();
+        _emailService = new StubEmailService();
 
         SeedTestData();
     }
@@ -99,6 +101,7 @@ public class PaystackBillingServiceTests : IAsyncDisposable
             _invoiceGenerator,
             Options.Create(_options),
             _auditWriter,
+            _emailService,
             NullLogger<PaystackBillingService>.Instance);
     }
 
@@ -571,6 +574,226 @@ public class PaystackBillingServiceTests : IAsyncDisposable
         var subscription = await _db.Subscriptions
             .FirstAsync(s => s.PaystackSubscriptionCode == subscriptionCode);
         Assert.Equal(SubscriptionStatus.Cancelled, subscription.Status);
+        Assert.NotNull(subscription.CancelledAt);
+        Assert.NotNull(subscription.EndDate);
+    }
+
+    [Fact]
+    public async Task ProcessWebhook_SubscriptionNotRenew_SetsNonRenewing()
+    {
+        var subscriptionCode = "SUB_test_not_renew";
+        _db.Subscriptions.Add(new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _proPlanId,
+            Status = SubscriptionStatus.Active,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow,
+            PaystackSubscriptionCode = subscriptionCode
+        });
+        await _db.SaveChangesAsync();
+
+        var service = CreateService();
+
+        var webhookPayload = new PaystackWebhookEvent
+        {
+            Event = "subscription.not_renew",
+            Data = new PaystackWebhookData
+            {
+                Subscription = new PaystackWebhookSubscription { Code = subscriptionCode }
+            }
+        };
+
+        var payload = JsonSerializer.Serialize(webhookPayload);
+        var signature = ComputeSignature(payload, _options.WebhookSecret);
+
+        var result = await service.ProcessWebhookAsync(payload, signature);
+
+        Assert.True(result.Success);
+
+        var subscription = await _db.Subscriptions
+            .FirstAsync(s => s.PaystackSubscriptionCode == subscriptionCode);
+        Assert.Equal(SubscriptionStatus.NonRenewing, subscription.Status);
+        Assert.Null(subscription.EndDate); // EndDate not set yet — set when disabled
+    }
+
+    [Fact]
+    public async Task ProcessWebhook_ExpiringCards_SendsEmailToTenantAdmin()
+    {
+        var subscriptionCode = "SUB_test_expiring";
+        _db.Subscriptions.Add(new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _proPlanId,
+            Status = SubscriptionStatus.Active,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow,
+            PaystackSubscriptionCode = subscriptionCode
+        });
+        await _db.SaveChangesAsync();
+
+        // Use handler that returns subscription with manage_link
+        var handler = new RoutingHttpHandler(new Dictionary<string, string>
+        {
+            [$"subscription/{subscriptionCode}"] = """{"status":true,"data":{"subscription_code":"SUB_test_expiring","email_token":"tok","status":"active","manage_link":"https://paystack.com/manage/123"}}"""
+        });
+        var httpClient = new HttpClient(handler);
+        var client = new PaystackClient(httpClient,
+            Options.Create(new PaystackOptions { SecretKey = "sk_test" }),
+            NullLogger<PaystackClient>.Instance);
+
+        var service = CreateService(client);
+
+        var webhookPayload = new PaystackWebhookEvent
+        {
+            Event = "subscription.expiring_cards",
+            Data = new PaystackWebhookData
+            {
+                Subscription = new PaystackWebhookSubscription { Code = subscriptionCode }
+            }
+        };
+
+        var payload = JsonSerializer.Serialize(webhookPayload);
+        var signature = ComputeSignature(payload, _options.WebhookSecret);
+
+        var result = await service.ProcessWebhookAsync(payload, signature);
+
+        Assert.True(result.Success);
+        Assert.Single(_emailService.SentMessages);
+        Assert.Equal("admin@test.com", _emailService.SentMessages[0].To);
+        Assert.Contains("expiring", _emailService.SentMessages[0].Subject, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Update Card Now", _emailService.SentMessages[0].HtmlBody);
+    }
+
+    [Fact]
+    public async Task ChangePlan_FromNonRenewing_CancelsOldAndUpdates()
+    {
+        // Set up a non-renewing paid subscription
+        _db.Subscriptions.Add(new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _proPlanId,
+            Status = SubscriptionStatus.NonRenewing,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow.AddMonths(-1),
+            PaystackSubscriptionCode = "SUB_old_nonrenewing"
+        });
+
+        var tenant = await _db.Tenants.FindAsync(_tenantId);
+        tenant!.PlanId = _proPlanId;
+        await _db.SaveChangesAsync();
+
+        var handler = new RoutingHttpHandler(new Dictionary<string, string>
+        {
+            ["subscription/SUB_old_nonrenewing"] = """{"status":true,"data":{"subscription_code":"SUB_old_nonrenewing","email_token":"tok_nr","status":"non-renewing"}}""",
+            ["subscription/disable"] = """{"status":true,"message":"Subscription disabled"}"""
+        });
+        var httpClient = new HttpClient(handler);
+        var client = new PaystackClient(httpClient,
+            Options.Create(new PaystackOptions { SecretKey = "sk_test" }),
+            NullLogger<PaystackClient>.Instance);
+
+        var service = CreateService(client);
+        var result = await service.ChangePlanAsync(_tenantId, _freePlanId);
+
+        Assert.True(result.Success);
+
+        var sub = await _db.Subscriptions.FirstOrDefaultAsync(s => s.TenantId == _tenantId);
+        Assert.NotNull(sub);
+        Assert.Equal(_freePlanId, sub.PlanId);
+        Assert.Equal(SubscriptionStatus.Active, sub.Status);
+    }
+
+    [Fact]
+    public async Task ChangePlan_SuspendedTenant_ReactivatesTenant()
+    {
+        // Suspend the tenant
+        var tenant = await _db.Tenants.FindAsync(_tenantId);
+        tenant!.Status = TenantStatus.Suspended;
+        tenant.PlanId = _proPlanId;
+
+        _db.Subscriptions.Add(new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _proPlanId,
+            Status = SubscriptionStatus.PastDue,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow.AddMonths(-1)
+        });
+        await _db.SaveChangesAsync();
+
+        var service = CreateService();
+        var result = await service.ChangePlanAsync(_tenantId, _freePlanId);
+
+        Assert.True(result.Success);
+
+        var updatedTenant = await _db.Tenants.FindAsync(_tenantId);
+        Assert.Equal(TenantStatus.Active, updatedTenant!.Status);
+    }
+
+    [Fact]
+    public async Task ReconcileSubscriptions_UpdatesDriftedStatus()
+    {
+        // Create an active subscription that Paystack says is non-renewing
+        _db.Subscriptions.Add(new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _proPlanId,
+            Status = SubscriptionStatus.Active,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow,
+            PaystackSubscriptionCode = "SUB_reconcile_test"
+        });
+        await _db.SaveChangesAsync();
+
+        var handler = new RoutingHttpHandler(new Dictionary<string, string>
+        {
+            ["subscription/SUB_reconcile_test"] = """{"status":true,"data":{"subscription_code":"SUB_reconcile_test","email_token":"tok","status":"non-renewing"}}"""
+        });
+        var httpClient = new HttpClient(handler);
+        var client = new PaystackClient(httpClient,
+            Options.Create(new PaystackOptions { SecretKey = "sk_test" }),
+            NullLogger<PaystackClient>.Instance);
+
+        var service = CreateService(client);
+        await service.ReconcileSubscriptionsAsync();
+
+        var sub = await _db.Subscriptions
+            .FirstAsync(s => s.PaystackSubscriptionCode == "SUB_reconcile_test");
+        Assert.Equal(SubscriptionStatus.NonRenewing, sub.Status);
+    }
+
+    [Fact]
+    public async Task ReconcileSubscriptions_CancelledOnPaystack_SetsCancelledLocally()
+    {
+        _db.Subscriptions.Add(new Subscription
+        {
+            TenantId = _tenantId,
+            PlanId = _proPlanId,
+            Status = SubscriptionStatus.Active,
+            BillingCycle = BillingCycle.Monthly,
+            StartDate = DateTime.UtcNow,
+            PaystackSubscriptionCode = "SUB_reconcile_cancelled"
+        });
+        await _db.SaveChangesAsync();
+
+        var handler = new RoutingHttpHandler(new Dictionary<string, string>
+        {
+            ["subscription/SUB_reconcile_cancelled"] = """{"status":true,"data":{"subscription_code":"SUB_reconcile_cancelled","email_token":"tok","status":"cancelled"}}"""
+        });
+        var httpClient = new HttpClient(handler);
+        var client = new PaystackClient(httpClient,
+            Options.Create(new PaystackOptions { SecretKey = "sk_test" }),
+            NullLogger<PaystackClient>.Instance);
+
+        var service = CreateService(client);
+        await service.ReconcileSubscriptionsAsync();
+
+        var sub = await _db.Subscriptions
+            .FirstAsync(s => s.PaystackSubscriptionCode == "SUB_reconcile_cancelled");
+        Assert.Equal(SubscriptionStatus.Cancelled, sub.Status);
+        Assert.NotNull(sub.EndDate);
+        Assert.NotNull(sub.CancelledAt);
     }
 
     [Fact]
@@ -804,6 +1027,19 @@ public class PaystackBillingServiceTests : IAsyncDisposable
             Entries.Add(entry);
             return ValueTask.CompletedTask;
         }
+    }
+
+    private class StubEmailService : IEmailService
+    {
+        public List<EmailMessage> SentMessages { get; } = [];
+
+        public Task SendAsync(EmailMessage message)
+        {
+            SentMessages.Add(message);
+            return Task.CompletedTask;
+        }
+
+        public Task SendMagicLinkAsync(string to, string magicLinkUrl) => Task.CompletedTask;
     }
 
     private class StubHttpHandler : HttpMessageHandler

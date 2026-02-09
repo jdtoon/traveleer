@@ -24,6 +24,16 @@ public interface IBillingService
     /// Called when SuperAdmin edits a plan.
     /// </summary>
     Task<bool> UpdatePlanInGatewayAsync(Guid planId);
+    /// <summary>
+    /// Get the Paystack manage subscription link for updating card details.
+    /// Returns null if not available.
+    /// </summary>
+    Task<string?> GetManageLinkAsync(Guid tenantId);
+    /// <summary>
+    /// Reconcile local subscription statuses with the payment gateway.
+    /// Called periodically by a background service.
+    /// </summary>
+    Task ReconcileSubscriptionsAsync();
 }
 
 public record SubscriptionInitRequest(

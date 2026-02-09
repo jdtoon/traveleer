@@ -139,6 +139,24 @@ public class TenantBillingController : SwapController
             .Build();
     }
 
+    [HttpPost]
+    public async Task<IActionResult> ManageSubscription()
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue) return NotFound();
+
+        var manageLink = await _billingService.GetManageLinkAsync(tenantId.Value);
+        if (string.IsNullOrEmpty(manageLink))
+        {
+            return SwapResponse()
+                .WithErrorToast("Unable to retrieve subscription management link")
+                .Build();
+        }
+
+        Response.Headers["HX-Redirect"] = manageLink;
+        return Ok();
+    }
+
     private async Task<BillingViewModel?> GetBillingModelAsync()
     {
         var tenantId = _tenantContext.TenantId;
@@ -167,6 +185,7 @@ public class TenantBillingController : SwapController
             BillingCycle = tenant.ActiveSubscription?.BillingCycle,
             NextBillingDate = tenant.ActiveSubscription?.NextBillingDate,
             CancelledAt = tenant.ActiveSubscription?.CancelledAt,
+            HasPaystackSubscription = tenant.ActiveSubscription?.PaystackSubscriptionCode?.StartsWith("SUB_") == true,
             Invoices = invoices
         };
     }
@@ -182,6 +201,7 @@ public class BillingViewModel
     public BillingCycle? BillingCycle { get; set; }
     public DateTime? NextBillingDate { get; set; }
     public DateTime? CancelledAt { get; set; }
+    public bool HasPaystackSubscription { get; set; }
     public List<Invoice> Invoices { get; set; } = [];
 }
 

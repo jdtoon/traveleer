@@ -57,6 +57,9 @@ public class BillingModuleTests
         // Add IAuditWriter stub
         services.AddSingleton<IAuditWriter>(new StubAuditWriter());
 
+        // Add IEmailService stub
+        services.AddSingleton<IEmailService>(new StubEmailService());
+
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -151,5 +154,11 @@ public class BillingModuleTests
     private class StubAuditWriter : IAuditWriter
     {
         public ValueTask WriteAsync(saas.Data.Audit.AuditEntry entry) => ValueTask.CompletedTask;
+    }
+
+    private class StubEmailService : IEmailService
+    {
+        public Task SendAsync(EmailMessage message) => Task.CompletedTask;
+        public Task SendMagicLinkAsync(string to, string magicLinkUrl) => Task.CompletedTask;
     }
 }
