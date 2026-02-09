@@ -94,4 +94,16 @@ public class MockBillingService : IBillingService
         _logger.LogInformation("[MOCK BILLING] ProcessWebhook");
         return Task.FromResult(new WebhookResult(true));
     }
+
+    public Task VerifyAndLinkSubscriptionAsync(string reference)
+    {
+        _logger.LogInformation("[MOCK BILLING] VerifyAndLinkSubscription reference={Reference}", reference);
+        return Task.CompletedTask;
+    }
+
+    public Task<bool> UpdatePlanInGatewayAsync(Guid planId)
+    {
+        _logger.LogInformation("[MOCK BILLING] UpdatePlanInGateway plan={PlanId}", planId);
+        return Task.FromResult(true);
+    }
 }

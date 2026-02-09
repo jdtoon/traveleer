@@ -206,6 +206,10 @@ public class RegistrationController : SwapController
 
         var tenant = subscription.Tenant;
 
+        // Verify the transaction and link the real subscription code (SUB_xxx)
+        // before provisioning, so cancellation works later
+        await _billingService.VerifyAndLinkSubscriptionAsync(ref_);
+
         // If tenant is still pending setup, provision now
         if (tenant.Status == TenantStatus.PendingSetup)
         {

@@ -72,6 +72,12 @@ public class PaystackTransactionResponse
 
     [JsonPropertyName("metadata")]
     public Dictionary<string, object>? Metadata { get; set; }
+
+    [JsonPropertyName("plan_object")]
+    public PaystackPlanResponse? PlanObject { get; set; }
+
+    [JsonPropertyName("customer")]
+    public PaystackCustomerResponse? Customer { get; set; }
 }
 
 public class PaystackSubscriptionResponse

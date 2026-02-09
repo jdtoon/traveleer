@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using saas.Data;
 using saas.Data.Core;
 using saas.Data.Tenant;
+using saas.Shared;
 
 namespace saas.Modules.SuperAdmin.Services;
 
@@ -9,11 +10,13 @@ public class SuperAdminService : ISuperAdminService
 {
     private readonly CoreDbContext _coreDb;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IBillingService _billingService;
 
-    public SuperAdminService(CoreDbContext coreDb, IServiceProvider serviceProvider)
+    public SuperAdminService(CoreDbContext coreDb, IServiceProvider serviceProvider, IBillingService billingService)
     {
         _coreDb = coreDb;
         _serviceProvider = serviceProvider;
+        _billingService = billingService;
     }
 
     // ── Dashboard ────────────────────────────────────────────────────────────
@@ -200,6 +203,12 @@ public class SuperAdminService : ISuperAdminService
         plan.IsActive = model.IsActive;
 
         await _coreDb.SaveChangesAsync();
+
+        // Push price/name changes to the payment gateway (Paystack)
+        if (plan.MonthlyPrice > 0 && !string.IsNullOrEmpty(plan.PaystackPlanCode))
+        {
+            await _billingService.UpdatePlanInGatewayAsync(plan.Id);
+        }
     }
 
     public async Task<bool> IsSlugTakenAsync(string slug, Guid? excludeId = null)

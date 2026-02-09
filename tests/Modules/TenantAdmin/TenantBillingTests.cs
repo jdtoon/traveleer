@@ -126,5 +126,9 @@ public class TenantBillingTests : IAsyncLifetime
 
         public Task<WebhookResult> ProcessWebhookAsync(string payload, string signature)
             => Task.FromResult(new WebhookResult(true));
+
+        public Task VerifyAndLinkSubscriptionAsync(string reference) => Task.CompletedTask;
+
+        public Task<bool> UpdatePlanInGatewayAsync(Guid planId) => Task.FromResult(true);
     }
 }

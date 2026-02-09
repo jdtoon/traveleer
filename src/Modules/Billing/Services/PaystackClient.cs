@@ -95,6 +95,24 @@ public class PaystackClient
     }
 
     /// <summary>
+    /// List subscriptions, optionally filtered by customer and plan.
+    /// </summary>
+    public async Task<List<PaystackSubscriptionDetailResponse>> ListSubscriptionsAsync(
+        string? customerCode = null, string? planCode = null)
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrEmpty(customerCode)) query.Add($"customer={Uri.EscapeDataString(customerCode)}");
+        if (!string.IsNullOrEmpty(planCode)) query.Add($"plan={Uri.EscapeDataString(planCode)}");
+        var qs = query.Count > 0 ? "?" + string.Join("&", query) : "";
+
+        var response = await _httpClient.GetAsync($"subscription{qs}");
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content
+            .ReadFromJsonAsync<PaystackApiListResponse<PaystackSubscriptionDetailResponse>>();
+        return result?.Data ?? [];
+    }
+
+    /// <summary>
     /// Fetch subscription details including the email_token needed for disable.
     /// </summary>
     public async Task<PaystackSubscriptionDetailResponse?> FetchSubscriptionAsync(string subscriptionCode)
@@ -105,6 +123,13 @@ public class PaystackClient
         var result = await response.Content
             .ReadFromJsonAsync<PaystackApiResponse<PaystackSubscriptionDetailResponse>>();
         return result?.Data;
+    }
+
+    public async Task<bool> UpdatePlanAsync(string planCode, PaystackUpdatePlanRequest request)
+    {
+        _logger.LogInformation("Updating Paystack plan: {PlanCode}", planCode);
+        var response = await _httpClient.PutAsJsonAsync($"plan/{Uri.EscapeDataString(planCode)}", request);
+        return response.IsSuccessStatusCode;
     }
 
     // ── Customers ──────────────────────────────────────────────────

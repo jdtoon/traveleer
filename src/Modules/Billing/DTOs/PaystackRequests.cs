@@ -58,3 +58,18 @@ public class PaystackCreateCustomerRequest
     [JsonPropertyName("last_name")]
     public string? LastName { get; set; }
 }
+
+public class PaystackUpdatePlanRequest
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("amount")]
+    public int Amount { get; set; }
+
+    [JsonPropertyName("interval")]
+    public string? Interval { get; set; }
+
+    [JsonPropertyName("currency")]
+    public string? Currency { get; set; }
+}

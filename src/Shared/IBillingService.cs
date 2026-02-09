@@ -13,6 +13,17 @@ public interface IBillingService
     Task<PlanChangeResult> ChangePlanAsync(Guid tenantId, Guid newPlanId);
     Task SyncPlansAsync();
     Task<WebhookResult> ProcessWebhookAsync(string payload, string signature);
+    /// <summary>
+    /// Verify a transaction with the payment gateway and link the real subscription code.
+    /// Called from the payment callback to ensure we have the correct subscription code
+    /// even if the webhook hasn't arrived yet.
+    /// </summary>
+    Task VerifyAndLinkSubscriptionAsync(string reference);
+    /// <summary>
+    /// Push plan price/name changes to the payment gateway.
+    /// Called when SuperAdmin edits a plan.
+    /// </summary>
+    Task<bool> UpdatePlanInGatewayAsync(Guid planId);
 }
 
 public record SubscriptionInitRequest(

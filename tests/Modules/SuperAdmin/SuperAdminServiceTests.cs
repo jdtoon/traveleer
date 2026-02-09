@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Core;
 using saas.Modules.SuperAdmin.Services;
+using saas.Shared;
 using Xunit;
 
 namespace saas.Tests.Modules.SuperAdmin;
@@ -59,7 +60,19 @@ public class SuperAdminServiceTests : IAsyncLifetime
         await _coreDb.SaveChangesAsync();
 
         // Use a mock service provider — we won't test GetTenantUserCountAsync (needs real tenant DB)
-        _service = new SuperAdminService(_coreDb, null!);
+        _service = new SuperAdminService(_coreDb, null!, new MockBillingForAdmin());
+    }
+
+    private class MockBillingForAdmin : IBillingService
+    {
+        public Task<SubscriptionInitResult> InitializeSubscriptionAsync(SubscriptionInitRequest r) => Task.FromResult(new SubscriptionInitResult(true));
+        public Task<SubscriptionStatus?> GetSubscriptionStatusAsync(Guid t) => Task.FromResult<SubscriptionStatus?>(SubscriptionStatus.Active);
+        public Task<bool> CancelSubscriptionAsync(Guid t) => Task.FromResult(true);
+        public Task<PlanChangeResult> ChangePlanAsync(Guid t, Guid p) => Task.FromResult(new PlanChangeResult(true));
+        public Task SyncPlansAsync() => Task.CompletedTask;
+        public Task<WebhookResult> ProcessWebhookAsync(string p, string s) => Task.FromResult(new WebhookResult(true));
+        public Task VerifyAndLinkSubscriptionAsync(string reference) => Task.CompletedTask;
+        public Task<bool> UpdatePlanInGatewayAsync(Guid planId) => Task.FromResult(true);
     }
 
     public async Task DisposeAsync()

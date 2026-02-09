@@ -368,6 +368,10 @@ public class PaystackBillingService : IBillingService
             tenant.Status = TenantStatus.Active;
         }
 
+        // Also link the real subscription code if we can get it from transaction verification
+        // This serves as a belt-and-suspenders with the subscription.create webhook
+        await TryLinkSubscriptionFromReferenceAsync(reference, tenantId);
+
         await _coreDb.SaveChangesAsync();
 
         await _audit.WriteAsync(new AuditEntry
@@ -583,5 +587,152 @@ public class PaystackBillingService : IBillingService
         };
         _coreDb.Subscriptions.Add(subscription);
         await _coreDb.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Verify a transaction and link the real SUB_ subscription code.
+    /// Called from the payment callback to ensure we have correct data even before webhooks arrive.
+    /// </summary>
+    public async Task VerifyAndLinkSubscriptionAsync(string reference)
+    {
+        try
+        {
+            var verification = await _paystack.VerifyTransactionAsync(reference);
+            if (verification is null || verification.Status != "success")
+            {
+                _logger.LogWarning("Transaction verification failed for {Reference}", reference);
+                return;
+            }
+
+            // Find the subscription that has this transaction reference
+            var subscription = await _coreDb.Subscriptions
+                .FirstOrDefaultAsync(s => s.PaystackSubscriptionCode == reference);
+
+            if (subscription is null)
+            {
+                // Try by tenant_id from metadata
+                if (verification.Metadata is not null
+                    && verification.Metadata.TryGetValue("tenant_id", out var tidObj)
+                    && Guid.TryParse(tidObj.ToString(), out var tid))
+                {
+                    subscription = await _coreDb.Subscriptions
+                        .Where(s => s.TenantId == tid && s.Status == SubscriptionStatus.Active
+                            && (s.PaystackSubscriptionCode == null || !s.PaystackSubscriptionCode.StartsWith("SUB_")))
+                        .OrderByDescending(s => s.StartDate)
+                        .FirstOrDefaultAsync();
+                }
+            }
+
+            if (subscription is null) return;
+
+            // Now fetch subscription list for this customer to find the real subscription code
+            if (verification.Customer is not null && !string.IsNullOrEmpty(verification.Customer.CustomerCode))
+            {
+                subscription.PaystackCustomerCode = verification.Customer.CustomerCode;
+
+                // Fetch the actual subscription via Paystack API using the plan code
+                // The customer's most recent subscription is what we want
+                try
+                {
+                    var plan = await _coreDb.Plans.FindAsync(subscription.PlanId);
+                    if (plan is not null && !string.IsNullOrEmpty(plan.PaystackPlanCode))
+                    {
+                        var subs = await _paystack.ListSubscriptionsAsync(
+                            verification.Customer.CustomerCode, plan.PaystackPlanCode);
+                        var match = subs.FirstOrDefault();
+                        if (match is not null && !string.IsNullOrEmpty(match.SubscriptionCode))
+                        {
+                            subscription.PaystackSubscriptionCode = match.SubscriptionCode;
+                            _logger.LogInformation(
+                                "Linked subscription {Code} via transaction verify for reference {Ref}",
+                                match.SubscriptionCode, reference);
+                        }
+                    }
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogWarning(ex, "Could not fetch subscriptions for customer during verify");
+                }
+            }
+
+            await _coreDb.SaveChangesAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Transaction verification failed for {Reference}", reference);
+        }
+    }
+
+    public async Task<bool> UpdatePlanInGatewayAsync(Guid planId)
+    {
+        var plan = await _coreDb.Plans.FindAsync(planId);
+        if (plan is null || string.IsNullOrEmpty(plan.PaystackPlanCode))
+            return false;
+
+        try
+        {
+            var result = await _paystack.UpdatePlanAsync(plan.PaystackPlanCode, new PaystackUpdatePlanRequest
+            {
+                Name = $"{plan.Name} (Monthly)",
+                Amount = (int)(plan.MonthlyPrice * 100),
+                Currency = plan.Currency ?? "ZAR"
+            });
+
+            if (result)
+                _logger.LogInformation("Updated Paystack plan {PlanCode} for {Name}", plan.PaystackPlanCode, plan.Name);
+            else
+                _logger.LogWarning("Failed to update Paystack plan {PlanCode}", plan.PaystackPlanCode);
+
+            return result;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Failed to update Paystack plan {PlanCode}", plan.PaystackPlanCode);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Try to link the real subscription code by verifying the transaction reference with Paystack.
+    /// Used as a fallback from charge.success since subscription.create webhooks may arrive late.
+    /// </summary>
+    private async Task TryLinkSubscriptionFromReferenceAsync(string reference, Guid tenantId)
+    {
+        try
+        {
+            var subscription = await _coreDb.Subscriptions
+                .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active
+                    && (s.PaystackSubscriptionCode == null
+                        || !s.PaystackSubscriptionCode.StartsWith("SUB_")))
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefaultAsync();
+
+            if (subscription is null) return;
+
+            var verification = await _paystack.VerifyTransactionAsync(reference);
+            if (verification?.Customer is not null)
+            {
+                subscription.PaystackCustomerCode = verification.Customer.CustomerCode;
+
+                var plan = await _coreDb.Plans.FindAsync(subscription.PlanId);
+                if (plan is not null && !string.IsNullOrEmpty(plan.PaystackPlanCode))
+                {
+                    var subs = await _paystack.ListSubscriptionsAsync(
+                        verification.Customer.CustomerCode, plan.PaystackPlanCode);
+                    var match = subs.FirstOrDefault();
+                    if (match is not null && !string.IsNullOrEmpty(match.SubscriptionCode))
+                    {
+                        subscription.PaystackSubscriptionCode = match.SubscriptionCode;
+                        _logger.LogInformation(
+                            "Linked subscription {Code} from charge.success for tenant {TenantId}",
+                            match.SubscriptionCode, tenantId);
+                    }
+                }
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Could not link subscription from charge.success for reference {Ref}", reference);
+        }
     }
 }
