@@ -1,0 +1,14 @@
+@model dynamic
+
+@if (Model.Success)
+{
+    <div class="alert alert-success">
+        <span>@Model.Message</span>
+    </div>
+}
+else
+{
+    <div class="alert alert-error">
+        <span>@Model.Message</span>
+    </div>
+}

@@ -7,6 +7,6 @@ public class HomeController : SwapController
 {
     public IActionResult Index()
     {
-        return SwapView();
+        return Redirect("/");
     }
 }

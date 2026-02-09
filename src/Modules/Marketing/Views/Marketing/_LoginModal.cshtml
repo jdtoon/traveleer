@@ -1,0 +1,33 @@
+@model saas.Modules.Marketing.Models.LoginRedirectModel
+
+<dialog class="modal modal-open">
+    <div class="modal-box">
+        <form method="get" action="/login-redirect">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">Sign in to your workspace</h3>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">X</button>
+            </div>
+
+            <div class="form-control w-full">
+                <label class="label" for="slug">
+                    <span class="label-text">Workspace slug</span>
+                </label>
+                <div class="join w-full">
+                    <span class="join-item btn btn-disabled">your-workspace</span>
+                    <input id="slug" name="slug" value="@Model.Slug" placeholder="acme" class="input input-bordered join-item flex-1" required />
+                </div>
+                <label class="label">
+                    <span class="label-text-alt">We will redirect you to /{slug}/login</span>
+                </label>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Continue</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

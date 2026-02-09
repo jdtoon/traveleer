@@ -1,0 +1,107 @@
+@inject Microsoft.Extensions.Options.IOptions<saas.Shared.SiteSettings> SiteOptions
+@{
+    ViewData["Title"] = "Modern teams run here";
+    var site = SiteOptions.Value;
+}
+
+<section class="mx-auto max-w-6xl px-4 py-20">
+    <div class="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] items-center">
+        <div class="space-y-6">
+            <span class="badge badge-outline reveal-up">SaaS starter kit</span>
+            <h1 class="text-4xl md:text-6xl font-bold leading-tight reveal-up reveal-delay-1">
+                Launch @site.Name with clarity, not chaos.
+            </h1>
+            <p class="text-lg md:text-xl opacity-75 reveal-up reveal-delay-2">
+                Multi-tenant architecture, billing-ready workflows, and a clean admin surface so you can focus on your product.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 reveal-up reveal-delay-3">
+                <a href="/register" class="btn btn-primary btn-lg">Start free</a>
+                <a href="/pricing" class="btn btn-outline btn-lg">See pricing</a>
+            </div>
+            <div class="flex items-center gap-4 text-sm opacity-70">
+                <span>No credit card required</span>
+                <span class="h-4 w-px bg-black/10"></span>
+                <span>Provision tenants in seconds</span>
+            </div>
+        </div>
+        <div class="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-xl reveal-up reveal-delay-2">
+            <div class="flex items-center justify-between">
+                <span class="text-sm uppercase tracking-[0.2em] opacity-60">Live ops</span>
+                <span class="badge badge-success">Healthy</span>
+            </div>
+            <div class="mt-6 space-y-4">
+                <div class="rounded-2xl bg-slate-900 text-white p-4">
+                    <div class="text-xs opacity-70">Active tenants</div>
+                    <div class="text-3xl font-bold">128</div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="rounded-2xl border border-black/10 p-4">
+                        <div class="text-xs uppercase opacity-60">New this week</div>
+                        <div class="text-2xl font-bold">19</div>
+                    </div>
+                    <div class="rounded-2xl border border-black/10 p-4">
+                        <div class="text-xs uppercase opacity-60">Uptime</div>
+                        <div class="text-2xl font-bold">99.98%</div>
+                    </div>
+                </div>
+                <div class="rounded-2xl bg-amber-100/80 p-4">
+                    <div class="text-xs uppercase opacity-60">Billing automation</div>
+                    <div class="text-lg font-semibold">Invoices + receipts on autopilot</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mx-auto max-w-6xl px-4 pb-20">
+    <div class="grid gap-6 md:grid-cols-3">
+        <div class="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-sm reveal-up">
+            <h3 class="text-xl font-semibold">Tenant-ready by default</h3>
+            <p class="mt-3 text-sm opacity-70">Tenant resolution, isolation, and provisioning baked into the runtime so you can scale safely.</p>
+        </div>
+        <div class="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-sm reveal-up reveal-delay-1">
+            <h3 class="text-xl font-semibold">Feature flags that ship</h3>
+            <p class="mt-3 text-sm opacity-70">Control access per plan or tenant and roll out features without fear.</p>
+        </div>
+        <div class="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-sm reveal-up reveal-delay-2">
+            <h3 class="text-xl font-semibold">Audit trails included</h3>
+            <p class="mt-3 text-sm opacity-70">Capture every edit with full context. Stay compliant without extra tooling.</p>
+        </div>
+    </div>
+</section>
+
+<section class="mx-auto max-w-6xl px-4 pb-20">
+    <div class="rounded-3xl border border-black/5 bg-white/80 p-10 md:p-12 grid gap-8 md:grid-cols-[1.2fr_0.8fr] items-center">
+        <div>
+            <h2 class="text-3xl md:text-4xl font-bold">Everything you need to move from idea to revenue.</h2>
+            <p class="mt-4 text-lg opacity-75">Marketing site, onboarding, billing hooks, and admin dashboards are ready to customize.</p>
+        </div>
+        <div class="grid gap-4">
+            <div class="flex items-center gap-3">
+                <span class="badge badge-outline">01</span>
+                <span>Super admin control center</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="badge badge-outline">02</span>
+                <span>Tenant admin for users, roles, billing</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="badge badge-outline">03</span>
+                <span>Notes module as a working feature slice</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mx-auto max-w-6xl px-4 pb-24">
+    <div class="rounded-3xl bg-slate-900 text-white p-10 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div>
+            <h2 class="text-3xl font-bold">Ready to ship your SaaS?</h2>
+            <p class="mt-2 text-sm text-white/70">Spin up your first tenant in minutes.</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="/register" class="btn btn-primary">Get started</a>
+            <a href="/pricing" class="btn btn-ghost text-white">Compare plans</a>
+        </div>
+    </div>
+</section>

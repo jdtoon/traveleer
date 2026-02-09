@@ -1,4 +1,4 @@
-@model IEnumerable<saas.Data.Core.Plan>
+@model saas.Modules.Registration.Models.RegistrationViewModel
 @inject Microsoft.Extensions.Options.IOptions<saas.Shared.SiteSettings> SiteOptions
 @{
     Layout = "_PublicLayout";
@@ -70,8 +70,9 @@
                         <span class="label-text font-semibold">Select a plan</span>
                     </label>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        @foreach (var plan in Model)
+                        @foreach (var plan in Model.Plans)
                         {
+                            var isSelected = Model.SelectedPlanId == plan.Id;
                             <label class="card cursor-pointer hover:bg-base-200 transition-colors">
                                 <div class="card-body">
                                     <div class="flex items-start gap-3">
@@ -79,6 +80,7 @@
                                                name="planId" 
                                                value="@plan.Id" 
                                                class="radio radio-primary mt-1"
+                                               @(isSelected ? "checked" : "")
                                                required>
                                         <div class="flex-1">
                                             <h3 class="font-bold text-lg">@plan.Name</h3>

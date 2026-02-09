@@ -37,6 +37,7 @@ builder.Services.AddCoreServices();
 
 var modules = new IModule[]
 {
+    new saas.Modules.Marketing.MarketingModule(),
     new saas.Modules.Auth.AuthModule(),
     new saas.Modules.SuperAdmin.SuperAdminModule(),
     new saas.Modules.Registration.RegistrationModule(),

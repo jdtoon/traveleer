@@ -196,6 +196,56 @@ public static class ApplicationBuilderExtensions
         });
 
         app.MapControllerRoute(
+            name: "marketing-root",
+            pattern: "",
+            defaults: new { controller = "Marketing", action = "Index" });
+
+        app.MapControllerRoute(
+            name: "marketing-pricing",
+            pattern: "pricing",
+            defaults: new { controller = "Marketing", action = "Pricing" });
+
+        app.MapControllerRoute(
+            name: "marketing-about",
+            pattern: "about",
+            defaults: new { controller = "Marketing", action = "About" });
+
+        app.MapControllerRoute(
+            name: "marketing-contact",
+            pattern: "contact",
+            defaults: new { controller = "Marketing", action = "Contact" });
+
+        app.MapControllerRoute(
+            name: "marketing-terms",
+            pattern: "legal/terms",
+            defaults: new { controller = "Marketing", action = "Terms" });
+
+        app.MapControllerRoute(
+            name: "marketing-privacy",
+            pattern: "legal/privacy",
+            defaults: new { controller = "Marketing", action = "Privacy" });
+
+        app.MapControllerRoute(
+            name: "marketing-login-redirect",
+            pattern: "login-redirect",
+            defaults: new { controller = "Marketing", action = "LoginRedirect" });
+
+        app.MapControllerRoute(
+            name: "marketing-login-modal",
+            pattern: "login-modal",
+            defaults: new { controller = "Marketing", action = "LoginModal" });
+
+        app.MapControllerRoute(
+            name: "marketing-sitemap",
+            pattern: "sitemap.xml",
+            defaults: new { controller = "Marketing", action = "Sitemap" });
+
+        app.MapControllerRoute(
+            name: "marketing-robots",
+            pattern: "robots.txt",
+            defaults: new { controller = "Marketing", action = "Robots" });
+
+        app.MapControllerRoute(
             name: "tenant",
             pattern: "{slug}/{controller=Dashboard}/{action=Index}/{id?}");
 

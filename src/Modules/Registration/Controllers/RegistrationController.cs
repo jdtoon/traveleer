@@ -32,14 +32,20 @@ public class RegistrationController : SwapController
     }
 
     [HttpGet("/register")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index([FromQuery] Guid? plan)
     {
         var plans = await _coreDb.Plans
             .Where(p => p.IsActive)
             .OrderBy(p => p.MonthlyPrice)
             .ToListAsync();
 
-        return SwapView(plans);
+        var model = new RegistrationViewModel
+        {
+            Plans = plans,
+            SelectedPlanId = plan
+        };
+
+        return SwapView(model);
     }
 
     [HttpGet("/register/check-slug")]

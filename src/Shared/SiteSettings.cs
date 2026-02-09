@@ -17,4 +17,9 @@ public class SiteSettings
     /// Display name of the application shown in emails and UI.
     /// </summary>
     public string Name { get; set; } = "SaaS App";
+
+    /// <summary>
+    /// Support inbox for marketing contact form submissions.
+    /// </summary>
+    public string SupportEmail { get; set; } = "support@localhost";
 }

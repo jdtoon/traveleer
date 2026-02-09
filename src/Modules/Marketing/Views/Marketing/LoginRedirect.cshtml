@@ -1,0 +1,27 @@
+@model saas.Modules.Marketing.Models.LoginRedirectModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+
+<section class="mx-auto max-w-xl px-4 py-16">
+    <div class="rounded-3xl border border-black/5 bg-white/80 p-10">
+        <h1 class="text-3xl md:text-4xl font-bold">Sign in to your workspace</h1>
+        <p class="mt-3 text-sm opacity-70">Enter your workspace slug to continue.</p>
+
+        <form class="mt-6 grid gap-4" method="get" action="/login-redirect">
+            <label class="form-control">
+                <span class="label-text">Workspace slug</span>
+                <input class="input input-bordered" name="slug" value="@Model.Slug" placeholder="acme" required />
+            </label>
+
+            @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+            {
+                <div class="alert alert-error">
+                    <span>@Model.ErrorMessage</span>
+                </div>
+            }
+
+            <button class="btn btn-primary" type="submit">Continue</button>
+        </form>
+    </div>
+</section>

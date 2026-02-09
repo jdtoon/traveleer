@@ -1,0 +1,149 @@
+@inject Microsoft.Extensions.Options.IOptions<saas.Shared.SiteSettings> SiteOptions
+@{
+    var site = SiteOptions.Value;
+    var title = ViewData["Title"]?.ToString() ?? site.Name;
+    var ogTitle = ViewData["OgTitle"]?.ToString() ?? title;
+    var ogDescription = ViewData["OgDescription"]?.ToString() ?? "Run a multi-tenant SaaS without the busywork.";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title - @site.Name</title>
+
+    <meta property="og:title" content="@ogTitle" />
+    <meta property="og:description" content="@ogDescription" />
+    <meta property="og:type" content="website" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="/css/styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/_content/Swap.Htmx/css/swap.css" asp-append-version="true" />
+
+    <style>
+        :root {
+            --brand-ink: #1f2937;
+            --brand-sand: #fff7ed;
+            --brand-mist: #f8fafc;
+            --brand-accent: #0f766e;
+            --brand-warm: #b45309;
+        }
+        body {
+            font-family: "Space Grotesk", sans-serif;
+            background: var(--brand-sand);
+            color: var(--brand-ink);
+        }
+        h1, h2, h3, .display-font {
+            font-family: "Fraunces", serif;
+            letter-spacing: -0.02em;
+        }
+        .marketing-surface {
+            background: radial-gradient(circle at 20% 0%, rgba(14, 116, 144, 0.15), transparent 55%),
+                        radial-gradient(circle at 85% 15%, rgba(251, 191, 36, 0.22), transparent 50%),
+                        linear-gradient(135deg, #fff7ed 0%, #f8fafc 55%, #ecfeff 100%);
+        }
+        .reveal-up {
+            animation: rise 0.6s ease-out both;
+        }
+        .reveal-delay-1 { animation-delay: 0.08s; }
+        .reveal-delay-2 { animation-delay: 0.16s; }
+        .reveal-delay-3 { animation-delay: 0.24s; }
+        @@keyframes rise {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .nav-link {
+            color: rgba(31, 41, 55, 0.8);
+        }
+        .nav-link:hover {
+            color: var(--brand-ink);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="relative min-h-screen overflow-hidden marketing-surface">
+        <div class="absolute -top-28 right-10 h-72 w-72 rounded-full bg-amber-200/60 blur-3xl"></div>
+        <div class="absolute top-56 -left-20 h-80 w-80 rounded-full bg-teal-200/60 blur-3xl"></div>
+        <div class="absolute bottom-10 right-1/3 h-64 w-64 rounded-full bg-sky-200/60 blur-3xl"></div>
+
+        <header class="relative z-10 border-b border-black/5 bg-white/70 backdrop-blur">
+            <div class="navbar mx-auto max-w-6xl px-4">
+                <div class="flex-1">
+                    <a href="/" class="text-xl font-bold tracking-tight">@site.Name</a>
+                </div>
+                <div class="hidden lg:flex items-center gap-6">
+                    <a class="nav-link" href="/pricing">Pricing</a>
+                    <a class="nav-link" href="/about">About</a>
+                    <a class="nav-link" href="/contact">Contact</a>
+                    <a class="btn btn-sm btn-ghost" href="/register">Get Started</a>
+                    <a class="btn btn-sm btn-outline"
+                       href="/login-redirect"
+                       hx-get="/login-modal"
+                       hx-target="#modal-container"
+                       hx-swap="innerHTML">
+                        Sign In
+                    </a>
+                </div>
+                <div class="lg:hidden">
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </label>
+                        <ul tabindex="0" class="menu dropdown-content mt-3 z-[1] w-52 rounded-box bg-base-100 p-2 shadow">
+                            <li><a href="/pricing">Pricing</a></li>
+                            <li><a href="/about">About</a></li>
+                            <li><a href="/contact">Contact</a></li>
+                            <li><a href="/register">Get Started</a></li>
+                            <li>
+                                <a href="/login-redirect"
+                                   hx-get="/login-modal"
+                                   hx-target="#modal-container"
+                                   hx-swap="innerHTML">
+                                    Sign In
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="relative z-10">
+            @RenderBody()
+        </main>
+
+        <footer class="relative z-10 border-t border-black/5 bg-white/70 backdrop-blur">
+            <div class="mx-auto max-w-6xl px-4 py-10 grid gap-6 md:grid-cols-3">
+                <div>
+                    <div class="text-lg font-bold">@site.Name</div>
+                    <p class="text-sm opacity-70 mt-2">Launch a multi-tenant SaaS with confidence.</p>
+                </div>
+                <div class="grid gap-2 text-sm">
+                    <a class="nav-link" href="/pricing">Pricing</a>
+                    <a class="nav-link" href="/about">About</a>
+                    <a class="nav-link" href="/contact">Contact</a>
+                </div>
+                <div class="grid gap-2 text-sm">
+                    <a class="nav-link" href="/legal/terms">Terms</a>
+                    <a class="nav-link" href="/legal/privacy">Privacy</a>
+                    <span class="opacity-60">Copyright @DateTime.UtcNow.Year</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <div id="toast-container" class="toast toast-end"></div>
+    <div id="modal-container"></div>
+
+    <script src="~/lib/htmx/dist/htmx.min.js" asp-append-version="true"></script>
+    <script src="~/_content/Swap.Htmx/js/swap.client.js" asp-append-version="true"></script>
+    <script src="/js/bundle.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

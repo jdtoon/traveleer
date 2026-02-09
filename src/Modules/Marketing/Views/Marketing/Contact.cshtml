@@ -1,0 +1,42 @@
+@model saas.Modules.Marketing.Models.ContactRequest
+@{
+    ViewData["Title"] = "Contact";
+}
+
+<section class="mx-auto max-w-4xl px-4 py-16">
+    <div class="rounded-3xl border border-black/5 bg-white/80 p-10 md:p-12">
+        <h1 class="text-4xl md:text-5xl font-bold">Talk to our team.</h1>
+        <p class="mt-3 text-lg opacity-70">We respond within one business day.</p>
+
+        <form class="mt-8 grid gap-4"
+              method="post"
+              action="/contact"
+              hx-post="/contact"
+              hx-target="#contact-result"
+              hx-swap="innerHTML">
+            @Html.AntiForgeryToken()
+
+            <div class="grid gap-4 md:grid-cols-2">
+                <label class="form-control">
+                    <span class="label-text">Name</span>
+                    <input class="input input-bordered" name="Name" value="@Model.Name" required maxlength="80" />
+                </label>
+                <label class="form-control">
+                    <span class="label-text">Email</span>
+                    <input class="input input-bordered" type="email" name="Email" value="@Model.Email" required maxlength="120" />
+                </label>
+            </div>
+
+            <label class="form-control">
+                <span class="label-text">Message</span>
+                <textarea class="textarea textarea-bordered" name="Message" rows="6" required maxlength="2000">@Model.Message</textarea>
+            </label>
+
+            <input type="hidden" name="CaptchaToken" value="mock-captcha-token" />
+
+            <button class="btn btn-primary w-full md:w-auto" type="submit">Send message</button>
+        </form>
+
+        <div id="contact-result" class="mt-6"></div>
+    </div>
+</section>
