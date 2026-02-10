@@ -4,6 +4,7 @@ using saas.Data.Core;
 using saas.Data.Audit;
 using saas.Data.Seeding;
 using saas.Infrastructure.HealthChecks;
+using saas.Modules.Tenancy.Services;
 using saas.Shared;
 
 // Force InvariantCulture for SQLite decimal collation compatibility
@@ -37,6 +38,7 @@ builder.Services.AddCoreServices(builder.Configuration);
 
 var modules = new IModule[]
 {
+    new saas.Modules.Tenancy.TenancyModule(),
     new saas.Modules.Billing.BillingModule(),
     new saas.Modules.Marketing.MarketingModule(),
     new saas.Modules.Auth.AuthModule(),
@@ -64,13 +66,32 @@ var controllerViewPaths = modules
     .SelectMany(m => m.ControllerViewPaths)
     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value, StringComparer.OrdinalIgnoreCase);
 
+// Collect partial view search paths from modules for Swap.Htmx
+var partialViewSearchPaths = modules
+    .SelectMany(m => m.PartialViewSearchPaths)
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToList();
+
+// Collect public route prefixes from modules for TenantResolutionMiddleware
+var publicRoutePrefixes = modules
+    .SelectMany(m => m.PublicRoutePrefixes)
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
 // =============================================================================
 // MVC & WEB
 // =============================================================================
 
 builder.Services.AddWebOptimizerConfig(builder.Environment);
 builder.Services.AddMvcConfig(controllerViewPaths);
-builder.Services.AddSwapHtmxConfig();
+builder.Services.AddSwapHtmxConfig(partialViewSearchPaths);
+builder.Services.AddStorageConfig(builder.Configuration);
+
+// Register public route prefixes for TenantResolutionMiddleware
+builder.Services.AddSingleton(publicRoutePrefixes);
+
+// Background: clean up abandoned PendingSetup tenants
+builder.Services.AddHostedService<PendingTenantCleanupService>();
 
 // =============================================================================
 // BUILD & RUN

@@ -11,6 +11,13 @@ public class MarketingModule : IModule
         ["Marketing"] = "Marketing"
     };
 
+    public IReadOnlyList<string> PartialViewSearchPaths => ["Marketing"];
+
+    public IReadOnlyList<string> PublicRoutePrefixes =>
+    [
+        "pricing", "about", "contact", "legal", "sitemap.xml", "robots.txt"
+    ];
+
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
     }

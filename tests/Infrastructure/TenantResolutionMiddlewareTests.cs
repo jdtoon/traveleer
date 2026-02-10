@@ -41,7 +41,10 @@ public class TenantResolutionMiddlewareTests
         context.Request.Path = "/testcorp/notes";
 
         var tenantContext = new TenantContext();
-        var middleware = new TenantResolutionMiddleware(_ => Task.CompletedTask);
+        var middleware = new TenantResolutionMiddleware(_ => Task.CompletedTask, new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "", "health", "pricing", "register", "super-admin", "login", "login-redirect", "login-modal", "about", "contact", "legal", "sitemap.xml", "robots.txt", "favicon.ico", "api", "static", "assets"
+        });
         var cache = new MemoryCache(new MemoryCacheOptions());
 
         await middleware.InvokeAsync(context, tenantContext, db, cache);
@@ -74,6 +77,9 @@ public class TenantResolutionMiddlewareTests
         {
             called = true;
             return Task.CompletedTask;
+        }, new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "", "health", "pricing", "register", "super-admin", "login", "login-redirect", "login-modal", "about", "contact", "legal", "sitemap.xml", "robots.txt", "favicon.ico", "api", "static", "assets"
         });
         var cache = new MemoryCache(new MemoryCacheOptions());
 

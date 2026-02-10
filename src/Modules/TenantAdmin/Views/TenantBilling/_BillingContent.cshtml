@@ -17,11 +17,11 @@
                         @{
                             var statusClass = Model.SubscriptionStatus switch
                             {
-                                saas.Data.Core.SubscriptionStatus.Active => "badge-success",
-                                saas.Data.Core.SubscriptionStatus.Cancelled => "badge-error",
-                                saas.Data.Core.SubscriptionStatus.PastDue => "badge-warning",
-                                saas.Data.Core.SubscriptionStatus.NonRenewing => "badge-warning",
-                                saas.Data.Core.SubscriptionStatus.Trialing => "badge-info",
+                                SubscriptionStatus.Active => "badge-success",
+                                SubscriptionStatus.Cancelled => "badge-error",
+                                SubscriptionStatus.PastDue => "badge-warning",
+                                SubscriptionStatus.NonRenewing => "badge-warning",
+                                SubscriptionStatus.Trialing => "badge-info",
                                 _ => "badge-ghost"
                             };
                         }
@@ -47,8 +47,8 @@
                         hx-target="#modal-container">
                     Change Plan
                 </button>
-                @if (Model.SubscriptionStatus == saas.Data.Core.SubscriptionStatus.Active
-                    || Model.SubscriptionStatus == saas.Data.Core.SubscriptionStatus.NonRenewing)
+                @if (Model.SubscriptionStatus == SubscriptionStatus.Active
+                    || Model.SubscriptionStatus == SubscriptionStatus.NonRenewing)
                 {
                     <button class="btn btn-outline btn-error btn-sm"
                             hx-post="@Url.Action("Cancel", "TenantBilling")"
@@ -58,8 +58,8 @@
                     </button>
                 }
                 @if (Model.HasPaystackSubscription
-                    && (Model.SubscriptionStatus == saas.Data.Core.SubscriptionStatus.Active
-                        || Model.SubscriptionStatus == saas.Data.Core.SubscriptionStatus.NonRenewing))
+                    && (Model.SubscriptionStatus == SubscriptionStatus.Active
+                        || Model.SubscriptionStatus == SubscriptionStatus.NonRenewing))
                 {
                     <button class="btn btn-outline btn-sm"
                             hx-post="@Url.Action("ManageSubscription", "TenantBilling")"
@@ -104,9 +104,9 @@
                                 @{
                                     var invClass = invoice.Status switch
                                     {
-                                        saas.Data.Core.InvoiceStatus.Paid => "badge-success",
-                                        saas.Data.Core.InvoiceStatus.Overdue => "badge-error",
-                                        saas.Data.Core.InvoiceStatus.Issued => "badge-warning",
+                                        InvoiceStatus.Paid => "badge-success",
+                                        InvoiceStatus.Overdue => "badge-error",
+                                        InvoiceStatus.Issued => "badge-warning",
                                         _ => "badge-ghost"
                                     };
                                 }

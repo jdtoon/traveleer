@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using saas.Data.Core;
-using saas.Data.Tenant;
 
 namespace saas.Shared;
 
@@ -23,14 +21,47 @@ public interface IModule
     IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>();
 
     /// <summary>
-    /// Feature definitions owned by this module. Collected at startup for core DB seeding.
+    /// Swap.Htmx partial view search paths contributed by this module.
+    /// Collected at startup and registered with AddSwapHtmx options.
     /// </summary>
-    IReadOnlyList<Feature> Features => [];
+    IReadOnlyList<string> PartialViewSearchPaths => [];
 
     /// <summary>
-    /// Permission definitions owned by this module. Collected at startup for tenant DB seeding.
+    /// Feature definitions owned by this module. Collected at startup for core DB seeding.
+    /// Uses lightweight records — mapped to Feature entities by the seeder.
     /// </summary>
-    IReadOnlyList<Permission> Permissions => [];
+    IReadOnlyList<ModuleFeature> Features => [];
+
+    /// <summary>
+    /// Permission definitions owned by this module. Collected at startup for tenant DB provisioning.
+    /// Uses lightweight records — mapped to Permission entities by the provisioner.
+    /// </summary>
+    IReadOnlyList<ModulePermission> Permissions => [];
+
+    /// <summary>
+    /// Default roles this module contributes for tenant provisioning.
+    /// Deduplicated by name across modules. Admin role always gets all permissions.
+    /// </summary>
+    IReadOnlyList<RoleDefinition> DefaultRoles => [];
+
+    /// <summary>
+    /// Maps this module's permissions to non-admin roles during tenant provisioning.
+    /// Admin role is automatic (gets everything). These mappings target other roles like "Member".
+    /// </summary>
+    IReadOnlyList<RolePermissionMapping> DefaultRolePermissions => [];
+
+    /// <summary>
+    /// URL path prefixes that this module handles as public (non-tenant) routes.
+    /// Collected at startup and used by TenantResolutionMiddleware to bypass tenant resolution.
+    /// Example: Marketing contributes ["pricing", "about", "contact"].
+    /// </summary>
+    IReadOnlyList<string> PublicRoutePrefixes => [];
+
+    /// <summary>
+    /// Slug values this module reserves from tenant registration.
+    /// Merged with configured reserved slugs and used by the provisioner for validation.
+    /// </summary>
+    IReadOnlyList<string> ReservedSlugs => [];
 
     /// <summary>
     /// Register services (DI), entity configurations, and options for this module.

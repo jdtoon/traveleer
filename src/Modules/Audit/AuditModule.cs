@@ -1,4 +1,3 @@
-using saas.Data.Core;
 using saas.Modules.Audit.Services;
 using saas.Shared;
 
@@ -14,9 +13,9 @@ public class AuditModule : IModule
 {
     public string Name => "Audit";
 
-    public IReadOnlyList<Feature> Features =>
+    public IReadOnlyList<ModuleFeature> Features =>
     [
-        new() { Id = Guid.NewGuid(), Key = AuditFeatures.AuditLog, Name = "Audit Log", Module = Name, IsGlobal = false, IsEnabled = true }
+        new(AuditFeatures.AuditLog, "Audit Log")
     ];
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)

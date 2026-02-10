@@ -1,14 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Core;
-using saas.Modules.Audit;
-using saas.Modules.Notes;
+using saas.Modules.Billing.Entities;
+using saas.Modules.FeatureFlags.Entities;
+using saas.Modules.SuperAdmin.Entities;
 using saas.Shared;
 
 namespace saas.Data.Seeding;
 
 /// <summary>
 /// Seeds core database with plans, features, plan-feature mappings, and default super admin.
-/// Features are collected from IModule.Features + cross-cutting FeatureDefinitions.
+/// Features are collected from IModule.Features across all registered modules.
 /// Idempotent — skips if data already exists.
 /// </summary>
 public static class MasterDataSeeder
@@ -77,10 +78,18 @@ public static class MasterDataSeeder
 
         db.Plans.AddRange(freePlan, starterPlan, professionalPlan, enterprisePlan);
 
-        // 2. Seed Features — collected from modules + cross-cutting
+        // 2. Seed Features — collected from all modules
         var features = modules
-            .SelectMany(m => m.Features)
-            .Concat(FeatureDefinitions.GetAll())
+            .SelectMany(m => m.Features.Select(mf => new Feature
+            {
+                Id = Guid.NewGuid(),
+                Key = mf.Key,
+                Name = mf.Name,
+                Module = m.Name,
+                Description = mf.Description,
+                IsGlobal = mf.IsGlobal,
+                IsEnabled = true
+            }))
             .ToList();
         db.Features.AddRange(features);
 
@@ -90,7 +99,7 @@ public static class MasterDataSeeder
         var featureLookup = features.ToDictionary(f => f.Key);
 
         // Starter gets: Notes, Projects, CustomRoles, ExportData
-        var starterFeatures = new[] { NotesFeatures.Notes, FeatureDefinitions.Projects, FeatureDefinitions.CustomRoles, FeatureDefinitions.ExportData };
+        var starterFeatures = new[] { "notes", "projects", "custom_roles", "export_data" };
         foreach (var key in starterFeatures)
         {
             if (featureLookup.TryGetValue(key, out var feature))
@@ -98,7 +107,7 @@ public static class MasterDataSeeder
         }
 
         // Professional gets: everything Starter has + AdvancedReports, AuditLog
-        var professionalFeatures = new[] { NotesFeatures.Notes, FeatureDefinitions.Projects, FeatureDefinitions.CustomRoles, FeatureDefinitions.ExportData, FeatureDefinitions.AdvancedReports, AuditFeatures.AuditLog };
+        var professionalFeatures = new[] { "notes", "projects", "custom_roles", "export_data", "advanced_reports", "audit_log" };
         foreach (var key in professionalFeatures)
         {
             if (featureLookup.TryGetValue(key, out var feature))

@@ -30,17 +30,21 @@ public class MasterDataSeederTests
             })
             .Build();
 
-        // Module list provides module-owned features (Notes, Audit)
+        // Module list provides all features — same as production module set
         var modules = new IModule[]
         {
+            new saas.Modules.Tenancy.TenancyModule(),
             new saas.Modules.Notes.NotesModule(),
-            new saas.Modules.Audit.AuditModule()
+            new saas.Modules.Audit.AuditModule(),
+            new saas.Modules.TenantAdmin.TenantAdminModule(),
+            new saas.Modules.Auth.AuthModule(),
         };
 
         await MasterDataSeeder.SeedAsync(db, config, modules);
         await MasterDataSeeder.SeedAsync(db, config, modules);
 
         Assert.Equal(4, await db.Plans.CountAsync());
+        // Tenancy:5 + Notes:1 + Audit:1 + TenantAdmin:1 + Auth:1 = 9 features
         Assert.Equal(9, await db.Features.CountAsync());
         Assert.True(await db.PlanFeatures.AnyAsync());
         Assert.Equal(1, await db.SuperAdmins.CountAsync());

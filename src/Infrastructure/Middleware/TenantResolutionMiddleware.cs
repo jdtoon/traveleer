@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using saas.Data.Core;
+using saas.Modules.Tenancy.Entities;
 using saas.Shared;
 
 namespace saas.Infrastructure.Middleware;
@@ -8,16 +9,14 @@ namespace saas.Infrastructure.Middleware;
 public class TenantResolutionMiddleware
 {
     private readonly RequestDelegate _next;
-    private static readonly HashSet<string> NonTenantPrefixes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "", "health", "pricing", "register", "super-admin", "login", "login-redirect", "login-modal", "about", "contact", "legal", "sitemap.xml", "robots.txt", "favicon.ico", "api", "static", "assets"
-    };
+    private readonly HashSet<string> _nonTenantPrefixes;
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(3);
 
-    public TenantResolutionMiddleware(RequestDelegate next)
+    public TenantResolutionMiddleware(RequestDelegate next, HashSet<string> publicRoutePrefixes)
     {
         _next = next;
+        _nonTenantPrefixes = publicRoutePrefixes;
     }
 
     public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext, CoreDbContext coreDb, IMemoryCache cache)
@@ -25,7 +24,7 @@ public class TenantResolutionMiddleware
         var path = context.Request.Path.Value ?? string.Empty;
         var firstSegment = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
 
-        if (NonTenantPrefixes.Contains(firstSegment))
+        if (_nonTenantPrefixes.Contains(firstSegment))
         {
             if (tenantContext is TenantContext tc)
             {
@@ -61,33 +60,7 @@ public class TenantResolutionMiddleware
 
         if (resolved is null)
         {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            context.Response.ContentType = "text/html; charset=utf-8";
-            await context.Response.WriteAsync("""
-                <!DOCTYPE html>
-                <html lang="en">
-                <head>
-                    <meta charset="utf-8" />
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                    <title>Page Not Found</title>
-                    <style>
-                        body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f5f5f5; color: #333; }
-                        .container { text-align: center; padding: 2rem; }
-                        h1 { font-size: 4rem; margin: 0; color: #888; }
-                        p { font-size: 1.125rem; margin: 1rem 0; }
-                        a { color: #6366f1; text-decoration: none; }
-                        a:hover { text-decoration: underline; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <h1>404</h1>
-                        <p>The page you're looking for doesn't exist.</p>
-                        <a href="/">← Back to home</a>
-                    </div>
-                </body>
-                </html>
-                """);
+            await ErrorPages.Write404Async(context.Response);
             return;
         }
 
@@ -101,33 +74,7 @@ public class TenantResolutionMiddleware
                 !action.Equals("logout", StringComparison.OrdinalIgnoreCase) &&
                 !action.Equals("verify", StringComparison.OrdinalIgnoreCase))
             {
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                context.Response.ContentType = "text/html; charset=utf-8";
-                await context.Response.WriteAsync($$"""
-                    <!DOCTYPE html>
-                    <html lang="en">
-                    <head>
-                        <meta charset="utf-8" />
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                        <title>Account Suspended</title>
-                        <style>
-                            body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #fef2f2; color: #333; }
-                            .container { text-align: center; padding: 2rem; max-width: 480px; }
-                            h1 { font-size: 2.5rem; margin: 0; color: #dc2626; }
-                            p { font-size: 1.125rem; margin: 1rem 0; color: #666; }
-                            a { color: #6366f1; text-decoration: none; }
-                            a:hover { text-decoration: underline; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <h1>Account Suspended</h1>
-                            <p>This workspace has been suspended. Please contact support for assistance.</p>
-                            <a href="/">← Back to home</a>
-                        </div>
-                    </body>
-                    </html>
-                    """);
+                await ErrorPages.Write403SuspendedAsync(context.Response);
                 return;
             }
         }

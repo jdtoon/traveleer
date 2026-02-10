@@ -4,6 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using saas.Data;
 using saas.Data.Core;
 using saas.Data.Tenant;
+using saas.Modules.Auth.Entities;
+using saas.Modules.Billing.Entities;
+using saas.Modules.Tenancy.Entities;
 using saas.Shared;
 
 namespace saas.Infrastructure.Provisioning;
@@ -14,14 +17,7 @@ public partial class TenantProvisionerService : ITenantProvisioner
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<TenantProvisionerService> _logger;
     private readonly IReadOnlyList<IModule> _modules;
-    
-    // Reserved slugs that cannot be used for tenant registration
-    private static readonly HashSet<string> ReservedSlugs = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "super-admin", "admin", "api", "health", "pricing", "about", 
-        "contact", "register", "login", "logout", "www", "app", "cdn",
-        "static", "assets", "docs", "help", "support", "blog", "status", "legal", "sitemap", "robots", "favicon"
-    };
+    private readonly HashSet<string> _reservedSlugs;
 
     public TenantProvisionerService(
         CoreDbContext coreDb,
@@ -33,6 +29,13 @@ public partial class TenantProvisionerService : ITenantProvisioner
         _serviceProvider = serviceProvider;
         _logger = logger;
         _modules = modules;
+
+        // Collect reserved slugs from all modules (explicit + public route prefixes)
+        _reservedSlugs = new HashSet<string>(
+            modules.SelectMany(m => m.ReservedSlugs)
+                .Concat(modules.SelectMany(m => m.PublicRoutePrefixes))
+                .Where(s => !string.IsNullOrEmpty(s)),
+            StringComparer.OrdinalIgnoreCase);
     }
 
     public async Task<TenantProvisioningResult> ProvisionTenantAsync(
@@ -155,59 +158,86 @@ public partial class TenantProvisionerService : ITenantProvisioner
             var scopedTenantDb = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
             scopedTenantDb.Database.SetConnectionString(connectionString);
 
-            // Create roles
-            var adminRole = new AppRole { Name = "Admin", NormalizedName = "ADMIN", IsSystemRole = true };
-            var memberRole = new AppRole { Name = "Member", NormalizedName = "MEMBER", IsSystemRole = true };
-
-            if (!await roleManager.RoleExistsAsync("Admin"))
-            {
-                await roleManager.CreateAsync(adminRole);
-            }
-            else
-            {
-                adminRole = await roleManager.FindByNameAsync("Admin") ?? adminRole;
-            }
-            
-            if (!await roleManager.RoleExistsAsync("Member"))
-            {
-                await roleManager.CreateAsync(memberRole);
-            }
-
-            // Seed permissions — collected from modules + cross-cutting
-            var permissions = _modules
-                .SelectMany(m => m.Permissions)
-                .Concat(PermissionDefinitions.GetAll())
+            // Create roles — collected from all modules, deduplicated by name
+            var roleDefinitions = _modules
+                .SelectMany(m => m.DefaultRoles)
+                .DistinctBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            var createdRoles = new Dictionary<string, AppRole>(StringComparer.OrdinalIgnoreCase);
+            foreach (var roleDef in roleDefinitions)
+            {
+                if (!await roleManager.RoleExistsAsync(roleDef.Name))
+                {
+                    var role = new AppRole
+                    {
+                        Name = roleDef.Name,
+                        NormalizedName = roleDef.Name.ToUpperInvariant(),
+                        Description = roleDef.Description,
+                        IsSystemRole = roleDef.IsSystemRole
+                    };
+                    await roleManager.CreateAsync(role);
+                    createdRoles[roleDef.Name] = role;
+                }
+                else
+                {
+                    var role = await roleManager.FindByNameAsync(roleDef.Name);
+                    if (role is not null) createdRoles[roleDef.Name] = role;
+                }
+            }
+
+            // Seed permissions — collected from all modules
+            var modulePermissions = _modules
+                .SelectMany(m => m.Permissions)
+                .ToList();
+
+            var permissions = modulePermissions.Select(mp => new Permission
+            {
+                Id = Guid.NewGuid(),
+                Key = mp.Key,
+                Name = mp.Name,
+                Group = mp.Group,
+                SortOrder = mp.SortOrder,
+                Description = mp.Description
+            }).ToList();
+
             tenantDb.Permissions.AddRange(permissions);
             await tenantDb.SaveChangesAsync();
 
             // Grant all permissions to Admin role
-            var rolePermissions = permissions.Select(p => new RolePermission
+            if (createdRoles.TryGetValue("Admin", out var adminRole))
             {
-                RoleId = adminRole.Id,
-                PermissionId = p.Id
-            });
-            tenantDb.RolePermissions.AddRange(rolePermissions);
-            await tenantDb.SaveChangesAsync();
-
-            // Grant default permissions to Member role (notes read/create/edit)
-            var memberPermissionKeys = new HashSet<string> { "notes.read", "notes.create", "notes.edit" };
-            var memberRoleEntity = await roleManager.FindByNameAsync("Member");
-            if (memberRoleEntity is not null)
-            {
-                var memberPermissions = permissions
-                    .Where(p => memberPermissionKeys.Contains(p.Key))
-                    .Select(p => new RolePermission
-                    {
-                        RoleId = memberRoleEntity.Id,
-                        PermissionId = p.Id
-                    });
-                tenantDb.RolePermissions.AddRange(memberPermissions);
+                var adminRolePermissions = permissions.Select(p => new RolePermission
+                {
+                    RoleId = adminRole.Id,
+                    PermissionId = p.Id
+                });
+                tenantDb.RolePermissions.AddRange(adminRolePermissions);
                 await tenantDb.SaveChangesAsync();
             }
 
-            _logger.LogInformation("Seeded {Count} permissions and Admin role-permissions for tenant {Slug}",
-                permissions.Count, tenant.Slug);
+            // Grant module-defined permissions to non-admin roles
+            var permissionLookup = permissions.ToDictionary(p => p.Key, StringComparer.OrdinalIgnoreCase);
+            var roleMappings = _modules
+                .SelectMany(m => m.DefaultRolePermissions)
+                .ToList();
+
+            foreach (var mapping in roleMappings)
+            {
+                if (createdRoles.TryGetValue(mapping.RoleName, out var role) &&
+                    permissionLookup.TryGetValue(mapping.PermissionKey, out var perm))
+                {
+                    tenantDb.RolePermissions.Add(new RolePermission
+                    {
+                        RoleId = role.Id,
+                        PermissionId = perm.Id
+                    });
+                }
+            }
+            await tenantDb.SaveChangesAsync();
+
+            _logger.LogInformation("Seeded {Count} permissions and {RoleCount} roles for tenant {Slug}",
+                permissions.Count, createdRoles.Count, tenant.Slug);
 
             // Create admin user
             var adminUser = new AppUser
@@ -276,7 +306,7 @@ public partial class TenantProvisionerService : ITenantProvisioner
         }
 
         // Reserved slug check
-        if (ReservedSlugs.Contains(slug))
+        if (_reservedSlugs.Contains(slug))
         {
             return new SlugValidationResult(false, "This slug is reserved and cannot be used");
         }

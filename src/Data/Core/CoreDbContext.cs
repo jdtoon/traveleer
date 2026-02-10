@@ -1,4 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using saas.Modules.Auth.Entities;
+using saas.Modules.Billing.Entities;
+using saas.Modules.FeatureFlags.Entities;
+using saas.Modules.SuperAdmin.Entities;
+using Tenancy = saas.Modules.Tenancy.Entities;
 
 namespace saas.Data.Core;
 
@@ -6,7 +11,7 @@ public class CoreDbContext : DbContext
 {
     public CoreDbContext(DbContextOptions<CoreDbContext> options) : base(options) { }
 
-    public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<Tenancy.Tenant> Tenants => Set<Tenancy.Tenant>();
     public DbSet<Plan> Plans => Set<Plan>();
     public DbSet<Feature> Features => Set<Feature>();
     public DbSet<PlanFeature> PlanFeatures => Set<PlanFeature>();
@@ -22,7 +27,7 @@ public class CoreDbContext : DbContext
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(CoreDbContext).Assembly,
-            t => t.Namespace?.Contains("Data.Core") == true
+            t => typeof(ICoreEntityConfiguration).IsAssignableFrom(t) && t.IsClass
         );
     }
 

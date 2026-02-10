@@ -22,7 +22,9 @@ public static class MvcExtensions
         return services;
     }
 
-    public static IServiceCollection AddSwapHtmxConfig(this IServiceCollection services)
+    public static IServiceCollection AddSwapHtmxConfig(
+        this IServiceCollection services,
+        IReadOnlyList<string> partialViewSearchPaths)
     {
         services.AddSwapHtmx(options =>
         {
@@ -32,11 +34,10 @@ public static class MvcExtensions
             // Default navigation target for <swap-nav> tag helper
             options.DefaultNavigationTarget = "#main-content";
             
-            options.PartialViewSearchPaths.Add("Notes");
-            options.PartialViewSearchPaths.Add("Marketing");
-            options.PartialViewSearchPaths.Add("SuperAdmin");
-            options.PartialViewSearchPaths.Add("TenantAdmin");
-            options.PartialViewSearchPaths.Add("TenantBilling");
+            // Module-driven partial view search paths
+            foreach (var path in partialViewSearchPaths)
+                options.PartialViewSearchPaths.Add(path);
+
             options.AddConfig<NotesEventConfig>();
         });
 

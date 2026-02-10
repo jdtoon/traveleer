@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using saas.Data.Audit;
 
-namespace saas.Data.Audit.Configurations;
+namespace saas.Modules.Audit.Data;
 
-public class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
+public class AuditEntryConfiguration : IEntityTypeConfiguration<Entities.AuditEntry>, IAuditEntityConfiguration
 {
-    public void Configure(EntityTypeBuilder<AuditEntry> builder)
+    public void Configure(EntityTypeBuilder<Entities.AuditEntry> builder)
     {
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).ValueGeneratedOnAdd();

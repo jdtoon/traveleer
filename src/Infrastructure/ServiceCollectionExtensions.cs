@@ -254,4 +254,25 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    public static IServiceCollection AddStorageConfig(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<StorageOptions>()
+            .BindConfiguration(StorageOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        var provider = configuration.GetValue<string>("Storage:Provider") ?? "Local";
+
+        if (provider.Equals("R2", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<IStorageService, R2StorageService>();
+        }
+        else
+        {
+            services.AddSingleton<IStorageService, LocalStorageService>();
+        }
+
+        return services;
+    }
 }

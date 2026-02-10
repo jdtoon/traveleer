@@ -153,7 +153,7 @@ public class BillingModuleTests
 
     private class StubAuditWriter : IAuditWriter
     {
-        public ValueTask WriteAsync(saas.Data.Audit.AuditEntry entry) => ValueTask.CompletedTask;
+        public ValueTask WriteAsync(AuditEntry entry) => ValueTask.CompletedTask;
     }
 
     private class StubEmailService : IEmailService

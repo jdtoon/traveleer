@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using saas.Modules.Audit.Entities;
 
 namespace saas.Data.Audit;
 
@@ -13,7 +14,7 @@ public class AuditDbContext : DbContext
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(AuditDbContext).Assembly,
-            t => t.Namespace?.Contains("Data.Audit") == true
+            t => typeof(IAuditEntityConfiguration).IsAssignableFrom(t) && t.IsClass
         );
     }
 }

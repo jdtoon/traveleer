@@ -1,12 +1,12 @@
-@model saas.Data.Core.TenantStatus
+@model TenantStatus
 
 @{
     var (badgeClass, label) = Model switch
     {
-        saas.Data.Core.TenantStatus.Active => ("badge-success", "Active"),
-        saas.Data.Core.TenantStatus.Suspended => ("badge-error", "Suspended"),
-        saas.Data.Core.TenantStatus.PendingSetup => ("badge-warning", "Pending"),
-        saas.Data.Core.TenantStatus.Cancelled => ("badge-ghost", "Cancelled"),
+        TenantStatus.Active => ("badge-success", "Active"),
+        TenantStatus.Suspended => ("badge-error", "Suspended"),
+        TenantStatus.PendingSetup => ("badge-warning", "Pending"),
+        TenantStatus.Cancelled => ("badge-ghost", "Cancelled"),
         _ => ("badge-ghost", Model.ToString())
     };
 }

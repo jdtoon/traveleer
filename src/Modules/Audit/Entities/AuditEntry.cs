@@ -1,4 +1,4 @@
-namespace saas.Data.Audit;
+namespace saas.Modules.Audit.Entities;
 
 public class AuditEntry
 {

@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using saas.Data.Tenant;
+using saas.Modules.Auth.Entities;
 
-namespace saas.Data.Tenant.Configurations;
+namespace saas.Modules.Auth.Data;
 
-public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
+public class PermissionConfiguration : IEntityTypeConfiguration<Permission>, ITenantEntityConfiguration
 {
     public void Configure(EntityTypeBuilder<Permission> builder)
     {
@@ -16,7 +18,7 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
     }
 }
 
-public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermission>
+public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermission>, ITenantEntityConfiguration
 {
     public void Configure(EntityTypeBuilder<RolePermission> builder)
     {
@@ -26,7 +28,7 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
     }
 }
 
-public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
+public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>, ITenantEntityConfiguration
 {
     public void Configure(EntityTypeBuilder<AppUser> builder)
     {
@@ -34,7 +36,7 @@ public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
     }
 }
 
-public class AppRoleConfiguration : IEntityTypeConfiguration<AppRole>
+public class AppRoleConfiguration : IEntityTypeConfiguration<AppRole>, ITenantEntityConfiguration
 {
     public void Configure(EntityTypeBuilder<AppRole> builder)
     {

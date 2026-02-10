@@ -14,6 +14,10 @@ public class RegistrationModule : IModule
         ["Registration"] = "Registration"
     };
 
+    public IReadOnlyList<string> PublicRoutePrefixes => ["register"];
+
+    public IReadOnlyList<string> ReservedSlugs => ["register", "login", "logout"];
+
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<ITenantProvisioner, TenantProvisionerService>();

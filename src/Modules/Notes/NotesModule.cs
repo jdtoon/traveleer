@@ -1,5 +1,3 @@
-using saas.Data.Core;
-using saas.Data.Tenant;
 using saas.Modules.Notes.Services;
 using saas.Shared;
 
@@ -29,17 +27,26 @@ public class NotesModule : IModule
         ["Notes"] = "Notes"
     };
 
-    public IReadOnlyList<Feature> Features =>
+    public IReadOnlyList<string> PartialViewSearchPaths => ["Notes"];
+
+    public IReadOnlyList<ModuleFeature> Features =>
     [
-        new() { Id = Guid.NewGuid(), Key = NotesFeatures.Notes, Name = "Notes", Module = Name, IsGlobal = false, IsEnabled = true }
+        new(NotesFeatures.Notes, "Notes")
     ];
 
-    public IReadOnlyList<Permission> Permissions =>
+    public IReadOnlyList<ModulePermission> Permissions =>
     [
-        new() { Id = Guid.NewGuid(), Key = NotesPermissions.Read, Name = "View Notes", Group = "Notes", SortOrder = 0 },
-        new() { Id = Guid.NewGuid(), Key = NotesPermissions.Create, Name = "Create Notes", Group = "Notes", SortOrder = 1 },
-        new() { Id = Guid.NewGuid(), Key = NotesPermissions.Edit, Name = "Edit Notes", Group = "Notes", SortOrder = 2 },
-        new() { Id = Guid.NewGuid(), Key = NotesPermissions.Delete, Name = "Delete Notes", Group = "Notes", SortOrder = 3 },
+        new(NotesPermissions.Read, "View Notes", "Notes", 0),
+        new(NotesPermissions.Create, "Create Notes", "Notes", 1),
+        new(NotesPermissions.Edit, "Edit Notes", "Notes", 2),
+        new(NotesPermissions.Delete, "Delete Notes", "Notes", 3),
+    ];
+
+    public IReadOnlyList<RolePermissionMapping> DefaultRolePermissions =>
+    [
+        new("Member", NotesPermissions.Read),
+        new("Member", NotesPermissions.Create),
+        new("Member", NotesPermissions.Edit),
     ];
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)

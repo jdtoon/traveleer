@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using saas.Data.Tenant;
 using saas.Modules.Notes.Entities;
 
-namespace saas.Data.Tenant.Configurations;
+namespace saas.Modules.Notes.Data;
 
-public class NoteConfiguration : IEntityTypeConfiguration<Note>
+public class NoteConfiguration : IEntityTypeConfiguration<Note>, ITenantEntityConfiguration
 {
     public void Configure(EntityTypeBuilder<Note> builder)
     {

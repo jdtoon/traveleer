@@ -305,7 +305,7 @@ public class TenantAdminController : SwapController
 public class RoleDetailViewModel
 {
     public RoleListItem Role { get; set; } = null!;
-    public List<saas.Data.Tenant.Permission> AllPermissions { get; set; } = [];
+    public List<Permission> AllPermissions { get; set; } = [];
 }
 
 public class InviteUserViewModel

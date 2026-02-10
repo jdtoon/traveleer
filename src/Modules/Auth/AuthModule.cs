@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using saas.Data.Tenant;
+using saas.Modules.Auth.Entities;
 using saas.Modules.Auth.Services;
 using saas.Shared;
 
@@ -17,6 +18,16 @@ public class AuthModule : IModule
         ["TenantAuth"] = "Auth",
         ["SuperAdminAuth"] = "Auth"
     };
+
+    public IReadOnlyList<string> PublicRoutePrefixes =>
+    [
+        "login", "login-redirect", "login-modal"
+    ];
+
+    public IReadOnlyList<ModuleFeature> Features =>
+    [
+        new("sso", "Single Sign-On")
+    ];
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {

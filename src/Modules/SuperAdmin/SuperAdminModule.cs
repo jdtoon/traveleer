@@ -13,6 +13,12 @@ public class SuperAdminModule : IModule
         ["SuperAdmin"] = "SuperAdmin"
     };
 
+    public IReadOnlyList<string> PartialViewSearchPaths => ["SuperAdmin"];
+
+    public IReadOnlyList<string> PublicRoutePrefixes => ["super-admin"];
+
+    public IReadOnlyList<string> ReservedSlugs => ["super-admin", "admin"];
+
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<ISuperAdminService, SuperAdminService>();

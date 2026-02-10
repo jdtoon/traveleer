@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using saas.Modules.Auth.Entities;
 using saas.Modules.Notes.Entities;
 
 namespace saas.Data.Tenant;
@@ -24,7 +25,7 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
 
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(TenantDbContext).Assembly,
-            t => t.Namespace?.Contains("Data.Tenant") == true
+            t => typeof(ITenantEntityConfiguration).IsAssignableFrom(t) && t.IsClass
         );
     }
 
