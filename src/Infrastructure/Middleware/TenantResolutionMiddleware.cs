@@ -10,7 +10,7 @@ public class TenantResolutionMiddleware
     private readonly RequestDelegate _next;
     private static readonly HashSet<string> NonTenantPrefixes = new(StringComparer.OrdinalIgnoreCase)
     {
-        "", "health", "pricing", "register", "super-admin", "login", "login-redirect", "login-modal", "about", "contact", "legal", "sitemap.xml", "robots.txt"
+        "", "health", "pricing", "register", "super-admin", "login", "login-redirect", "login-modal", "about", "contact", "legal", "sitemap.xml", "robots.txt", "favicon.ico", "api", "static", "assets"
     };
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(3);
