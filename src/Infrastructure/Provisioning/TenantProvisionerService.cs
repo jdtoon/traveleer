@@ -20,7 +20,7 @@ public partial class TenantProvisionerService : ITenantProvisioner
     {
         "super-admin", "admin", "api", "health", "pricing", "about", 
         "contact", "register", "login", "logout", "www", "app", "cdn",
-        "static", "assets", "docs", "help", "support", "blog", "status"
+        "static", "assets", "docs", "help", "support", "blog", "status", "legal", "sitemap", "robots", "favicon"
     };
 
     public TenantProvisionerService(
