@@ -100,9 +100,16 @@ public class AuditWriterTests : IAsyncLifetime
 
         await Task.Delay(500);
 
-        using var scope = _serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
-        var count = await db.AuditEntries.CountAsync(e => e.TenantSlug == "bulk");
+        // Retry with back-off — the background channel consumer may need more time
+        int count = 0;
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+            count = await db.AuditEntries.CountAsync(e => e.TenantSlug == "bulk");
+            if (count >= 5) break;
+            await Task.Delay(200);
+        }
 
         Assert.Equal(5, count);
     }
