@@ -22,7 +22,7 @@ services:
       start_period: 10s
 
   litestream:
-    image: litestream/litestream:0.3
+    image: litestream/litestream:0.5
     container_name: saas-litestream
     restart: unless-stopped
     volumes:
