@@ -239,6 +239,19 @@ public partial class TenantProvisionerService : ITenantProvisioner
             _logger.LogInformation("Seeded {Count} permissions and {RoleCount} roles for tenant {Slug}",
                 permissions.Count, createdRoles.Count, tenant.Slug);
 
+            // Call module-specific tenant seeding hooks
+            foreach (var module in _modules)
+            {
+                try
+                {
+                    await module.SeedTenantAsync(scope.ServiceProvider);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Module {Module} SeedTenantAsync failed for tenant {Slug}", module.Name, slug);
+                }
+            }
+
             // Create admin user
             var adminUser = new AppUser
             {

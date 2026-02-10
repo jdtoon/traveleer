@@ -64,6 +64,19 @@ public interface IModule
     IReadOnlyList<string> ReservedSlugs => [];
 
     /// <summary>
+    /// Called after tenant roles, permissions, and admin user are seeded during provisioning.
+    /// Use this to seed module-specific tenant data (e.g. default settings, templates).
+    /// Receives the scoped IServiceProvider with TenantDbContext already wired to the new tenant DB.
+    /// </summary>
+    Task SeedTenantAsync(IServiceProvider scopedServices) => Task.CompletedTask;
+
+    /// <summary>
+    /// Called during dev seeding only (when DevSeed:Enabled is true).
+    /// Use this to create demo/sample data for local development.
+    /// </summary>
+    Task SeedDemoDataAsync(IServiceProvider scopedServices) => Task.CompletedTask;
+
+    /// <summary>
     /// Register services (DI), entity configurations, and options for this module.
     /// Called during ConfigureServices.
     /// </summary>

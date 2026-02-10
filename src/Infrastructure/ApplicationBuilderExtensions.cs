@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage;
 using saas.Data.Core;
 using saas.Data.Audit;
-using saas.Data.Seeding;
 using saas.Infrastructure.Middleware;
 using saas.Data.Tenant;
 using saas.Shared;
@@ -41,9 +40,16 @@ public static class ApplicationBuilderExtensions
             // Initialize TenantDbContext for each existing tenant DB
             await ApplyTenantMigrationsAsync(scope.ServiceProvider, logger);
 
-            // Seed master data (features collected from modules + cross-cutting)
+            // Seed core data (features collected from modules + plans + super admin)
             var modules = scope.ServiceProvider.GetRequiredService<IReadOnlyList<IModule>>();
-            await MasterDataSeeder.SeedAsync(coreDb, app.Configuration, modules);
+            await CoreDataSeeder.SeedAsync(coreDb, app.Configuration, modules);
+
+            // Dev seeding — only when explicitly enabled in config
+            var devSeedOptions = app.Configuration.GetSection(DevSeedOptions.SectionName).Get<DevSeedOptions>();
+            if (devSeedOptions?.Enabled == true)
+            {
+                await DevDataSeeder.SeedAsync(app.Services, devSeedOptions, modules);
+            }
 
             _initialized = true;
         }

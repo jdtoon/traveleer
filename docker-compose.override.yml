@@ -22,6 +22,15 @@ services:
       - Billing__Paystack__CallbackBaseUrl=http://localhost:8080
       - Turnstile__Provider=Mock
       - FeatureFlags__AllEnabledLocally=true
+      # --- Storage (local filesystem for dev) ---
+      - Storage__Provider=Local
+      - Storage__LocalBasePath=/app/db/uploads
+      # --- Dev Seeding ---
+      - DevSeed__Enabled=true
+      - DevSeed__TenantSlug=demo
+      - DevSeed__AdminEmail=admin@demo.local
+      - DevSeed__MemberEmail=member@demo.local
+      - DevSeed__PlanSlug=starter
       # --- Backup (writes config to shared volume) ---
       - Backup__LitestreamConfigPath=/app/db/litestream.yml
       - Backup__SentinelPath=/app/db/.litestream-reload

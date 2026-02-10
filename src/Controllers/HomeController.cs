@@ -9,4 +9,11 @@ public class HomeController : SwapController
     {
         return Redirect("/");
     }
+
+    [Route("/Home/Error")]
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult Error()
+    {
+        return View();
+    }
 }

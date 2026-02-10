@@ -36,7 +36,7 @@ public class TenantAdminModule : IModule
 
     public IReadOnlyList<ModuleFeature> Features =>
     [
-        new("custom_roles", "Custom Roles")
+        new("custom_roles", "Custom Roles", MinPlanSlug: "starter")
     ];
 
     public IReadOnlyList<ModulePermission> Permissions =>

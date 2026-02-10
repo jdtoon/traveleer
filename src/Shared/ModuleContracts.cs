@@ -3,12 +3,15 @@ namespace saas.Shared;
 /// <summary>
 /// Lightweight feature definition declared by a module.
 /// Mapped to the Feature entity during core DB seeding.
+/// MinPlanSlug determines the minimum plan tier required (by SortOrder).
+/// Null means available on ALL plans including Free.
 /// </summary>
 public record ModuleFeature(
     string Key,
     string Name,
     string? Description = null,
-    bool IsGlobal = false);
+    bool IsGlobal = false,
+    string? MinPlanSlug = null);
 
 /// <summary>
 /// Lightweight permission definition declared by a module.

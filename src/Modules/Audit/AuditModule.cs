@@ -15,7 +15,7 @@ public class AuditModule : IModule
 
     public IReadOnlyList<ModuleFeature> Features =>
     [
-        new(AuditFeatures.AuditLog, "Audit Log")
+        new(AuditFeatures.AuditLog, "Audit Log", MinPlanSlug: "professional")
     ];
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)

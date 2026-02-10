@@ -31,7 +31,7 @@ public class NotesModule : IModule
 
     public IReadOnlyList<ModuleFeature> Features =>
     [
-        new(NotesFeatures.Notes, "Notes")
+        new(NotesFeatures.Notes, "Notes", MinPlanSlug: "starter")
     ];
 
     public IReadOnlyList<ModulePermission> Permissions =>

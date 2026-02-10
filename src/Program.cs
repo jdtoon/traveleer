@@ -2,7 +2,6 @@ using System.Globalization;
 using saas.Infrastructure;
 using saas.Data.Core;
 using saas.Data.Audit;
-using saas.Data.Seeding;
 using saas.Infrastructure.HealthChecks;
 using saas.Modules.Tenancy.Services;
 using saas.Shared;
@@ -98,6 +97,9 @@ builder.Services.AddHostedService<PendingTenantCleanupService>();
 // =============================================================================
 
 var app = builder.Build();
+
+// Initialize error page cache from wwwroot/errors/ HTML files
+ErrorPages.Initialize(app.Environment);
 
 await app.InitializeDatabaseAsync();
 

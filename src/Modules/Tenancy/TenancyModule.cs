@@ -28,19 +28,6 @@ public class TenancyModule : IModule
     ];
 
     /// <summary>
-    /// Platform-wide features not yet owned by dedicated modules.
-    /// Move these into their respective modules as they are built.
-    /// </summary>
-    public IReadOnlyList<ModuleFeature> Features =>
-    [
-        new("projects", "Projects"),
-        new("api_access", "API Access"),
-        new("advanced_reports", "Advanced Reports"),
-        new("white_label", "White Label"),
-        new("export_data", "Data Export"),
-    ];
-
-    /// <summary>
     /// The Admin role is created for every tenant. Gets all permissions automatically.
     /// </summary>
     public IReadOnlyList<RoleDefinition> DefaultRoles =>
