@@ -2,12 +2,50 @@
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
         // Close DaisyUI modal
-        const modal = document.querySelector('.modal.modal-open');
+        var modal = document.querySelector('.modal.modal-open');
         if (modal) {
             modal.classList.remove('modal-open');
         }
     }
 });
+
+// ── Helper: reset all loading buttons ────────────────────────────────────
+function resetLoadingButtons() {
+    document.querySelectorAll('button.loading, [type="submit"].loading').forEach(function (btn) {
+        btn.disabled = btn.dataset.htmxOrigDisabled === 'true';
+        btn.classList.remove('loading', 'loading-spinner');
+        delete btn.dataset.htmxOrigDisabled;
+    });
+}
+
+// ── Clean up when any modal is dismissed via JS (Cancel / ✕ / backdrop) ──
+(function () {
+    var observer = new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+            if (m.type === 'attributes' && m.attributeName === 'class') {
+                var target = m.target;
+                if (target.classList.contains('modal') && !target.classList.contains('modal-open')) {
+                    resetLoadingButtons();
+                }
+            }
+        });
+    });
+
+    // Observe modal class changes on the whole document
+    observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class'] });
+
+    // Also catch when modal container is emptied (e.g. _ModalClose partial replaces content)
+    var modalContainer = document.getElementById('modal-container');
+    if (modalContainer) {
+        var childObserver = new MutationObserver(function () {
+            // If modal content was cleared, reset any stale loading buttons
+            if (!document.querySelector('.modal.modal-open')) {
+                resetLoadingButtons();
+            }
+        });
+        childObserver.observe(modalContainer, { childList: true });
+    }
+})();
 
 // ── HTMX global loading indicators & button disable ──────────────────────
 
@@ -80,5 +118,17 @@ document.addEventListener('keydown', function (e) {
             delete trigger.dataset.htmxOrigDisabled;
         }
         if (activeRequests === 0) hideBar();
+    });
+
+    // Catch-all: also clean up on htmx:afterRequest which fires for every
+    // completed request regardless of swap outcome, handling edge cases where
+    // afterSettle may not fire (e.g. modal dismissed mid-request).
+    document.addEventListener('htmx:afterRequest', function (evt) {
+        var trigger = evt.detail.elt;
+        if (trigger && (trigger.tagName === 'BUTTON' || trigger.type === 'submit')) {
+            trigger.disabled = trigger.dataset.htmxOrigDisabled === 'true';
+            trigger.classList.remove('loading', 'loading-spinner');
+            delete trigger.dataset.htmxOrigDisabled;
+        }
     });
 })();

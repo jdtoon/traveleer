@@ -14,6 +14,42 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_HTTP_PORTS=8080
+      # ── Site ────────────────────────────────────────────────
+      - Site__BaseUrl=https://your-domain.com
+      - Site__Name=Your SaaS
+      - Site__SupportEmail=support@your-domain.com
+      # ── Super Admin ─────────────────────────────────────────
+      - SuperAdmin__Email=admin@your-domain.com
+      # ── Feature Flags ───────────────────────────────────────
+      - FeatureFlags__AllEnabledLocally=false
+      # ── Billing (Paystack) ──────────────────────────────────
+      - Billing__Provider=Paystack
+      - Billing__Paystack__SecretKey=CHANGE_ME
+      - Billing__Paystack__PublicKey=CHANGE_ME
+      - Billing__Paystack__WebhookSecret=CHANGE_ME
+      - Billing__Paystack__CallbackBaseUrl=https://your-domain.com
+      # ── Email (AWS SES) ─────────────────────────────────────
+      - Email__Provider=SES
+      - Email__FromAddress=noreply@your-domain.com
+      - Email__SES__AccessKey=CHANGE_ME
+      - Email__SES__SecretKey=CHANGE_ME
+      - Email__SES__Region=af-south-1
+      # ── Bot Protection (Cloudflare Turnstile) ───────────────
+      - Turnstile__Provider=Cloudflare
+      - Turnstile__SiteKey=CHANGE_ME
+      - Turnstile__SecretKey=CHANGE_ME
+      # ── Storage (Cloudflare R2) ─────────────────────────────
+      - Storage__Provider=R2
+      - Storage__R2Bucket=CHANGE_ME
+      - Storage__R2Endpoint=CHANGE_ME
+      - Storage__R2AccessKey=CHANGE_ME
+      - Storage__R2SecretKey=CHANGE_ME
+      - Storage__R2PublicUrl=CHANGE_ME
+      # ── Backup (Litestream R2 — also used by litestream sidecar) ─
+      - Backup__R2Bucket=${R2_BUCKET:-saas-backups}
+      - Backup__R2Endpoint=${R2_ENDPOINT:-}
+      # ── Health Check ────────────────────────────────────────
+      - HealthCheck__AllowedIPs=
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]

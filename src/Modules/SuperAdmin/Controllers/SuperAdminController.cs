@@ -143,7 +143,22 @@ public class SuperAdminController : SwapController
             return SwapView("_PlanEditModal", model);
         }
 
+        // Fetch old slug before save (in case it was renamed) to invalidate stale cache
+        string? oldSlug = null;
+        if (model.Id.HasValue)
+        {
+            var existing = await _service.GetPlanAsync(model.Id.Value);
+            if (existing is not null && !string.Equals(existing.Slug, model.Slug, StringComparison.OrdinalIgnoreCase))
+                oldSlug = existing.Slug;
+        }
+
         await _service.SavePlanAsync(model);
+
+        // Invalidate cached rate limit for this plan so changes take effect immediately
+        _cache.Remove($"plan-rate-limit-{model.Slug}");
+        if (oldSlug is not null)
+            _cache.Remove($"plan-rate-limit-{oldSlug}");
+
         var plans = await _service.GetPlansAsync();
 
         return SwapResponse()

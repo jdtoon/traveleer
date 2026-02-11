@@ -14,7 +14,7 @@ dotnet run
 - Opens at `https://localhost:5001` (or per `launchSettings.json`)
 - Uses `appsettings.Development.json` overrides
 - All providers default to mocks: `Billing=Mock`, `Email=Console`, `Turnstile=Mock`
-- `FeatureFlags:AllEnabledLocally=true` enables all features regardless of plan
+- `FeatureFlags:AllEnabledLocally=false` — features are gated by plan (set to `true` via env var to bypass for debugging)
 - Dev seed creates a `demo` tenant if `DevSeed:Enabled=true`
 
 ---
@@ -34,8 +34,14 @@ docker compose up --build
 
 ## Production (Docker)
 
+All production environment variables are defined in `docker-compose.yml` with `CHANGE_ME` placeholders. Replace them with real values before deploying.
+
+For **Coolify** or similar Docker PaaS: set the environment variables directly in the platform's UI — they override the compose file defaults.
+
+For **manual deployment**:
+
 ```bash
-# Create .env with real credentials
+# Create .env for Litestream R2 credentials (used by both app and sidecar)
 cat > .env <<EOF
 R2_ACCESS_KEY_ID=your_key
 R2_SECRET_ACCESS_KEY=your_secret
@@ -47,11 +53,7 @@ EOF
 docker compose -f docker-compose.yml up -d
 ```
 
-Ensure `appsettings.Production.json` or environment variables configure:
-- `Billing:Provider=Paystack` + Paystack keys
-- `Email:Provider=SES` + AWS SES credentials
-- `Turnstile:Provider=Cloudflare` + site/secret keys
-- `Storage:Provider=R2` + R2 bucket config
+All app configuration (billing, email, turnstile, storage, etc.) is set via environment variables in the `docker-compose.yml` `environment` block. The `.env` file only provides Litestream-specific R2 credentials shared with the sidecar container.
 
 ---
 
@@ -164,11 +166,29 @@ public class MyController : SwapController
 |----------|---------|-------------|
 | `ASPNETCORE_ENVIRONMENT` | `Development` | Runtime environment |
 | `Site__BaseUrl` | `https://localhost:5001` | Public URL |
+| `Site__Name` | `SaaS Platform` | Site display name |
+| `Site__SupportEmail` | `support@localhost` | Support email address |
 | `SuperAdmin__Email` | `admin@localhost` | Super admin email |
 | `Billing__Provider` | `Mock` | `Mock` or `Paystack` |
+| `Billing__Paystack__SecretKey` | — | Paystack secret key |
+| `Billing__Paystack__PublicKey` | — | Paystack public key |
+| `Billing__Paystack__WebhookSecret` | — | Paystack webhook signature |
+| `Billing__Paystack__CallbackBaseUrl` | — | Base URL for Paystack callbacks |
 | `Email__Provider` | `Console` | `Console` or `SES` |
+| `Email__FromAddress` | — | Sender email address |
+| `Email__SES__AccessKey` | — | AWS SES access key |
+| `Email__SES__SecretKey` | — | AWS SES secret key |
+| `Email__SES__Region` | — | AWS SES region |
 | `Turnstile__Provider` | `Mock` | `Mock` or `Cloudflare` |
+| `Turnstile__SiteKey` | — | Cloudflare Turnstile site key |
+| `Turnstile__SecretKey` | — | Cloudflare Turnstile secret key |
 | `Storage__Provider` | `Local` | `Local` or `R2` |
-| `FeatureFlags__AllEnabledLocally` | `true` | Enable all features in dev |
+| `Storage__R2Bucket` | — | R2 bucket name |
+| `Storage__R2Endpoint` | — | R2 endpoint URL |
+| `Storage__R2AccessKey` | — | R2 access key |
+| `Storage__R2SecretKey` | — | R2 secret key |
+| `Storage__R2PublicUrl` | — | R2 public URL for assets |
+| `FeatureFlags__AllEnabledLocally` | `false` | Bypass plan-based feature checks |
 | `DevSeed__Enabled` | `false` | Auto-create demo tenant |
+| `HealthCheck__AllowedIPs` | _(empty)_ | Comma-separated IPs for `/health` |
 | `HealthCheck__AllowedIPs` | _(empty)_ | Comma-separated IPs |

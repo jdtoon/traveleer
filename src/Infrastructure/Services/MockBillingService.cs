@@ -95,15 +95,17 @@ public class MockBillingService : IBillingService
         var tenant = await _db.Tenants.FindAsync(tenantId);
         if (tenant is not null) tenant.PlanId = newPlanId;
 
-        // Update existing subscription in-place
+        // Update existing subscription in-place (include all non-terminal statuses)
+        var activeStatuses = new[] { SubscriptionStatus.Active, SubscriptionStatus.Trialing, SubscriptionStatus.NonRenewing, SubscriptionStatus.PastDue };
         var existingSub = await _db.Subscriptions
-            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+            .Where(s => s.TenantId == tenantId && activeStatuses.Contains(s.Status))
             .OrderByDescending(s => s.StartDate)
             .FirstOrDefaultAsync();
 
         if (existingSub is not null)
         {
             existingSub.PlanId = newPlanId;
+            existingSub.Status = SubscriptionStatus.Active;
             existingSub.StartDate = DateTime.UtcNow;
             existingSub.NextBillingDate = DateTime.UtcNow.AddMonths(1);
         }
@@ -152,8 +154,9 @@ public class MockBillingService : IBillingService
         if (currentPlan.Id == newPlanId)
             return new PlanChangePreview(false, Error: "Already on this plan");
 
+        var activeStatuses = new[] { SubscriptionStatus.Active, SubscriptionStatus.Trialing, SubscriptionStatus.NonRenewing, SubscriptionStatus.PastDue };
         var existingSub = await _db.Subscriptions
-            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+            .Where(s => s.TenantId == tenantId && activeStatuses.Contains(s.Status))
             .OrderByDescending(s => s.StartDate)
             .FirstOrDefaultAsync();
 
