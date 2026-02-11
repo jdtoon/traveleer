@@ -139,11 +139,29 @@ public class TenantBillingController : SwapController
             ErrorMessage = (string?)null });
     }
 
+    [HttpGet]
+    public IActionResult CancelModal()
+    {
+        var tenantName = _tenantContext.TenantName ?? "this workspace";
+        return SwapView("_CancelConfirmModal", new CancelConfirmViewModel
+        {
+            TenantName = tenantName
+        });
+    }
+
     [HttpPost]
-    public async Task<IActionResult> Cancel()
+    public async Task<IActionResult> Cancel([FromForm] string confirmName)
     {
         var tenantId = _tenantContext.TenantId;
         if (!tenantId.HasValue) return NotFound();
+
+        var tenantName = _tenantContext.TenantName ?? "this workspace";
+        if (!string.Equals(confirmName?.Trim(), tenantName, StringComparison.OrdinalIgnoreCase))
+        {
+            return SwapResponse()
+                .WithErrorToast("Confirmation name does not match")
+                .Build();
+        }
 
         var success = await _billingService.CancelSubscriptionAsync(tenantId.Value);
         if (!success)
@@ -155,7 +173,8 @@ public class TenantBillingController : SwapController
 
         var model = await GetBillingModelAsync();
         return SwapResponse()
-            .WithView("_BillingContent", model)
+            .WithView("_ModalClose")
+            .AlsoUpdate("billing-content", "_BillingContent", model)
             .WithWarningToast("Subscription cancelled")
             .Build();
     }
@@ -236,4 +255,9 @@ public class PlanChangeConfirmViewModel
 {
     public PlanChangePreview Preview { get; set; } = null!;
     public Guid NewPlanId { get; set; }
+}
+
+public class CancelConfirmViewModel
+{
+    public string TenantName { get; set; } = string.Empty;
 }

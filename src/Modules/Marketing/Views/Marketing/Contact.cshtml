@@ -18,6 +18,7 @@
               hx-post="/contact"
               hx-target="#contact-result"
               hx-swap="innerHTML"
+              hx-disabled-elt="#contact-submit-btn"
               hx-on::after-request="if(event.detail.successful) this.reset()">
             @Html.AntiForgeryToken()
 
@@ -49,7 +50,10 @@
                 </div>
             }
 
-            <button class="btn btn-primary w-full md:w-auto" type="submit">Send message</button>
+            <button id="contact-submit-btn" class="btn btn-primary w-full md:w-auto" type="submit">
+                <span class="htmx-indicator loading loading-spinner loading-sm"></span>
+                Send message
+            </button>
         </form>
 
         <div id="contact-result" class="mt-6"></div>

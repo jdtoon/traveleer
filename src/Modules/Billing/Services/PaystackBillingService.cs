@@ -120,7 +120,10 @@ public class PaystackBillingService : IBillingService
     public async Task<bool> CancelSubscriptionAsync(Guid tenantId)
     {
         var subscription = await _coreDb.Subscriptions
-            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+            .Where(s => s.TenantId == tenantId
+                && (s.Status == SubscriptionStatus.Active
+                    || s.Status == SubscriptionStatus.NonRenewing
+                    || s.Status == SubscriptionStatus.PastDue))
             .OrderByDescending(s => s.StartDate)
             .FirstOrDefaultAsync();
 
@@ -337,7 +340,9 @@ public class PaystackBillingService : IBillingService
         var newPlan = await _coreDb.Plans.FindAsync(newPlanId);
         if (newPlan is null) return new PlanChangePreview(false, Error: "Plan not found");
 
-        var currentPlan = tenant.Plan;
+        var currentPlan = tenant.Plan ?? await _coreDb.Plans.FindAsync(tenant.PlanId);
+        if (currentPlan is null)
+            return new PlanChangePreview(false, Error: "Current plan not found");
         if (currentPlan.Id == newPlanId)
             return new PlanChangePreview(false, Error: "Already on this plan");
 

@@ -51,9 +51,8 @@
                     || Model.SubscriptionStatus == SubscriptionStatus.NonRenewing)
                 {
                     <button class="btn btn-outline btn-error btn-sm"
-                            hx-post="@Url.Action("Cancel", "TenantBilling")"
-                            hx-target="#billing-content"
-                            hx-confirm="Are you sure you want to cancel your subscription?">
+                            hx-get="@Url.Action("CancelModal", "TenantBilling")"
+                            hx-target="#modal-container">
                         Cancel
                     </button>
                 }
