@@ -46,12 +46,12 @@ public class TenantAdminController : SwapController
     [HasPermission(TenantAdminPermissions.UsersCreate)]
     public async Task<IActionResult> InviteUser([FromForm] string email, [FromForm] string? roleId)
     {
-        var success = await _service.InviteUserAsync(email, roleId);
-        if (!success)
+        var result = await _service.InviteUserAsync(email, roleId);
+        if (!result.Success)
         {
             var roles = await _service.GetRolesAsync();
             return SwapResponse()
-                .WithErrorToast("User already exists or invalid email")
+                .WithErrorToast(result.Error ?? "Failed to invite user")
                 .WithView("_InviteUserModal", new InviteUserViewModel { AvailableRoles = roles })
                 .Build();
         }
@@ -95,6 +95,7 @@ public class TenantAdminController : SwapController
     // ── Roles ────────────────────────────────────────────────────────────────
 
     [HttpGet]
+    [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesRead)]
     public async Task<IActionResult> Roles()
     {
@@ -103,6 +104,7 @@ public class TenantAdminController : SwapController
     }
 
     [HttpGet]
+    [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesRead)]
     public async Task<IActionResult> RoleList()
     {
@@ -111,6 +113,7 @@ public class TenantAdminController : SwapController
     }
 
     [HttpGet]
+    [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesRead)]
     public async Task<IActionResult> RoleDetail(string id)
     {
@@ -123,6 +126,7 @@ public class TenantAdminController : SwapController
     }
 
     [HttpGet]
+    [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesCreate)]
     public IActionResult CreateRole()
     {
@@ -130,6 +134,7 @@ public class TenantAdminController : SwapController
     }
 
     [HttpPost]
+    [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesCreate)]
     public async Task<IActionResult> CreateRole([FromForm] string name, [FromForm] string? description)
     {
@@ -159,6 +164,7 @@ public class TenantAdminController : SwapController
     }
 
     [HttpGet]
+    [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesEdit)]
     public async Task<IActionResult> EditRole(string id)
     {
@@ -170,6 +176,7 @@ public class TenantAdminController : SwapController
     }
 
     [HttpPost]
+    [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesEdit)]
     public async Task<IActionResult> EditRole([FromForm] string id, [FromForm] string name, [FromForm] string? description)
     {
@@ -197,18 +204,21 @@ public class TenantAdminController : SwapController
     }
 
     [HttpPost]
+    [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesDelete)]
     public async Task<IActionResult> DeleteRole([FromForm] string id)
     {
         var success = await _service.DeleteRoleAsync(id);
+        var roles = await _service.GetRolesAsync();
+
         if (!success)
         {
             return SwapResponse()
                 .WithErrorToast("Cannot delete system roles or roles with assigned users")
+                .WithView("_RoleList", roles)
                 .Build();
         }
 
-        var roles = await _service.GetRolesAsync();
         return SwapResponse()
             .WithView("_RoleList", roles)
             .WithSuccessToast("Role deleted")
@@ -216,6 +226,7 @@ public class TenantAdminController : SwapController
     }
 
     [HttpPost]
+    [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesEdit)]
     public async Task<IActionResult> ToggleRolePermission([FromForm] string roleId, [FromForm] Guid permissionId)
     {

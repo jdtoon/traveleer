@@ -56,10 +56,10 @@ public class TenantAuthController : SwapController
         }
 
         var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
-        if (user is null)
+        if (user is null || !user.IsActive)
         {
-            ViewData["TenantSlug"] = slug;
-            return SwapView("TenantLogin", model: "Email not found.");
+            // Always show the same message to prevent email enumeration
+            return SwapView("MagicLinkSent");
         }
 
         var token = await _magicLinks.GenerateTokenAsync(email, slug);
@@ -79,6 +79,9 @@ public class TenantAuthController : SwapController
         var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == result.Email);
         if (user is null)
             return SwapView("MagicLinkError", "User not found");
+
+        if (!user.IsActive)
+            return SwapView("MagicLinkError", "This account has been deactivated. Please contact your administrator.");
 
         var roles = await _userManager.GetRolesAsync(user);
 

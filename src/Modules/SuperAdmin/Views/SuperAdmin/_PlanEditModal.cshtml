@@ -50,6 +50,12 @@
                 </div>
 
                 <div class="form-control w-full">
+                    <label class="label" for="MaxRequestsPerMinute"><span class="label-text">Rate Limit (req/min)</span></label>
+                    <input type="number" id="MaxRequestsPerMinute" name="MaxRequestsPerMinute" class="input input-bordered w-full"
+                           value="@Model.MaxRequestsPerMinute" min="0" placeholder="Unlimited (default 60)" />
+                </div>
+
+                <div class="form-control w-full">
                     <label class="label" for="SortOrder"><span class="label-text">Sort Order</span></label>
                     <input type="number" id="SortOrder" name="SortOrder" class="input input-bordered w-full"
                            value="@Model.SortOrder" min="0" />

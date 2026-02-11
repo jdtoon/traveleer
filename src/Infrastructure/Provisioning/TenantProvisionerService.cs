@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using saas.Data;
 using saas.Data.Core;
 using saas.Data.Tenant;
+using saas.Infrastructure.Services;
 using saas.Modules.Auth.Entities;
 using saas.Modules.Billing.Entities;
 using saas.Modules.Tenancy.Entities;
@@ -18,17 +19,20 @@ public partial class TenantProvisionerService : ITenantProvisioner
     private readonly ILogger<TenantProvisionerService> _logger;
     private readonly IReadOnlyList<IModule> _modules;
     private readonly HashSet<string> _reservedSlugs;
+    private readonly ILitestreamConfigSync? _litestreamSync;
 
     public TenantProvisionerService(
         CoreDbContext coreDb,
         IServiceProvider serviceProvider,
         ILogger<TenantProvisionerService> logger,
-        IReadOnlyList<IModule> modules)
+        IReadOnlyList<IModule> modules,
+        ILitestreamConfigSync? litestreamSync = null)
     {
         _coreDb = coreDb;
         _serviceProvider = serviceProvider;
         _logger = logger;
         _modules = modules;
+        _litestreamSync = litestreamSync;
 
         // Collect reserved slugs from all modules (explicit + public route prefixes)
         _reservedSlugs = new HashSet<string>(
@@ -148,6 +152,20 @@ public partial class TenantProvisionerService : ITenantProvisioner
             // Apply migrations to create schema
             await tenantDb.Database.MigrateAsync();
             _logger.LogInformation("Applied migrations to tenant database: {DbPath}", dbPath);
+
+            // Immediately sync Litestream config so the new DB is backed up
+            if (_litestreamSync is not null)
+            {
+                try
+                {
+                    await _litestreamSync.SyncConfigAsync();
+                    _logger.LogInformation("Litestream config synced immediately after creating tenant {Slug}", slug);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to sync Litestream config after creating tenant {Slug}", slug);
+                }
+            }
 
             // Create initial admin user
             using var scope = _serviceProvider.CreateScope();

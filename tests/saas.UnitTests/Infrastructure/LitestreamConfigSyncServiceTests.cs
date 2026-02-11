@@ -142,8 +142,8 @@ public class LitestreamConfigSyncServiceTests : IDisposable
         var yaml = await File.ReadAllTextAsync(configPath);
         Assert.Contains("test-bucket", yaml);
         Assert.Contains("tenants/test.db", yaml);
-        Assert.Contains(coreDbPath, yaml);
-        Assert.Contains(auditDbPath, yaml);
+        Assert.Contains(coreDbPath.Replace('\\', '/'), yaml);
+        Assert.Contains(auditDbPath.Replace('\\', '/'), yaml);
     }
 
     [Fact]

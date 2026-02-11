@@ -1,0 +1,57 @@
+@model saas.Modules.Audit.Entities.AuditEntry
+
+<div class="modal modal-open" onclick="if(event.target===this)htmx.remove(this)">
+    <div class="modal-box max-w-2xl">
+        <h3 class="font-bold text-lg mb-4">
+            Audit Detail — @Model.Action @Model.EntityType
+        </h3>
+
+        <div class="grid grid-cols-2 gap-2 text-sm mb-4">
+            <div><span class="font-semibold">Entity Type:</span> @Model.EntityType</div>
+            <div><span class="font-semibold">Entity ID:</span> @Model.EntityId</div>
+            <div><span class="font-semibold">Action:</span> @Model.Action</div>
+            <div><span class="font-semibold">User:</span> @(Model.UserEmail ?? "system")</div>
+            <div><span class="font-semibold">Timestamp:</span> @Model.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</div>
+            <div><span class="font-semibold">IP Address:</span> @(Model.IpAddress ?? "—")</div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.AffectedColumns))
+        {
+            <div class="mb-3">
+                <span class="font-semibold text-sm">Affected Columns:</span>
+                <div class="flex flex-wrap gap-1 mt-1">
+                    @foreach (var col in Model.AffectedColumns.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        <span class="badge badge-sm badge-outline">@col.Trim()</span>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.OldValues))
+        {
+            <div class="collapse collapse-arrow bg-base-200 mb-2">
+                <input type="checkbox" checked />
+                <div class="collapse-title font-semibold text-sm">Old Values</div>
+                <div class="collapse-content">
+                    <pre class="text-xs overflow-x-auto whitespace-pre-wrap break-words">@Model.OldValues</pre>
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.NewValues))
+        {
+            <div class="collapse collapse-arrow bg-base-200 mb-2">
+                <input type="checkbox" checked />
+                <div class="collapse-title font-semibold text-sm">New Values</div>
+                <div class="collapse-content">
+                    <pre class="text-xs overflow-x-auto whitespace-pre-wrap break-words">@Model.NewValues</pre>
+                </div>
+            </div>
+        }
+
+        <div class="modal-action">
+            <button class="btn" onclick="htmx.remove(this.closest('.modal'))">Close</button>
+        </div>
+    </div>
+</div>

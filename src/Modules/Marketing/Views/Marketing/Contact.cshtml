@@ -17,7 +17,8 @@
               action="/contact"
               hx-post="/contact"
               hx-target="#contact-result"
-              hx-swap="innerHTML">
+              hx-swap="innerHTML"
+              hx-on::after-request="if(event.detail.successful) this.reset()">
             @Html.AntiForgeryToken()
 
             <div class="grid gap-4 md:grid-cols-2">

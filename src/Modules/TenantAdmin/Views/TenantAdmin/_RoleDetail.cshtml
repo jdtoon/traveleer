@@ -40,7 +40,7 @@
                                 {
                                     <has-permission name="roles.edit">
                                         <input type="checkbox"
-                                               class="toggle toggle-sm toggle-primary"
+                                               class="checkbox checkbox-sm checkbox-success"
                                                @(isGranted ? "checked" : "")
                                                hx-post="@Url.Action("ToggleRolePermission", "TenantAdmin")"
                                                hx-vals='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { roleId = Model.Role.Id, permissionId = perm.Id }))'

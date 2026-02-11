@@ -16,7 +16,9 @@ public class BackupModule : IModule
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        services.AddHostedService<LitestreamConfigSyncService>();
+        services.AddSingleton<LitestreamConfigSyncService>();
+        services.AddHostedService(sp => sp.GetRequiredService<LitestreamConfigSyncService>());
+        services.AddSingleton<ILitestreamConfigSync>(sp => sp.GetRequiredService<LitestreamConfigSyncService>());
     }
 
     public void RegisterMiddleware(WebApplication app)

@@ -1,0 +1,45 @@
+@model saas.Modules.Audit.Controllers.AuditLogViewModel
+@{
+    ViewData["Title"] = "Audit Log";
+    ViewData["Breadcrumb"] = "Audit Log";
+}
+
+<div class="space-y-4">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold">Audit Log</h2>
+    </div>
+
+    <!-- Filters -->
+    <div class="card bg-base-200">
+        <div class="card-body p-4">
+            <form hx-get="@Url.Action("List", "AuditLog")"
+                  hx-target="#audit-log-list"
+                  hx-push-url="false"
+                  class="flex flex-wrap gap-3 items-end">
+                <div class="form-control">
+                    <label class="label label-text text-xs">Entity Type</label>
+                    <input type="text" name="entity" value="@Model.FilterEntity"
+                           placeholder="e.g. Note, User"
+                           class="input input-bordered input-sm w-48" />
+                </div>
+                <div class="form-control">
+                    <label class="label label-text text-xs">Action</label>
+                    <select name="action" class="select select-bordered select-sm w-40">
+                        <option value="">All</option>
+                        <option value="Added" selected="@(Model.FilterAction == "Added")">Added</option>
+                        <option value="Modified" selected="@(Model.FilterAction == "Modified")">Modified</option>
+                        <option value="Deleted" selected="@(Model.FilterAction == "Deleted")">Deleted</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                <a hx-get="@Url.Action("List", "AuditLog")"
+                   hx-target="#audit-log-list"
+                   class="btn btn-ghost btn-sm">Clear</a>
+            </form>
+        </div>
+    </div>
+
+    <div id="audit-log-list">
+        @await Html.PartialAsync("_AuditLogList", Model)
+    </div>
+</div>

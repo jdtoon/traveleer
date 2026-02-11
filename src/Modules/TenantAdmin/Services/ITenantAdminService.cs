@@ -7,7 +7,7 @@ public interface ITenantAdminService
 {
     // Users
     Task<PaginatedList<UserListItem>> GetUsersAsync(int page = 1, int pageSize = 20);
-    Task<bool> InviteUserAsync(string email, string? roleId = null);
+    Task<InviteUserResult> InviteUserAsync(string email, string? roleId = null);
     Task<bool> DeactivateUserAsync(string userId);
     Task<bool> ActivateUserAsync(string userId);
 
@@ -23,6 +23,8 @@ public interface ITenantAdminService
     Task<List<string>> GetUserRoleIdsAsync(string userId);
     Task<bool> SetUserRolesAsync(string userId, List<string> roleIds);
 }
+
+public record InviteUserResult(bool Success, string? Error = null);
 
 public class UserListItem
 {

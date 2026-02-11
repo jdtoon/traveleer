@@ -4,7 +4,7 @@ using saas.Shared;
 
 namespace saas.Infrastructure.Services;
 
-public class LitestreamConfigSyncService : BackgroundService
+public class LitestreamConfigSyncService : BackgroundService, ILitestreamConfigSync
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<LitestreamConfigSyncService> _logger;
@@ -120,7 +120,9 @@ public class LitestreamConfigSyncService : BackgroundService
         string bucket,
         string endpoint)
     {
-        yaml.AppendLine($"  - path: {path}");
+        // Normalize to forward slashes for cross-platform compatibility (litestream runs on Linux)
+        var normalizedPath = path.Replace('\\', '/');
+        yaml.AppendLine($"  - path: {normalizedPath}");
         yaml.AppendLine($"    replicas:");
         yaml.AppendLine($"      - type: s3");
         yaml.AppendLine($"        bucket: {bucket}");

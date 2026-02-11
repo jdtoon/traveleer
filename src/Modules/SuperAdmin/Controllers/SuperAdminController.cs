@@ -116,6 +116,7 @@ public class SuperAdminController : SwapController
                 MonthlyPrice = plan.MonthlyPrice,
                 AnnualPrice = plan.AnnualPrice,
                 MaxUsers = plan.MaxUsers,
+                MaxRequestsPerMinute = plan.MaxRequestsPerMinute,
                 SortOrder = plan.SortOrder,
                 IsActive = plan.IsActive
             };

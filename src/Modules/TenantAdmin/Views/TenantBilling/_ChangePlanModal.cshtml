@@ -39,10 +39,9 @@
                         @if (!isCurrent)
                         {
                             <button class="btn btn-primary btn-sm mt-2"
-                                    hx-post="@Url.Action("ChangePlan", "TenantBilling")"
+                                    hx-post="@Url.Action("PreviewPlanChange", "TenantBilling")"
                                     hx-vals='{"planId": "@plan.Id"}'
-                                    hx-target="#modal-container"
-                                    hx-confirm="Switch to @plan.Name plan?">
+                                    hx-target="#modal-container">
                                 Select
                             </button>
                         }

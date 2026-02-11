@@ -29,26 +29,32 @@ public class MockBillingService : IBillingService
             StartDate = DateTime.UtcNow,
             NextBillingDate = request.BillingCycle == BillingCycle.Monthly
                 ? DateTime.UtcNow.AddMonths(1)
-                : DateTime.UtcNow.AddYears(1)
+                : DateTime.UtcNow.AddYears(1),
+            PaystackSubscriptionCode = $"MOCK-{Guid.NewGuid()}"
         };
 
         _db.Subscriptions.Add(subscription);
 
+        var plan = await _db.Plans.FindAsync(request.PlanId);
         var payment = new Payment
         {
             Id = Guid.NewGuid(),
             TenantId = request.TenantId,
-            Amount = 0,
+            Amount = plan?.MonthlyPrice ?? 0,
             Currency = "ZAR",
             Status = PaymentStatus.Success,
             TransactionDate = DateTime.UtcNow,
-            GatewayResponse = "MOCK"
+            GatewayResponse = "MOCK",
+            PaystackReference = $"MOCK-TXN-{Guid.NewGuid():N}"
         };
 
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();
 
-        return new SubscriptionInitResult(true);
+        _logger.LogInformation("[MOCK BILLING] Subscription created (no redirect needed): {SubCode}", subscription.PaystackSubscriptionCode);
+
+        // Mock provider provisions inline — no payment redirect needed
+        return new SubscriptionInitResult(true, RequiresRedirect: false);
     }
 
     public async Task<SubscriptionStatus?> GetSubscriptionStatusAsync(Guid tenantId)
@@ -81,11 +87,15 @@ public class MockBillingService : IBillingService
     {
         _logger.LogInformation("[MOCK BILLING] ChangePlan tenant={TenantId} plan={PlanId}", tenantId, newPlanId);
 
+        var preview = await PreviewPlanChangeAsync(tenantId, newPlanId);
+        if (!preview.IsValid)
+            return new PlanChangeResult(false, Error: preview.Error);
+
         // Update tenant plan
         var tenant = await _db.Tenants.FindAsync(tenantId);
         if (tenant is not null) tenant.PlanId = newPlanId;
 
-        // Update existing subscription in-place (1-to-1 relationship)
+        // Update existing subscription in-place
         var existingSub = await _db.Subscriptions
             .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
             .OrderByDescending(s => s.StartDate)
@@ -110,8 +120,76 @@ public class MockBillingService : IBillingService
             });
         }
 
+        // Record prorated payment (upgrade) or credit (downgrade)
+        if (preview.AmountDue > 0)
+        {
+            _db.Payments.Add(new Payment
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                Amount = preview.AmountDue,
+                Currency = "ZAR",
+                Status = PaymentStatus.Success,
+                TransactionDate = DateTime.UtcNow,
+                GatewayResponse = $"MOCK-PRORATE: Upgrade from {preview.CurrentPlanName} to {preview.NewPlanName}",
+                PaystackReference = $"MOCK-PRORATE-{Guid.NewGuid():N}"
+            });
+        }
+
         await _db.SaveChangesAsync();
         return new PlanChangeResult(true);
+    }
+
+    public async Task<PlanChangePreview> PreviewPlanChangeAsync(Guid tenantId, Guid newPlanId)
+    {
+        var tenant = await _db.Tenants.Include(t => t.Plan).FirstOrDefaultAsync(t => t.Id == tenantId);
+        if (tenant is null) return new PlanChangePreview(false, Error: "Tenant not found");
+
+        var newPlan = await _db.Plans.FindAsync(newPlanId);
+        if (newPlan is null) return new PlanChangePreview(false, Error: "Plan not found");
+
+        var currentPlan = tenant.Plan;
+        if (currentPlan.Id == newPlanId)
+            return new PlanChangePreview(false, Error: "Already on this plan");
+
+        var existingSub = await _db.Subscriptions
+            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+            .OrderByDescending(s => s.StartDate)
+            .FirstOrDefaultAsync();
+
+        var now = DateTime.UtcNow;
+        int totalCycleDays = 30;
+        int remainingDays = totalCycleDays;
+
+        if (existingSub?.NextBillingDate is not null)
+        {
+            remainingDays = Math.Max(0, (int)(existingSub.NextBillingDate.Value - now).TotalDays);
+            if (existingSub.StartDate > DateTime.MinValue)
+                totalCycleDays = Math.Max(1, (int)(existingSub.NextBillingDate.Value - existingSub.StartDate).TotalDays);
+        }
+
+        var dailyOldRate = totalCycleDays > 0 ? currentPlan.MonthlyPrice / totalCycleDays : 0;
+        var dailyNewRate = totalCycleDays > 0 ? newPlan.MonthlyPrice / totalCycleDays : 0;
+        var unusedCredit = Math.Round(dailyOldRate * remainingDays, 2);
+        var proratedNewCost = Math.Round(dailyNewRate * remainingDays, 2);
+        var amountDue = Math.Max(0, proratedNewCost - unusedCredit);
+        var creditForNextCycle = Math.Max(0, unusedCredit - proratedNewCost);
+        var isUpgrade = newPlan.MonthlyPrice > currentPlan.MonthlyPrice;
+
+        return new PlanChangePreview(
+            IsValid: true,
+            CurrentPlanName: currentPlan.Name,
+            NewPlanName: newPlan.Name,
+            CurrentPlanPrice: currentPlan.MonthlyPrice,
+            NewPlanPrice: newPlan.MonthlyPrice,
+            RemainingDays: remainingDays,
+            TotalCycleDays: totalCycleDays,
+            UnusedCredit: unusedCredit,
+            ProratedNewCost: proratedNewCost,
+            AmountDue: amountDue,
+            IsUpgrade: isUpgrade,
+            CreditForNextCycle: creditForNextCycle
+        );
     }
 
     public Task SyncPlansAsync()

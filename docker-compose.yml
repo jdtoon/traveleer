@@ -7,7 +7,8 @@ services:
     ports:
       - "8080:8080"
     env_file:
-      - .env
+      - path: .env
+        required: false
     volumes:
       - app-data:/app/db
     environment:
@@ -29,10 +30,10 @@ services:
       - app-data:/app/db
       - ./litestream-wrapper.sh:/usr/local/bin/litestream-wrapper.sh:ro
     environment:
-      - LITESTREAM_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
-      - LITESTREAM_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
-      - R2_ENDPOINT=${R2_ENDPOINT}
-      - R2_BUCKET=${R2_BUCKET}
+      - LITESTREAM_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - LITESTREAM_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_ENDPOINT=${R2_ENDPOINT:-}
+      - R2_BUCKET=${R2_BUCKET:-saas-backups}
     entrypoint: /bin/sh
     command: /usr/local/bin/litestream-wrapper.sh
     depends_on:

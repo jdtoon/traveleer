@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using saas.Data.Core;
 using saas.Data.Audit;
@@ -241,6 +242,50 @@ public static class ServiceCollectionExtensions
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0
                     }));
+
+            // Tenant-aware rate limiting — partitions by tenant slug, limits per plan
+            options.AddPolicy("tenant", httpContext =>
+            {
+                var tenantContext = httpContext.RequestServices.GetService<ITenantContext>();
+                if (tenantContext?.IsTenantRequest != true || tenantContext.Slug is null)
+                {
+                    // Not a tenant request — fall back to permissive global limit
+                    return RateLimitPartition.GetNoLimiter("non-tenant");
+                }
+
+                // Cache lookup: TenantResolutionMiddleware already cached the tenant/plan
+                // Use PlanSlug as partition key so all same-plan tenants share the same config
+                var partitionKey = $"tenant-{tenantContext.Slug}";
+                return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ =>
+                {
+                    // Resolve max requests from cached plan data
+                    var cache = httpContext.RequestServices.GetService<IMemoryCache>();
+                    var maxRequests = 60; // default
+                    if (cache is not null)
+                    {
+                        var cacheKey = $"plan-rate-limit-{tenantContext.PlanSlug}";
+                        if (!cache.TryGetValue(cacheKey, out int cachedLimit))
+                        {
+                            // Look up the plan's limit from DB, cache for 5 minutes
+                            using var scope = httpContext.RequestServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
+                            var coreDb = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
+                            var plan = coreDb.Plans.AsNoTracking()
+                                .FirstOrDefault(p => p.Slug == tenantContext.PlanSlug);
+                            cachedLimit = plan?.MaxRequestsPerMinute ?? 60;
+                            cache.Set(cacheKey, cachedLimit, TimeSpan.FromMinutes(5));
+                        }
+                        maxRequests = cachedLimit;
+                    }
+
+                    return new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = maxRequests,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    };
+                });
+            });
 
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = async (context, token) =>

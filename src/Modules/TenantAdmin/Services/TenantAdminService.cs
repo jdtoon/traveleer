@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using saas.Data;
+using saas.Data.Core;
 using saas.Data.Tenant;
 using saas.Shared;
 
@@ -9,17 +10,20 @@ namespace saas.Modules.TenantAdmin.Services;
 public class TenantAdminService : ITenantAdminService
 {
     private readonly TenantDbContext _db;
+    private readonly CoreDbContext _coreDb;
     private readonly UserManager<AppUser> _userManager;
     private readonly IEmailService _emailService;
     private readonly ITenantContext _tenantContext;
 
     public TenantAdminService(
         TenantDbContext db,
+        CoreDbContext coreDb,
         UserManager<AppUser> userManager,
         IEmailService emailService,
         ITenantContext tenantContext)
     {
         _db = db;
+        _coreDb = coreDb;
         _userManager = userManager;
         _emailService = emailService;
         _tenantContext = tenantContext;
@@ -52,13 +56,30 @@ public class TenantAdminService : ITenantAdminService
         return new PaginatedList<UserListItem>(result, totalCount, page, pageSize);
     }
 
-    public async Task<bool> InviteUserAsync(string email, string? roleId = null)
+    public async Task<InviteUserResult> InviteUserAsync(string email, string? roleId = null)
     {
-        if (string.IsNullOrWhiteSpace(email)) return false;
+        if (string.IsNullOrWhiteSpace(email))
+            return new InviteUserResult(false, "Email is required.");
+
+        // Enforce plan max-users limit
+        if (_tenantContext.TenantId.HasValue)
+        {
+            var tenant = await _coreDb.Tenants
+                .Include(t => t.Plan)
+                .FirstOrDefaultAsync(t => t.Id == _tenantContext.TenantId.Value);
+
+            if (tenant?.Plan?.MaxUsers is not null)
+            {
+                var currentUserCount = await _userManager.Users.CountAsync();
+                if (currentUserCount >= tenant.Plan.MaxUsers.Value)
+                    return new InviteUserResult(false, $"User limit reached for your plan (max {tenant.Plan.MaxUsers.Value}). Upgrade to invite more users.");
+            }
+        }
 
         // Check if user already exists in this tenant
         var existing = await _userManager.FindByEmailAsync(email);
-        if (existing is not null) return false;
+        if (existing is not null)
+            return new InviteUserResult(false, "A user with this email already exists.");
 
         // Create AppUser in tenant DB
         var user = new AppUser
@@ -66,11 +87,13 @@ public class TenantAdminService : ITenantAdminService
             UserName = email,
             Email = email,
             EmailConfirmed = true,
-            IsActive = true
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
         };
 
         var result = await _userManager.CreateAsync(user);
-        if (!result.Succeeded) return false;
+        if (!result.Succeeded)
+            return new InviteUserResult(false, "Failed to create user.");
 
         // Assign role if specified
         if (!string.IsNullOrEmpty(roleId))
@@ -87,7 +110,7 @@ public class TenantAdminService : ITenantAdminService
         var loginUrl = $"/{slug}/login";
         await _emailService.SendMagicLinkAsync(email, loginUrl);
 
-        return true;
+        return new InviteUserResult(true);
     }
 
     public async Task<bool> DeactivateUserAsync(string userId)

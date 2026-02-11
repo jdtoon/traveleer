@@ -1,0 +1,75 @@
+@inject saas.Shared.ITenantContext TenantContext
+@model saas.Modules.Audit.Controllers.AuditLogViewModel
+@{
+    var slug = TenantContext.Slug;
+}
+
+<div class="overflow-x-auto">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Action</th>
+                <th>Entity</th>
+                <th>Entity ID</th>
+                <th>User</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Entries.Items.Count == 0)
+            {
+                <tr>
+                    <td colspan="6" class="text-center py-8 opacity-60">No audit entries found</td>
+                </tr>
+            }
+            @foreach (var entry in Model.Entries.Items)
+            {
+                <tr class="hover">
+                    <td class="text-xs whitespace-nowrap">@entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>
+                        @{
+                            var badgeClass = entry.Action switch
+                            {
+                                "Added" => "badge-success",
+                                "Modified" => "badge-warning",
+                                "Deleted" => "badge-error",
+                                _ => "badge-ghost"
+                            };
+                        }
+                        <span class="badge badge-sm @badgeClass">@entry.Action</span>
+                    </td>
+                    <td class="font-mono text-sm">@entry.EntityType</td>
+                    <td class="font-mono text-xs max-w-[120px] truncate">@entry.EntityId</td>
+                    <td class="text-sm">@entry.UserEmail</td>
+                    <td>
+                        @if (entry.HasChanges)
+                        {
+                            <a hx-get="/@slug/AuditLog/Detail/@entry.Id"
+                               hx-target="#modal-container"
+                               class="btn btn-ghost btn-xs">Detail</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (Model.Entries.TotalPages > 1)
+{
+    <div class="flex justify-center mt-4">
+        <div class="join">
+            @for (var i = 1; i <= Model.Entries.TotalPages; i++)
+            {
+                var qs = $"page={i}";
+                if (!string.IsNullOrEmpty(Model.FilterEntity)) qs += $"&entity={Model.FilterEntity}";
+                if (!string.IsNullOrEmpty(Model.FilterAction)) qs += $"&action={Model.FilterAction}";
+
+                <a hx-get="/@slug/AuditLog/List?@qs"
+                   hx-target="#audit-log-list"
+                   class="join-item btn btn-sm @(i == Model.Entries.PageIndex ? "btn-active" : "")">@i</a>
+            }
+        </div>
+    </div>
+}

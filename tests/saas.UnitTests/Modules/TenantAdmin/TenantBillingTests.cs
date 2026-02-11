@@ -122,6 +122,9 @@ public class TenantBillingTests : IAsyncLifetime
             return Task.FromResult(new PlanChangeResult(true));
         }
 
+        public Task<PlanChangePreview> PreviewPlanChangeAsync(Guid tenantId, Guid newPlanId)
+            => Task.FromResult(new PlanChangePreview(true));
+
         public Task SyncPlansAsync() => Task.CompletedTask;
 
         public Task<WebhookResult> ProcessWebhookAsync(string payload, string signature)

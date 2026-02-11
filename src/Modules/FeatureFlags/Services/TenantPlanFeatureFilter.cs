@@ -68,7 +68,8 @@ public class TenantPlanFeatureFilter : IFeatureFilter
 
     private async Task<List<TenantOverrideCacheEntry>> GetTenantOverridesAsync(Guid tenantId)
     {
-        var cacheKey = $"tenant-overrides-{tenantId}";
+        var gen = FeatureCacheInvalidator.Generation;
+        var cacheKey = $"tenant-overrides-{tenantId}-{gen}";
 
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
@@ -92,7 +93,8 @@ public class TenantPlanFeatureFilter : IFeatureFilter
 
     private async Task<Guid?> GetTenantPlanIdAsync(Guid tenantId)
     {
-        var cacheKey = $"tenant-plan-{tenantId}";
+        var gen = FeatureCacheInvalidator.Generation;
+        var cacheKey = $"tenant-plan-{tenantId}-{gen}";
 
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {

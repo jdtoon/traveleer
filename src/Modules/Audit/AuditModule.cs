@@ -13,6 +13,13 @@ public class AuditModule : IModule
 {
     public string Name => "Audit";
 
+    public IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>
+    {
+        ["AuditLog"] = "Audit"
+    };
+
+    public IReadOnlyList<string> PartialViewSearchPaths => ["AuditLog"];
+
     public IReadOnlyList<ModuleFeature> Features =>
     [
         new(AuditFeatures.AuditLog, "Audit Log", MinPlanSlug: "professional")

@@ -9,23 +9,42 @@ namespace saas.Modules.FeatureFlags.Services;
 public class FeatureCacheInvalidator
 {
     private readonly IMemoryCache _cache;
+    private static long _generation;
+
+    /// <summary>
+    /// Current cache generation. Included in tenant cache keys so that a global
+    /// invalidation immediately orphans all old entries.
+    /// </summary>
+    public static long Generation => Volatile.Read(ref _generation);
 
     public FeatureCacheInvalidator(IMemoryCache cache)
     {
         _cache = cache;
     }
 
+    /// <summary>
+    /// Invalidate all feature caches globally (feature definitions + all tenant caches).
+    /// Increments the generation counter so all tenant-specific cache keys become stale.
+    /// </summary>
     public void Invalidate()
     {
         _cache.Remove("feature-definitions");
-        // Tenant-specific caches ("tenant-overrides-{id}", "tenant-plan-{id}") will
-        // expire naturally within 5-10 minutes. For immediate invalidation of a
-        // specific tenant, call InvalidateTenant(tenantId).
+        Interlocked.Increment(ref _generation);
     }
 
+    /// <summary>
+    /// Invalidate caches for a specific tenant (overrides + plan).
+    /// </summary>
     public void InvalidateTenant(Guid tenantId)
     {
-        _cache.Remove($"tenant-overrides-{tenantId}");
-        _cache.Remove($"tenant-plan-{tenantId}");
+        var gen = Generation;
+        _cache.Remove($"tenant-overrides-{tenantId}-{gen}");
+        _cache.Remove($"tenant-plan-{tenantId}-{gen}");
+        // Also remove old-generation keys in case they haven't expired yet
+        if (gen > 0)
+        {
+            _cache.Remove($"tenant-overrides-{tenantId}-{gen - 1}");
+            _cache.Remove($"tenant-plan-{tenantId}-{gen - 1}");
+        }
     }
 }

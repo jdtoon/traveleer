@@ -265,7 +265,10 @@ public class PaystackBillingService : IBillingService
         }
 
         // ── Paid plan: redirect to Paystack checkout ──
-        var amount = plan.MonthlyPrice * 100;
+        var preview = await PreviewPlanChangeAsync(tenantId, newPlanId);
+        var chargeAmount = preview.IsValid && preview.AmountDue > 0
+            ? preview.AmountDue * 100
+            : plan.MonthlyPrice * 100;
         try
         {
             var callbackUrl = $"{_options.CallbackBaseUrl}/{tenant.Slug}/billing/callback";
@@ -273,7 +276,7 @@ public class PaystackBillingService : IBillingService
             var paystackResult = await _paystack.InitializeTransactionAsync(new PaystackInitializeRequest
             {
                 Email = tenant.ContactEmail,
-                Amount = (int)amount,
+                Amount = (int)chargeAmount,
                 Currency = plan.Currency ?? "ZAR",
                 CallbackUrl = callbackUrl,
                 Plan = plan.PaystackPlanCode,
@@ -324,6 +327,60 @@ public class PaystackBillingService : IBillingService
             _logger.LogError(ex, "Failed to change plan for tenant {TenantId}", tenantId);
             return new PlanChangeResult(false, Error: "Payment gateway error");
         }
+    }
+
+    public async Task<PlanChangePreview> PreviewPlanChangeAsync(Guid tenantId, Guid newPlanId)
+    {
+        var tenant = await _coreDb.Tenants.Include(t => t.Plan).FirstOrDefaultAsync(t => t.Id == tenantId);
+        if (tenant is null) return new PlanChangePreview(false, Error: "Tenant not found");
+
+        var newPlan = await _coreDb.Plans.FindAsync(newPlanId);
+        if (newPlan is null) return new PlanChangePreview(false, Error: "Plan not found");
+
+        var currentPlan = tenant.Plan;
+        if (currentPlan.Id == newPlanId)
+            return new PlanChangePreview(false, Error: "Already on this plan");
+
+        var existingSub = await _coreDb.Subscriptions
+            .Where(s => s.TenantId == tenantId && (s.Status == SubscriptionStatus.Active
+                || s.Status == SubscriptionStatus.NonRenewing
+                || s.Status == SubscriptionStatus.PastDue))
+            .OrderByDescending(s => s.StartDate)
+            .FirstOrDefaultAsync();
+
+        var now = DateTime.UtcNow;
+        int totalCycleDays = 30;
+        int remainingDays = totalCycleDays;
+
+        if (existingSub?.NextBillingDate is not null)
+        {
+            remainingDays = Math.Max(0, (int)(existingSub.NextBillingDate.Value - now).TotalDays);
+            if (existingSub.StartDate > DateTime.MinValue)
+                totalCycleDays = Math.Max(1, (int)(existingSub.NextBillingDate.Value - existingSub.StartDate).TotalDays);
+        }
+
+        var dailyOldRate = totalCycleDays > 0 ? currentPlan.MonthlyPrice / totalCycleDays : 0;
+        var dailyNewRate = totalCycleDays > 0 ? newPlan.MonthlyPrice / totalCycleDays : 0;
+        var unusedCredit = Math.Round(dailyOldRate * remainingDays, 2);
+        var proratedNewCost = Math.Round(dailyNewRate * remainingDays, 2);
+        var amountDue = Math.Max(0, proratedNewCost - unusedCredit);
+        var creditForNextCycle = Math.Max(0, unusedCredit - proratedNewCost);
+        var isUpgrade = newPlan.MonthlyPrice > currentPlan.MonthlyPrice;
+
+        return new PlanChangePreview(
+            IsValid: true,
+            CurrentPlanName: currentPlan.Name,
+            NewPlanName: newPlan.Name,
+            CurrentPlanPrice: currentPlan.MonthlyPrice,
+            NewPlanPrice: newPlan.MonthlyPrice,
+            RemainingDays: remainingDays,
+            TotalCycleDays: totalCycleDays,
+            UnusedCredit: unusedCredit,
+            ProratedNewCost: proratedNewCost,
+            AmountDue: amountDue,
+            IsUpgrade: isUpgrade,
+            CreditForNextCycle: creditForNextCycle
+        );
     }
 
     public async Task SyncPlansAsync()

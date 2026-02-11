@@ -26,7 +26,7 @@ public class AuthModule : IModule
 
     public IReadOnlyList<ModuleFeature> Features =>
     [
-        new("sso", "Single Sign-On", MinPlanSlug: "enterprise")
+        // SSO removed — no implementation exists
     ];
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)

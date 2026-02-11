@@ -54,6 +54,27 @@ public class TenantBillingController : SwapController
     }
 
     [HttpPost]
+    public async Task<IActionResult> PreviewPlanChange([FromForm] Guid planId)
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue) return NotFound();
+
+        var preview = await _billingService.PreviewPlanChangeAsync(tenantId.Value, planId);
+        if (!preview.IsValid)
+        {
+            return SwapResponse()
+                .WithErrorToast(preview.Error ?? "Cannot change to this plan")
+                .Build();
+        }
+
+        return SwapView("_PlanChangeConfirmModal", new PlanChangeConfirmViewModel
+        {
+            Preview = preview,
+            NewPlanId = planId
+        });
+    }
+
+    [HttpPost]
     public async Task<IActionResult> ChangePlan([FromForm] Guid planId)
     {
         var tenantId = _tenantContext.TenantId;
@@ -209,4 +230,10 @@ public class ChangePlanViewModel
 {
     public List<Plan> Plans { get; set; } = [];
     public Guid CurrentPlanId { get; set; }
+}
+
+public class PlanChangeConfirmViewModel
+{
+    public PlanChangePreview Preview { get; set; } = null!;
+    public Guid NewPlanId { get; set; }
 }

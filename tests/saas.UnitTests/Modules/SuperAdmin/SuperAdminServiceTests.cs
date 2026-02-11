@@ -69,6 +69,7 @@ public class SuperAdminServiceTests : IAsyncLifetime
         public Task<SubscriptionStatus?> GetSubscriptionStatusAsync(Guid t) => Task.FromResult<SubscriptionStatus?>(SubscriptionStatus.Active);
         public Task<bool> CancelSubscriptionAsync(Guid t) => Task.FromResult(true);
         public Task<PlanChangeResult> ChangePlanAsync(Guid t, Guid p) => Task.FromResult(new PlanChangeResult(true));
+        public Task<PlanChangePreview> PreviewPlanChangeAsync(Guid t, Guid p) => Task.FromResult(new PlanChangePreview(true));
         public Task SyncPlansAsync() => Task.CompletedTask;
         public Task<WebhookResult> ProcessWebhookAsync(string p, string s) => Task.FromResult(new WebhookResult(true));
         public Task VerifyAndLinkSubscriptionAsync(string reference) => Task.CompletedTask;

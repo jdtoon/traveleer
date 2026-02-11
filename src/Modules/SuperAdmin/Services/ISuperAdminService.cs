@@ -82,6 +82,7 @@ public class PlanEditModel
     public decimal MonthlyPrice { get; set; }
     public decimal? AnnualPrice { get; set; }
     public int? MaxUsers { get; set; }
+    public int? MaxRequestsPerMinute { get; set; }
     public int SortOrder { get; set; }
     public bool IsActive { get; set; } = true;
 }

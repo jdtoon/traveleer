@@ -3,7 +3,9 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using saas.Data.Core;
 using saas.Data.Tenant;
+using saas.Modules.Billing.Entities;
 using saas.Modules.TenantAdmin.Services;
 using saas.Shared;
 using Xunit;
@@ -13,9 +15,11 @@ namespace saas.Tests.Modules.TenantAdmin;
 public class TenantAdminServiceTests : IAsyncLifetime
 {
     private SqliteConnection _connection = null!;
+    private SqliteConnection _coreConnection = null!;
     private ServiceProvider _serviceProvider = null!;
     private TenantAdminService _service = null!;
     private TenantDbContext _db = null!;
+    private CoreDbContext _coreDb = null!;
     private UserManager<AppUser> _userManager = null!;
 
     public async Task InitializeAsync()
@@ -23,11 +27,17 @@ public class TenantAdminServiceTests : IAsyncLifetime
         _connection = new SqliteConnection("Data Source=:memory:");
         await _connection.OpenAsync();
 
+        _coreConnection = new SqliteConnection("Data Source=:memory:");
+        await _coreConnection.OpenAsync();
+
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Warning));
 
         services.AddDbContext<TenantDbContext>(opts =>
             opts.UseSqlite(_connection));
+
+        services.AddDbContext<CoreDbContext>(opts =>
+            opts.UseSqlite(_coreConnection));
 
         services.AddIdentityCore<AppUser>(opts =>
         {
@@ -46,16 +56,19 @@ public class TenantAdminServiceTests : IAsyncLifetime
         {
             var db = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
             await db.Database.EnsureCreatedAsync();
+            var coreDb = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
+            await coreDb.Database.EnsureCreatedAsync();
         }
 
         // Resolve services from a scope
         var mainScope = _serviceProvider.CreateScope();
         _db = mainScope.ServiceProvider.GetRequiredService<TenantDbContext>();
+        _coreDb = mainScope.ServiceProvider.GetRequiredService<CoreDbContext>();
         _userManager = mainScope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
         var emailService = mainScope.ServiceProvider.GetRequiredService<IEmailService>();
         var tenantContext = mainScope.ServiceProvider.GetRequiredService<ITenantContext>();
 
-        _service = new TenantAdminService(_db, _userManager, emailService, tenantContext);
+        _service = new TenantAdminService(_db, _coreDb, _userManager, emailService, tenantContext);
 
         // Seed an admin user
         var admin = new AppUser
@@ -84,6 +97,7 @@ public class TenantAdminServiceTests : IAsyncLifetime
     {
         await _serviceProvider.DisposeAsync();
         await _connection.DisposeAsync();
+        await _coreConnection.DisposeAsync();
         SqliteConnection.ClearAllPools();
     }
 
@@ -103,9 +117,9 @@ public class TenantAdminServiceTests : IAsyncLifetime
     [Fact]
     public async Task InviteUserAsync_CreatesNewUser()
     {
-        var success = await _service.InviteUserAsync("new@testcorp.com");
+        var result = await _service.InviteUserAsync("new@testcorp.com");
 
-        Assert.True(success);
+        Assert.True(result.Success);
         var users = await _service.GetUsersAsync();
         Assert.Equal(2, users.Items.Count);
         Assert.Contains(users.Items, u => u.Email == "new@testcorp.com");
@@ -125,9 +139,9 @@ public class TenantAdminServiceTests : IAsyncLifetime
     [Fact]
     public async Task InviteUserAsync_DuplicateEmail_ReturnsFalse()
     {
-        var success = await _service.InviteUserAsync("admin@testcorp.com");
+        var result = await _service.InviteUserAsync("admin@testcorp.com");
 
-        Assert.False(success);
+        Assert.False(result.Success);
     }
 
     [Fact]

@@ -120,7 +120,7 @@ public class RegistrationController : SwapController
             _coreDb.Tenants.Add(tenant);
             await _coreDb.SaveChangesAsync();
 
-            // Initialize payment with Paystack
+            // Initialize payment with billing provider
             var billingResult = await _billingService.InitializeSubscriptionAsync(
                 new SubscriptionInitRequest(
                     tenant.Id,
@@ -128,7 +128,7 @@ public class RegistrationController : SwapController
                     request.PlanId,
                     BillingCycle.Monthly));
 
-            if (!billingResult.Success || string.IsNullOrEmpty(billingResult.PaymentUrl))
+            if (!billingResult.Success)
             {
                 _logger.LogError("Billing initialization failed for {Slug}: {Error}",
                     request.Slug, billingResult.Error);
@@ -143,11 +143,39 @@ public class RegistrationController : SwapController
                 });
             }
 
+            // Mock/dev billing: no redirect needed — provision immediately
+            if (!billingResult.RequiresRedirect)
+            {
+                var provisionResult = await _provisioner.ProvisionTenantAsync(request.Slug, request.Email, request.PlanId);
+                if (!provisionResult.Success)
+                {
+                    _logger.LogWarning("Registration failed for {Slug}: {Error}", request.Slug, provisionResult.ErrorMessage);
+                    return PartialView("_RegistrationError", new { Message = provisionResult.ErrorMessage });
+                }
+
+                await _registrationEmail.SendWelcomeEmailAsync(request.Email, request.Slug);
+                _logger.LogInformation("Successfully registered tenant {Slug} (mock billing, no redirect)", request.Slug);
+                return PartialView("_RegistrationSuccess", new { Slug = request.Slug, Email = request.Email });
+            }
+
+            // Real billing: redirect to payment gateway
+            if (string.IsNullOrEmpty(billingResult.PaymentUrl))
+            {
+                _logger.LogError("Billing returned no PaymentUrl for {Slug}", request.Slug);
+
+                _coreDb.Tenants.Remove(tenant);
+                await _coreDb.SaveChangesAsync();
+
+                return PartialView("_RegistrationError", new
+                {
+                    Message = "Payment initialization failed. Please try again."
+                });
+            }
+
             _logger.LogInformation(
                 "Redirecting tenant {Slug} to Paystack checkout: {Url}",
                 request.Slug, billingResult.PaymentUrl);
 
-            // Redirect the browser to Paystack checkout.
             // For HTMX requests, use HX-Redirect header (full page navigation).
             // For regular form submits, use a standard redirect.
             if (Request.Headers.ContainsKey("HX-Request"))

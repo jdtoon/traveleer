@@ -199,6 +199,7 @@ public class SuperAdminService : ISuperAdminService
         plan.MonthlyPrice = model.MonthlyPrice;
         plan.AnnualPrice = model.AnnualPrice;
         plan.MaxUsers = model.MaxUsers;
+        plan.MaxRequestsPerMinute = model.MaxRequestsPerMinute;
         plan.SortOrder = model.SortOrder;
         plan.IsActive = model.IsActive;
 

@@ -58,7 +58,7 @@ public class SuperAdminAuthController : SwapController
         if (!result.Success || result.Email is null)
             return SwapView("MagicLinkError", result.Error ?? "Invalid token");
 
-        var admin = await _coreDb.SuperAdmins.FirstOrDefaultAsync(a => a.Email == result.Email);
+        var admin = await _coreDb.SuperAdmins.FirstOrDefaultAsync(a => a.Email == result.Email && a.IsActive);
         if (admin is null)
             return SwapView("MagicLinkError", "Admin account not found");
 

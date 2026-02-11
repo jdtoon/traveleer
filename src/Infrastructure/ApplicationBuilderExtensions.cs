@@ -170,8 +170,8 @@ public static class ApplicationBuilderExtensions
         app.UseWebOptimizer();
         app.UseStaticFiles();
         app.UseRouting();
-        app.UseRateLimiter();
         app.UseMiddleware<TenantResolutionMiddleware>();
+        app.UseRateLimiter(); // After tenant resolution so "tenant" policy can access ITenantContext
         app.UseAuthentication();
         app.UseSwapHtmx();
         app.UseAuthorization();
@@ -199,6 +199,25 @@ public static class ApplicationBuilderExtensions
                 };
                 await context.Response.WriteAsJsonAsync(result);
             }
+        }).AddEndpointFilter(async (context, next) =>
+        {
+            var config = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
+            var allowedIPs = config["HealthCheck:AllowedIPs"];
+
+            // Empty or missing = allow all (default behaviour)
+            if (string.IsNullOrWhiteSpace(allowedIPs))
+                return await next(context);
+
+            var remoteIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();
+            var allowed = allowedIPs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (remoteIp is null || !allowed.Contains(remoteIp))
+            {
+                context.HttpContext.Response.StatusCode = 404;
+                return Results.NotFound();
+            }
+
+            return await next(context);
         });
 
         app.MapControllerRoute(
@@ -253,7 +272,8 @@ public static class ApplicationBuilderExtensions
 
         app.MapControllerRoute(
             name: "tenant",
-            pattern: "{slug}/{controller=Dashboard}/{action=Index}/{id?}");
+            pattern: "{slug}/{controller=Dashboard}/{action=Index}/{id?}")
+            .RequireRateLimiting("tenant");
 
         app.MapControllerRoute(
             name: "default",

@@ -11,6 +11,7 @@ public interface IBillingService
     Task<SubscriptionStatus?> GetSubscriptionStatusAsync(Guid tenantId);
     Task<bool> CancelSubscriptionAsync(Guid tenantId);
     Task<PlanChangeResult> ChangePlanAsync(Guid tenantId, Guid newPlanId);
+    Task<PlanChangePreview> PreviewPlanChangeAsync(Guid tenantId, Guid newPlanId);
     Task SyncPlansAsync();
     Task<WebhookResult> ProcessWebhookAsync(string payload, string signature);
     /// <summary>
@@ -47,13 +48,33 @@ public record SubscriptionInitRequest(
 public record SubscriptionInitResult(
     bool Success,
     string? PaymentUrl = null,
-    string? Error = null
+    string? Error = null,
+    bool RequiresRedirect = true
 );
 
 public record PlanChangeResult(
     bool Success,
     string? PaymentUrl = null,
     string? Error = null
+);
+
+/// <summary>
+/// Preview of a plan change with pro-rated amounts.
+/// </summary>
+public record PlanChangePreview(
+    bool IsValid,
+    string? Error = null,
+    string CurrentPlanName = "",
+    string NewPlanName = "",
+    decimal CurrentPlanPrice = 0,
+    decimal NewPlanPrice = 0,
+    int RemainingDays = 0,
+    int TotalCycleDays = 30,
+    decimal UnusedCredit = 0,
+    decimal ProratedNewCost = 0,
+    decimal AmountDue = 0,
+    bool IsUpgrade = false,
+    decimal CreditForNextCycle = 0
 );
 
 public record WebhookResult(

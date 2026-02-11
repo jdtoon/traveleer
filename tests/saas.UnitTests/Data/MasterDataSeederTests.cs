@@ -43,8 +43,8 @@ public class CoreDataSeederTests
         await CoreDataSeeder.SeedAsync(db, config, modules);
 
         Assert.Equal(4, await db.Plans.CountAsync());
-        // Notes:1 + Audit:1 + TenantAdmin:1 + Auth:1 = 4 features (TenancyModule no longer contributes features)
-        Assert.Equal(4, await db.Features.CountAsync());
+        // Notes:1 + Audit:1 + TenantAdmin:1 = 3 features (AuthModule SSO removed, TenancyModule has no features)
+        Assert.Equal(3, await db.Features.CountAsync());
         Assert.True(await db.PlanFeatures.AnyAsync());
         Assert.Equal(1, await db.SuperAdmins.CountAsync());
     }
@@ -98,9 +98,9 @@ public class CoreDataSeederTests
         var proFeatureCount = planFeatures.Count(pf => pf.PlanId == proPlan.Id);
         Assert.Equal(3, proFeatureCount);
 
-        // Enterprise (SortOrder 3) — all features = 4
+        // Enterprise (SortOrder 3) — all features = 3
         var entPlan = plans.First(p => p.Slug == "enterprise");
         var entFeatureCount = planFeatures.Count(pf => pf.PlanId == entPlan.Id);
-        Assert.Equal(4, entFeatureCount);
+        Assert.Equal(3, entFeatureCount);
     }
 }
