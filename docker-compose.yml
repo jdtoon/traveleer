@@ -28,12 +28,11 @@ services:
       - Billing__Paystack__PublicKey=CHANGE_ME
       - Billing__Paystack__WebhookSecret=CHANGE_ME
       - Billing__Paystack__CallbackBaseUrl=https://your-domain.com
-      # ── Email (AWS SES) ─────────────────────────────────────
-      - Email__Provider=SES
+      # ── Email (MailerSend) ───────────────────────────────────
+      - Email__Provider=MailerSend
       - Email__FromAddress=noreply@your-domain.com
-      - Email__SES__AccessKey=CHANGE_ME
-      - Email__SES__SecretKey=CHANGE_ME
-      - Email__SES__Region=af-south-1
+      - Email__FromName=Your SaaS
+      - Email__MailerSend__ApiToken=CHANGE_ME
       # ── Bot Protection (Cloudflare Turnstile) ───────────────
       - Turnstile__Provider=Cloudflare
       - Turnstile__SiteKey=CHANGE_ME

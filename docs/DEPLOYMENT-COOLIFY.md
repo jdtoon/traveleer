@@ -27,7 +27,7 @@ Guide for deploying the SaaS platform to production using [Coolify](https://cool
 - A domain name pointed at your server (e.g. `app.yourdomain.com`)
 - Accounts with:
   - [Paystack](https://dashboard.paystack.com) — billing
-  - [AWS](https://console.aws.amazon.com) — SES email
+  - [MailerSend](https://www.mailersend.com) — transactional email
   - [Cloudflare](https://dash.cloudflare.com) — Turnstile + R2 storage + R2 backups
 - Your Git repository accessible from Coolify (GitHub, GitLab, etc.)
 
@@ -80,15 +80,14 @@ All production config is defined in `docker-compose.yml` with `CHANGE_ME` placeh
 | `Billing__Paystack__WebhookSecret` | `whsec_xxxxx` | From Paystack webhook settings |
 | `Billing__Paystack__CallbackBaseUrl` | `https://app.yourdomain.com` | Must match `Site__BaseUrl` |
 
-#### Email (AWS SES)
+#### Email (MailerSend)
 
 | Variable | Example | Notes |
 |---|---|---|
-| `Email__Provider` | `SES` | Already set in compose |
-| `Email__FromAddress` | `noreply@yourdomain.com` | Must be verified in SES |
-| `Email__SES__AccessKey` | `AKIA...` | IAM user with SES permissions |
-| `Email__SES__SecretKey` | `xxxxx` | IAM secret key |
-| `Email__SES__Region` | `af-south-1` | AWS region where SES is set up |
+| `Email__Provider` | `MailerSend` | Already set in compose |
+| `Email__FromAddress` | `noreply@yourdomain.com` | Must match verified domain in MailerSend |
+| `Email__FromName` | `Your SaaS` | Display name on sent emails |
+| `Email__MailerSend__ApiToken` | `mlsn.xxxxx` | API token from MailerSend dashboard |
 
 #### Bot Protection (Cloudflare Turnstile)
 
@@ -147,10 +146,10 @@ Before deploying, ensure these are ready:
 3. Set webhook URL: `https://app.yourdomain.com/api/webhooks/paystack`
 4. Enable relevant events: `charge.success`, `subscription.create`, `subscription.disable`, `subscription.not_renew`, `subscription.expiring_cards`, `invoice.create`, `invoice.update`, `invoice.payment_failed`
 
-### AWS SES
-1. Verify your sender domain or email in SES
-2. Request **production access** (exit sandbox) so you can send to any address
-3. Ensure your IAM user has `ses:SendEmail` and `ses:SendRawEmail` permissions
+### MailerSend
+1. Add and verify your sending domain in MailerSend
+2. Complete DNS verification (SPF, DKIM, DMARC records)
+3. Generate an API token with full access
 
 ### Cloudflare Turnstile
 1. Add your production domain to the Turnstile widget configuration

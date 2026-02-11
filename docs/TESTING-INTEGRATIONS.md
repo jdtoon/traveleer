@@ -9,7 +9,7 @@ Step-by-step guide for obtaining credentials and testing each external service l
 ## Table of Contents
 
 1. [Paystack (Billing)](#1-paystack-billing)
-2. [AWS SES (Email)](#2-aws-ses-email)
+2. [Email (Gmail SMTP / MailerSend)](#2-email-gmail-smtp--mailersend)
 3. [Cloudflare Turnstile (Bot Protection)](#3-cloudflare-turnstile-bot-protection)
 4. [Cloudflare R2 (Storage)](#4-cloudflare-r2-storage)
 5. [Litestream (Database Backup)](#5-litestream-database-backup)
@@ -139,48 +139,65 @@ Full list: [Paystack Test Cards Documentation](https://paystack.com/docs/payment
 
 ---
 
-## 2. AWS SES (Email)
+## 2. Email (Gmail SMTP / MailerSend)
 
-### Get Your Credentials
+The app supports three email providers: `Console` (dev logging), `Smtp` (Gmail/any SMTP for dev/staging), and `MailerSend` (production API).
 
-1. Sign in to [AWS Console](https://console.aws.amazon.com)
-2. Go to **IAM → Users → Create User**
-3. Create a user with programmatic access
-4. Attach the policy `AmazonSESFullAccess` (or a scoped policy for `ses:SendEmail`)
-5. Save the **Access Key ID** and **Secret Access Key**
+### Option A: Gmail SMTP (Dev / Staging)
 
-#### Verify Sender Email
-SES requires you to verify the "from" address (or entire domain):
+Use Gmail's SMTP server to send real emails during development and staging testing.
 
-1. Go to **Amazon SES → Verified identities**
-2. Click **Create identity** → choose **Email address**
-3. Enter the email you'll use as `FromAddress` (e.g. `noreply@yourdomain.com`)
-4. Check inbox and click the verification link
+#### Get Gmail App Password
 
-> **Sandbox Mode**: New SES accounts are in sandbox — you can only send to verified addresses. Request production access via AWS support to send to any address.
+1. Go to [Google Account Security](https://myaccount.google.com/security)
+2. Enable **2-Step Verification** if not already enabled
+3. Go to [App Passwords](https://myaccount.google.com/apppasswords)
+4. Select **Mail** → **Other** → enter "SaaS App" → click **Generate**
+5. Copy the 16-character app password (e.g. `abcd efgh ijkl mnop`)
 
-#### Choose a Region
-Pick a region close to your users:
-- `af-south-1` (Cape Town) — good for South African SaaS
-- `eu-west-1` (Ireland) — European fallback
-- `us-east-1` (Virginia) — default
+> **Important**: Use an App Password, not your regular Gmail password. Regular passwords won't work with SMTP.
 
-### Configure Locally
+#### Configure Locally
 
 ```bash
-$env:Email__Provider = "SES"
+$env:Email__Provider = "Smtp"
+$env:Email__FromAddress = "your-email@gmail.com"
+$env:Email__FromName = "Your SaaS"
+$env:Email__Smtp__Host = "smtp.gmail.com"
+$env:Email__Smtp__Port = "587"
+$env:Email__Smtp__Username = "your-email@gmail.com"
+$env:Email__Smtp__Password = "abcd efgh ijkl mnop"
+$env:Email__Smtp__UseSsl = "true"
+```
+
+> Gmail sends up to 500 emails/day on free accounts — more than enough for testing.
+
+### Option B: MailerSend (Production)
+
+MailerSend is a transactional email API designed for production workloads.
+
+#### Get API Token
+
+1. Sign up at [MailerSend](https://www.mailersend.com)
+2. Add and verify your sending domain (e.g. `yourdomain.com`)
+3. Go to **Domains** → your domain → **Manage** → ensure DNS records (SPF, DKIM, DMARC) are verified
+4. Go to **API Tokens** → **Generate new token** → full access → copy the token
+
+#### Configure Locally
+
+```bash
+$env:Email__Provider = "MailerSend"
 $env:Email__FromAddress = "noreply@yourdomain.com"
-$env:Email__SES__AccessKey = "AKIA..."
-$env:Email__SES__SecretKey = "your-secret-key"
-$env:Email__SES__Region = "af-south-1"
+$env:Email__FromName = "Your SaaS"
+$env:Email__MailerSend__ApiToken = "mlsn.xxxxx"
 ```
 
 ### Test Scenarios
 
 #### A. Magic Link Login
-1. Start the app with SES provider
+1. Start the app with `Smtp` or `MailerSend` provider
 2. Navigate to a tenant login page (e.g. `/demo/login`)
-3. Enter an email address (must be verified if in SES sandbox)
+3. Enter an email address
 4. Click "Send Magic Link"
 5. Check inbox — you should receive an email with a sign-in link
 6. Click the link to log in
@@ -208,11 +225,12 @@ $env:Email__SES__Region = "af-south-1"
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `MessageRejected` error | From address not verified | Verify the `FromAddress` in SES console |
-| Emails not received | SES sandbox mode | Can only send to verified addresses; request production access |
-| `InvalidClientTokenId` | Wrong access key | Check IAM credentials |
-| `SignatureDoesNotMatch` | Wrong secret key | Regenerate credentials in IAM |
-| `Endpoint not found` | Wrong region | Check the `Region` value matches your SES setup |
+| **Gmail**: `AuthenticationException` | Wrong app password | Regenerate app password in Google Account |
+| **Gmail**: `5.7.8 Username and Password not accepted` | 2FA not enabled | Enable 2-Step Verification first |
+| **Gmail**: Connection timeout | Firewall blocking port 587 | Check outbound port rules |
+| **MailerSend**: `401 Unauthenticated` | Invalid API token | Regenerate token in MailerSend dashboard |
+| **MailerSend**: `422 Unprocessable` | Domain not verified | Complete DNS verification in MailerSend |
+| **Both**: Email not received | Check spam folder | Also verify `FromAddress` matches verified domain |
 
 ---
 

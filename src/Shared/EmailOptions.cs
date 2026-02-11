@@ -6,12 +6,21 @@ public class EmailOptions
 
     public string Provider { get; set; } = "Console";
     public string FromAddress { get; set; } = "no-reply@localhost";
-    public SesOptions SES { get; set; } = new();
+    public string FromName { get; set; } = "SaaS App";
+    public SmtpOptions Smtp { get; set; } = new();
+    public MailerSendOptions MailerSend { get; set; } = new();
 }
 
-public class SesOptions
+public class SmtpOptions
 {
-    public string AccessKey { get; set; } = string.Empty;
-    public string SecretKey { get; set; } = string.Empty;
-    public string Region { get; set; } = "us-east-1";
+    public string Host { get; set; } = "smtp.gmail.com";
+    public int Port { get; set; } = 587;
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public bool UseSsl { get; set; } = true;
+}
+
+public class MailerSendOptions
+{
+    public string ApiToken { get; set; } = string.Empty;
 }

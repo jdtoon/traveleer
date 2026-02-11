@@ -1,7 +1,7 @@
 namespace saas.Shared;
 
 /// <summary>
-/// Abstraction over email delivery. Implementations: ConsoleEmailService (dev), SesEmailService (prod).
+/// Abstraction over email delivery. Implementations: ConsoleEmailService (dev), SmtpEmailService (staging), MailerSendEmailService (prod).
 /// </summary>
 public interface IEmailService
 {

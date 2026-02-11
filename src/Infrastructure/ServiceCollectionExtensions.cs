@@ -9,8 +9,6 @@ using Microsoft.Extensions.Options;
 using saas.Data.Core;
 using saas.Data.Audit;
 using saas.Data.Tenant;
-using Amazon.Runtime;
-using Amazon.SimpleEmailV2;
 using saas.Infrastructure.Middleware;
 using saas.Infrastructure.Services;
 using saas.Modules.Audit.Services;
@@ -131,24 +129,19 @@ public static class ServiceCollectionExtensions
 
         // Provider switching for Email & BotProtection
         var emailProvider = configuration.GetValue<string>("Email:Provider") ?? "Console";
-        if (emailProvider.Equals("SES", StringComparison.OrdinalIgnoreCase))
+        if (emailProvider.Equals("Smtp", StringComparison.OrdinalIgnoreCase))
         {
-            services.AddSingleton<IAmazonSimpleEmailServiceV2>(sp =>
+            services.AddScoped<IEmailService, SmtpEmailService>();
+        }
+        else if (emailProvider.Equals("MailerSend", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddHttpClient<MailerSendEmailService>(client =>
             {
-                var options = sp.GetRequiredService<IOptions<EmailOptions>>().Value;
-                var ses = options.SES;
-
-                if (string.IsNullOrWhiteSpace(ses.AccessKey) || string.IsNullOrWhiteSpace(ses.SecretKey))
-                    throw new InvalidOperationException(
-                        "Email:Provider is set to SES but Email:SES:AccessKey and Email:SES:SecretKey are not configured.");
-
-                var credentials = new BasicAWSCredentials(ses.AccessKey, ses.SecretKey);
-                var region = Amazon.RegionEndpoint.GetBySystemName(
-                    string.IsNullOrWhiteSpace(ses.Region) ? "us-east-1" : ses.Region);
-
-                return new AmazonSimpleEmailServiceV2Client(credentials, region);
+                var token = configuration.GetValue<string>("Email:MailerSend:ApiToken") ?? string.Empty;
+                client.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             });
-            services.AddScoped<IEmailService, SesEmailService>();
+            services.AddScoped<IEmailService>(sp => sp.GetRequiredService<MailerSendEmailService>());
         }
         else
         {

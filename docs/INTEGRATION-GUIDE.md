@@ -81,7 +81,7 @@ Swap implementations via `appsettings.json`:
 | Service | Dev Provider | Prod Provider | Config Key |
 |---------|-------------|---------------|------------|
 | Billing | `MockBillingService` | `PaystackBillingService` | `Billing:Provider` |
-| Email | `ConsoleEmailService` | `SesEmailService` | `Email:Provider` |
+| Email | `ConsoleEmailService` | `MailerSendEmailService` | `Email:Provider` |
 | Bot Protection | `MockBotProtection` | `CloudflareTurnstile` | `Turnstile:Provider` |
 | Storage | `LocalStorageService` | `R2StorageService` | `Storage:Provider` |
 
@@ -174,11 +174,15 @@ public class MyController : SwapController
 | `Billing__Paystack__PublicKey` | — | Paystack public key |
 | `Billing__Paystack__WebhookSecret` | — | Paystack webhook signature |
 | `Billing__Paystack__CallbackBaseUrl` | — | Base URL for Paystack callbacks |
-| `Email__Provider` | `Console` | `Console` or `SES` |
+| `Email__Provider` | `Console` | `Console`, `Smtp`, or `MailerSend` |
 | `Email__FromAddress` | — | Sender email address |
-| `Email__SES__AccessKey` | — | AWS SES access key |
-| `Email__SES__SecretKey` | — | AWS SES secret key |
-| `Email__SES__Region` | — | AWS SES region |
+| `Email__FromName` | `SaaS App` | Display name on sent emails |
+| `Email__Smtp__Host` | `smtp.gmail.com` | SMTP server hostname |
+| `Email__Smtp__Port` | `587` | SMTP server port |
+| `Email__Smtp__Username` | — | SMTP username |
+| `Email__Smtp__Password` | — | SMTP password or app password |
+| `Email__Smtp__UseSsl` | `true` | Use STARTTLS |
+| `Email__MailerSend__ApiToken` | — | MailerSend API token |
 | `Turnstile__Provider` | `Mock` | `Mock` or `Cloudflare` |
 | `Turnstile__SiteKey` | — | Cloudflare Turnstile site key |
 | `Turnstile__SecretKey` | — | Cloudflare Turnstile secret key |
