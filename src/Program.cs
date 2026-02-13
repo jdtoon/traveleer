@@ -41,6 +41,12 @@ builder.Services.AddMessagingConfig(builder.Configuration);
 builder.Services.AddCachingConfig(builder.Configuration);
 
 // =============================================================================
+// JOB SCHEDULING (Hangfire)
+// =============================================================================
+
+builder.Services.AddSchedulingConfig(builder.Configuration);
+
+// =============================================================================
 // DATABASE & CORE SERVICES
 // =============================================================================
 
@@ -129,6 +135,8 @@ foreach (var module in modules)
 
 app.ConfigurePipeline();
 app.MapEndpoints();
+app.UseSchedulingDashboard();
+app.RegisterRecurringJobs();
 
 app.Run();
 

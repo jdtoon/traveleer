@@ -166,6 +166,7 @@ public static class ApplicationBuilderExtensions
     {
         app.UseResponseCompression();
         app.UseForwardedHeaders();
+        app.UseSerilogRequestLogging();
         app.UseMiddleware<SecurityHeadersMiddleware>();
 
         if (!app.Environment.IsDevelopment())
