@@ -56,6 +56,7 @@ builder.Services.AddHealthChecks()
     .AddCheck<TenantDirectoryHealthCheck>("tenant-directory")
     .AddCheck<BackupReadinessHealthCheck>("backup-readiness");
 builder.Services.AddCoreServices(builder.Configuration);
+builder.Services.AddSingleton<saas.Infrastructure.Services.IEmailTemplateService, saas.Infrastructure.Services.EmailTemplateService>();
 
 // =============================================================================
 // DOMAIN MODULES
