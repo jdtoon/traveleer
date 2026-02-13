@@ -30,10 +30,11 @@ public class TenantAdminModule : IModule
     {
         ["TenantAdmin"] = "TenantAdmin",
         ["TenantBilling"] = "TenantAdmin",
-        ["TenantSettings"] = "TenantAdmin"
+        ["TenantSettings"] = "TenantAdmin",
+        ["Invitation"] = "TenantAdmin"
     };
 
-    public IReadOnlyList<string> PartialViewSearchPaths => ["TenantAdmin", "TenantBilling", "TenantSettings"];
+    public IReadOnlyList<string> PartialViewSearchPaths => ["TenantAdmin", "TenantBilling", "TenantSettings", "Invitation"];
 
     public IReadOnlyList<ModuleFeature> Features =>
     [
