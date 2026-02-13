@@ -12,8 +12,8 @@ LITESTREAM_PID=""
 cleanup() {
     echo "Shutting down Litestream..."
     if [ -n "$LITESTREAM_PID" ]; then
-        kill "$LITESTREAM_PID" 2>/dev/null
-        wait "$LITESTREAM_PID" 2>/dev/null
+        kill "$LITESTREAM_PID" 2>/dev/null || true
+        wait "$LITESTREAM_PID" 2>/dev/null || true
     fi
     exit 0
 }
@@ -34,14 +34,19 @@ LITESTREAM_PID=$!
 echo "Litestream started (PID $LITESTREAM_PID)"
 
 # Watch for config reload signal
-LAST_RELOAD=""
+# Initialize from existing sentinel so we don't restart immediately on boot
+if [ -f "$SENTINEL" ]; then
+    LAST_RELOAD=$(cat "$SENTINEL")
+else
+    LAST_RELOAD=""
+fi
 while true; do
     if [ -f "$SENTINEL" ]; then
         CURRENT=$(cat "$SENTINEL")
         if [ "$CURRENT" != "$LAST_RELOAD" ]; then
             echo "Config reload requested, restarting Litestream..."
-            kill "$LITESTREAM_PID" 2>/dev/null
-            wait "$LITESTREAM_PID" 2>/dev/null
+            kill "$LITESTREAM_PID" 2>/dev/null || true
+            wait "$LITESTREAM_PID" 2>/dev/null || true
             litestream replicate -config "$CONFIG" &
             LITESTREAM_PID=$!
             echo "Litestream restarted (PID $LITESTREAM_PID)"

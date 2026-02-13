@@ -47,6 +47,9 @@ src/wwwroot/uploads/
 
 # Docker
 
+# Local docker compose with machine-specific secrets
+docker-compose.local.yml
+
 # Ignore SQLite database files in docker volumes but not source code
 docker-data/
 db/
