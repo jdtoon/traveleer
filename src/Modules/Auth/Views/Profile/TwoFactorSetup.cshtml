@@ -1,0 +1,69 @@
+@model saas.Modules.Auth.Entities.AppUser
+@inject saas.Shared.ITenantContext TenantContext
+@{
+    ViewData["Title"] = "Set Up Two-Factor Authentication";
+    var slug = TenantContext.Slug;
+    var secret = ViewData["Secret"] as string;
+    var otpUri = ViewData["OtpUri"] as string;
+}
+
+<div class="max-w-lg mx-auto space-y-6">
+    <div class="flex items-center gap-2">
+        <a href="/@slug/profile" class="btn btn-ghost btn-sm">← Back</a>
+        <h1 class="text-2xl font-bold">Set Up 2FA</h1>
+    </div>
+
+    @if (ViewData["Error"] is string error)
+    {
+        <div class="alert alert-error">
+            <span>@error</span>
+        </div>
+    }
+
+    <div class="card bg-base-200">
+        <div class="card-body">
+            <h2 class="card-title">Step 1: Scan QR Code</h2>
+            <p class="text-sm text-base-content/60">
+                Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+            </p>
+
+            <!-- QR Code placeholder — use a JS library or server-side QR rendering -->
+            <div class="bg-white p-4 rounded-lg inline-block mx-auto my-4">
+                <div class="text-center text-sm text-gray-500">
+                    <p class="font-mono text-xs break-all bg-base-300 p-2 rounded">@otpUri</p>
+                </div>
+            </div>
+
+            <div class="divider">OR enter manually</div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Secret Key</span></label>
+                <div class="flex gap-2">
+                    <input type="text" value="@secret" readonly class="input input-bordered font-mono flex-1" />
+                    <button type="button" class="btn btn-ghost btn-sm"
+                            onclick="navigator.clipboard.writeText('@secret')">Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-base-200">
+        <div class="card-body">
+            <h2 class="card-title">Step 2: Verify Code</h2>
+            <p class="text-sm text-base-content/60">
+                Enter the 6-digit code from your authenticator app to verify setup.
+            </p>
+
+            <form method="post" action="/@slug/profile/two-factor/verify">
+                <div class="form-control w-full mb-4">
+                    <label class="label"><span class="label-text">Verification Code</span></label>
+                    <input type="text" name="code" class="input input-bordered w-full text-center text-2xl tracking-widest"
+                           placeholder="000000" maxlength="6" pattern="[0-9]{6}" required autofocus
+                           autocomplete="one-time-code" inputmode="numeric" />
+                </div>
+
+                <button type="submit" class="btn btn-primary w-full">Enable 2FA</button>
+            </form>
+        </div>
+    </div>
+</div>

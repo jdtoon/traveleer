@@ -17,7 +17,8 @@ public class AuthModule : IModule
     {
         ["TenantAuth"] = "Auth",
         ["SuperAdminAuth"] = "Auth",
-        ["Profile"] = "Auth"
+        ["Profile"] = "Auth",
+        ["TwoFactor"] = "Auth"
     };
 
     public IReadOnlyList<string> PublicRoutePrefixes =>
@@ -34,6 +35,7 @@ public class AuthModule : IModule
     {
         services.AddScoped<MagicLinkService>();
         services.AddScoped<EmailVerificationService>();
+        services.AddScoped<TwoFactorService>();
         services.TryAddScoped<ICurrentUser, CurrentUser>();
         services.AddHostedService<MagicLinkCleanupService>();
 

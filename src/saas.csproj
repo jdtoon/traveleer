@@ -36,6 +36,7 @@
     <PackageReference Include="Hangfire.Core" Version="1.*" />
     <PackageReference Include="Hangfire.AspNetCore" Version="1.*" />
     <PackageReference Include="Hangfire.InMemory" Version="1.*" />
+    <PackageReference Include="Otp.NET" Version="1.*" />
     <PackageReference Include="Swap.Htmx" Version="*" />
   </ItemGroup>
 
