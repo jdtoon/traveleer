@@ -18,7 +18,8 @@ public class AuthModule : IModule
         ["TenantAuth"] = "Auth",
         ["SuperAdminAuth"] = "Auth",
         ["Profile"] = "Auth",
-        ["TwoFactor"] = "Auth"
+        ["TwoFactor"] = "Auth",
+        ["Session"] = "Auth"
     };
 
     public IReadOnlyList<string> PublicRoutePrefixes =>

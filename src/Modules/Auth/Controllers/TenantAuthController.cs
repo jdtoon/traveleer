@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
+using saas.Modules.Auth.Entities;
 using saas.Modules.Auth.Services;
 using saas.Shared;
 using Swap.Htmx;
@@ -112,7 +113,47 @@ public class TenantAuthController : SwapController
         var principal = new ClaimsPrincipal(identity);
 
         await HttpContext.SignInAsync(AuthSchemes.Tenant, principal);
+
+        // Track session
+        try
+        {
+            var session = new UserSession
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                UserAgent = Request.Headers.UserAgent.ToString(),
+                DeviceInfo = ParseDeviceInfo(Request.Headers.UserAgent.ToString()),
+                CreatedAt = DateTime.UtcNow,
+                LastActivityAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddHours(12)
+            };
+            _tenantDb.Set<UserSession>().Add(session);
+            await _tenantDb.SaveChangesAsync();
+        }
+        catch { /* Don't block login if session tracking fails */ }
+
         return Redirect($"/{slug}");
+    }
+
+    private static string ParseDeviceInfo(string userAgent)
+    {
+        if (string.IsNullOrEmpty(userAgent)) return "Unknown";
+        
+        var browser = "Unknown Browser";
+        if (userAgent.Contains("Firefox")) browser = "Firefox";
+        else if (userAgent.Contains("Edg/")) browser = "Edge";
+        else if (userAgent.Contains("Chrome")) browser = "Chrome";
+        else if (userAgent.Contains("Safari")) browser = "Safari";
+
+        var os = "Unknown OS";
+        if (userAgent.Contains("Windows")) os = "Windows";
+        else if (userAgent.Contains("Mac OS")) os = "macOS";
+        else if (userAgent.Contains("Linux")) os = "Linux";
+        else if (userAgent.Contains("Android")) os = "Android";
+        else if (userAgent.Contains("iPhone") || userAgent.Contains("iPad")) os = "iOS";
+
+        return $"{browser} on {os}";
     }
 
     [HttpPost("logout")]
