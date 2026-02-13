@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using saas.Data.Core;
+using saas.Infrastructure.Middleware;
 using saas.Modules.Auth.Filters;
 using saas.Shared;
 using Swap.Htmx;
@@ -13,11 +15,13 @@ public class TenantSettingsController : SwapController
 {
     private readonly CoreDbContext _coreDb;
     private readonly ITenantContext _tenantContext;
+    private readonly IMemoryCache _cache;
 
-    public TenantSettingsController(CoreDbContext coreDb, ITenantContext tenantContext)
+    public TenantSettingsController(CoreDbContext coreDb, ITenantContext tenantContext, IMemoryCache cache)
     {
         _coreDb = coreDb;
         _tenantContext = tenantContext;
+        _cache = cache;
     }
 
     [HttpGet]
@@ -75,6 +79,11 @@ public class TenantSettingsController : SwapController
 
         tenant.CustomDomain = string.IsNullOrWhiteSpace(customDomain) ? null : customDomain.Trim().ToLowerInvariant();
         await _coreDb.SaveChangesAsync();
+
+        // Invalidate old and new domain caches
+        if (!string.IsNullOrEmpty(customDomain))
+            TenantResolutionMiddleware.InvalidateDomainCache(_cache, customDomain);
+        TenantResolutionMiddleware.InvalidateCache(_cache, tenant.Slug);
 
         ViewData["Success"] = "Custom domain updated.";
         return await Index();

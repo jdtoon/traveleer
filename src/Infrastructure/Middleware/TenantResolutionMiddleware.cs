@@ -123,6 +123,55 @@ public class TenantResolutionMiddleware
         cache.Remove($"tenant-resolution-{slug}");
     }
 
+    /// <summary>
+    /// Invalidates the cached custom domain resolution.
+    /// Call this after custom domain changes.
+    /// </summary>
+    public static void InvalidateDomainCache(IMemoryCache cache, string domain)
+    {
+        cache.Remove($"tenant-domain-{domain.ToLowerInvariant()}");
+    }
+
+    private static async Task<ResolvedTenant?> TryResolveByCustomDomain(string host, CoreDbContext coreDb, IMemoryCache cache)
+    {
+        if (string.IsNullOrEmpty(host) || host == "localhost" || host.Contains("localhost:"))
+            return null;
+
+        var cacheKey = $"tenant-domain-{host.ToLowerInvariant()}";
+        return await cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+
+            var tenant = await coreDb.Tenants
+                .Include(t => t.Plan)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.CustomDomain == host.ToLowerInvariant());
+
+            if (tenant is null) return null;
+
+            return new ResolvedTenant
+            {
+                Id = tenant.Id,
+                Slug = tenant.Slug,
+                Name = tenant.Name,
+                Status = tenant.Status,
+                PlanSlug = tenant.Plan.Slug
+            };
+        });
+    }
+
+    private static void SetTenantContext(ITenantContext tenantContext, ResolvedTenant resolved)
+    {
+        if (tenantContext is TenantContext tenantCtx)
+        {
+            tenantCtx.IsTenantRequest = true;
+            tenantCtx.Slug = resolved.Slug;
+            tenantCtx.TenantId = resolved.Id;
+            tenantCtx.TenantName = resolved.Name;
+            tenantCtx.PlanSlug = resolved.PlanSlug;
+        }
+    }
+
     private sealed class ResolvedTenant
     {
         public Guid Id { get; init; }
