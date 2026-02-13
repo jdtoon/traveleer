@@ -5,6 +5,7 @@ using saas.Infrastructure.Provisioning;
 using saas.Modules.Registration.Models;
 using saas.Modules.Registration.Services;
 using saas.Shared;
+using saas.Modules.Tenancy.Entities;
 using Swap.Htmx;
 
 namespace saas.Modules.Registration.Controllers;
@@ -98,6 +99,8 @@ public class RegistrationController : SwapController
         // ── Paid plan: create tenant as PendingSetup, redirect to Paystack ──
         if (plan.MonthlyPrice > 0)
         {
+            var billingCycle = request.BillingCycle == "Annual" ? BillingCycle.Annual : BillingCycle.Monthly;
+
             // Validate slug uniqueness before creating the pending tenant
             var slugValidation = await _provisioner.ValidateSlugAsync(request.Slug);
             if (!slugValidation.IsValid)
@@ -126,7 +129,7 @@ public class RegistrationController : SwapController
                     tenant.Id,
                     request.Email,
                     request.PlanId,
-                    BillingCycle.Monthly));
+                    billingCycle));
 
             if (!billingResult.Success)
             {
@@ -186,13 +189,21 @@ public class RegistrationController : SwapController
             return Redirect(billingResult.PaymentUrl);
         }
 
-        // ── Free plan: provision immediately ──
+        // ── Free plan: provision immediately with optional trial ──
         var result = await _provisioner.ProvisionTenantAsync(request.Slug, request.Email, request.PlanId);
 
         if (!result.Success)
         {
             _logger.LogWarning("Registration failed for {Slug}: {Error}", request.Slug, result.ErrorMessage);
             return PartialView("_RegistrationError", new { Message = result.ErrorMessage });
+        }
+
+        // Set 14-day trial on free plan tenants
+        var freeTenant = await _coreDb.Tenants.FirstOrDefaultAsync(t => t.Slug == request.Slug.ToLowerInvariant());
+        if (freeTenant is not null)
+        {
+            freeTenant.TrialEndsAt = DateTime.UtcNow.AddDays(14);
+            await _coreDb.SaveChangesAsync();
         }
 
         // Delegate email to dedicated service (swallows errors internally)

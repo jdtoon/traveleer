@@ -17,5 +17,7 @@ public class RegisterRequest
     [Required(ErrorMessage = "Plan is required")]
     public Guid PlanId { get; set; }
 
+    public string BillingCycle { get; set; } = "Monthly";
+
     public string? CaptchaToken { get; set; }
 }
