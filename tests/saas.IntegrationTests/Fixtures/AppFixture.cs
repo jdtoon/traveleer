@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Swap.Testing;
 using Xunit;
@@ -29,6 +30,15 @@ public class AppFixture : IDisposable
                 builder.UseSetting("Email:Provider", "Console");
                 builder.UseSetting("FeatureFlags:AllEnabledLocally", "true");
                 builder.UseSetting("Storage:Provider", "Local");
+
+                builder.ConfigureAppConfiguration((_, configBuilder) =>
+                {
+                    configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Backup:AutoRestoreEnabled"] = "false",
+                        ["Backup:KeyBackupEnabled"] = "false"
+                    });
+                });
             });
 
         // Force the server to start (and run all initialization including seeding)

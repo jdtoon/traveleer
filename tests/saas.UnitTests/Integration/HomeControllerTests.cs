@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace saas.Tests.Integration;
@@ -9,7 +10,17 @@ public class HomeControllerTests : IClassFixture<WebApplicationFactory<Program>>
 
     public HomeControllerTests(WebApplicationFactory<Program> factory)
     {
-        _factory = factory;
+        _factory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configBuilder) =>
+            {
+                configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Backup:AutoRestoreEnabled"] = "false",
+                    ["Backup:KeyBackupEnabled"] = "false"
+                });
+            });
+        });
     }
 
     [Fact]
