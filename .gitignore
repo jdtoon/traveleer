@@ -30,6 +30,10 @@ bld/
 # Library Manager (libman)
 src/wwwroot/lib/
 
+# Node.js / Tailwind CSS
+src/node_modules/
+src/wwwroot/css/app.css
+
 # Local file uploads (when R2 not configured)
 src/wwwroot/uploads/
 

@@ -1,0 +1,20 @@
+/* ============================================================
+   Tailwind CSS v4 + DaisyUI v5 Entry Point
+   Compiled by @tailwindcss/cli at build time
+   ============================================================ */
+
+@import "tailwindcss";
+@import "daisyui";
+
+/* ── Custom Utility Styles ─────────────────────────────────── */
+
+/* Swap.Htmx navigation cursor */
+swap-nav {
+    cursor: pointer;
+}
+
+/* Loading state for HTMX requests */
+[data-loading] {
+    opacity: 0.6;
+    pointer-events: none;
+}
