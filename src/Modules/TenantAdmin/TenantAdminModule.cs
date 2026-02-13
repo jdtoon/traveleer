@@ -29,10 +29,11 @@ public class TenantAdminModule : IModule
     public IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>
     {
         ["TenantAdmin"] = "TenantAdmin",
-        ["TenantBilling"] = "TenantAdmin"
+        ["TenantBilling"] = "TenantAdmin",
+        ["TenantSettings"] = "TenantAdmin"
     };
 
-    public IReadOnlyList<string> PartialViewSearchPaths => ["TenantAdmin", "TenantBilling"];
+    public IReadOnlyList<string> PartialViewSearchPaths => ["TenantAdmin", "TenantBilling", "TenantSettings"];
 
     public IReadOnlyList<ModuleFeature> Features =>
     [

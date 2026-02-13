@@ -24,6 +24,29 @@ public class TenantResolutionMiddleware
         var path = context.Request.Path.Value ?? string.Empty;
         var firstSegment = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
 
+        // Try custom domain resolution first (Host header)
+        var host = context.Request.Host.Host;
+        var customDomainResolved = await TryResolveByCustomDomain(host, coreDb, cache);
+        if (customDomainResolved is not null)
+        {
+            SetTenantContext(tenantContext, customDomainResolved);
+
+            if (customDomainResolved.Status == TenantStatus.Suspended)
+            {
+                var action = firstSegment;
+                if (!action.Equals("login", StringComparison.OrdinalIgnoreCase) &&
+                    !action.Equals("logout", StringComparison.OrdinalIgnoreCase) &&
+                    !action.Equals("verify", StringComparison.OrdinalIgnoreCase))
+                {
+                    await ErrorPages.Write403SuspendedAsync(context.Response);
+                    return;
+                }
+            }
+
+            await _next(context);
+            return;
+        }
+
         if (_nonTenantPrefixes.Contains(firstSegment))
         {
             if (tenantContext is TenantContext tc)
