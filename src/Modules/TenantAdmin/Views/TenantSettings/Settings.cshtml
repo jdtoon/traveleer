@@ -93,4 +93,54 @@
             </div>
         </div>
     </div>
+
+    <!-- Data Export -->
+    <div class="card bg-base-200">
+        <div class="card-body">
+            <h2 class="card-title">Data Export</h2>
+            <p class="text-sm text-base-content/60 mb-4">
+                Download a JSON export of your organization's data including users and settings.
+            </p>
+            <a href="/@slug/admin/settings/export-data" class="btn btn-outline btn-sm">
+                Download Export
+            </a>
+        </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="card bg-base-200 border border-error/30">
+        <div class="card-body">
+            <h2 class="card-title text-error">Danger Zone</h2>
+            @if (Model.IsDeleted)
+            {
+                <div class="alert alert-warning">
+                    <div>
+                        <p class="font-semibold">Deletion Scheduled</p>
+                        <p class="text-sm">This organization is scheduled for permanent deletion on
+                            <strong>@Model.ScheduledDeletionAt?.ToString("MMMM d, yyyy")</strong>.
+                            All data will be permanently removed after this date.
+                        </p>
+                    </div>
+                </div>
+                <form method="post" action="/@slug/admin/settings/cancel-deletion" class="mt-2">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-success btn-sm">Cancel Deletion</button>
+                </form>
+            }
+            else
+            {
+                <p class="text-sm text-base-content/60 mb-4">
+                    Once you delete an organization, there is a 30-day grace period before data is permanently removed.
+                    You can cancel the deletion during this period.
+                </p>
+                <form method="post" action="/@slug/admin/settings/request-deletion">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-error btn-sm"
+                            onclick="return confirm('Are you sure you want to delete this organization? You have 30 days to cancel.')">
+                        Delete Organization
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
 </div>

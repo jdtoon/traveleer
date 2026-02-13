@@ -58,5 +58,6 @@ public class TenantAdminModule : IModule
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<ITenantAdminService, TenantAdminService>();
+        services.AddScoped<ITenantLifecycleService, TenantLifecycleService>();
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using saas.Data.Core;
 using saas.Infrastructure.Middleware;
 using saas.Modules.Auth.Filters;
+using saas.Modules.TenantAdmin.Services;
 using saas.Shared;
 using Swap.Htmx;
 
@@ -16,12 +17,14 @@ public class TenantSettingsController : SwapController
     private readonly CoreDbContext _coreDb;
     private readonly ITenantContext _tenantContext;
     private readonly IMemoryCache _cache;
+    private readonly ITenantLifecycleService _lifecycle;
 
-    public TenantSettingsController(CoreDbContext coreDb, ITenantContext tenantContext, IMemoryCache cache)
+    public TenantSettingsController(CoreDbContext coreDb, ITenantContext tenantContext, IMemoryCache cache, ITenantLifecycleService lifecycle)
     {
         _coreDb = coreDb;
         _tenantContext = tenantContext;
         _cache = cache;
+        _lifecycle = lifecycle;
     }
 
     [HttpGet]
@@ -41,7 +44,9 @@ public class TenantSettingsController : SwapController
             Slug = tenant.Slug,
             Status = tenant.Status.ToString(),
             CreatedAt = tenant.CreatedAt,
-            PlanName = (await _coreDb.Plans.FindAsync(tenant.PlanId))?.Name ?? "Unknown"
+            PlanName = (await _coreDb.Plans.FindAsync(tenant.PlanId))?.Name ?? "Unknown",
+            IsDeleted = tenant.IsDeleted,
+            ScheduledDeletionAt = tenant.ScheduledDeletionAt
         });
     }
 
@@ -88,6 +93,33 @@ public class TenantSettingsController : SwapController
         ViewData["Success"] = "Custom domain updated.";
         return await Index();
     }
+
+    [HttpGet]
+    [HasPermission(TenantAdminPermissions.SettingsRead)]
+    public async Task<IActionResult> ExportData()
+    {
+        var data = await _lifecycle.ExportTenantDataAsync();
+        var slug = _tenantContext.Slug ?? "export";
+        return File(data, "application/json", $"{slug}-export-{DateTime.UtcNow:yyyyMMdd}.json");
+    }
+
+    [HttpPost]
+    [HasPermission(TenantAdminPermissions.SettingsEdit)]
+    public async Task<IActionResult> RequestDeletion()
+    {
+        await _lifecycle.RequestDeletionAsync(gracePeriodDays: 30);
+        ViewData["Success"] = "Deletion requested. Your data will be permanently deleted in 30 days. You can cancel this from the settings page.";
+        return await Index();
+    }
+
+    [HttpPost]
+    [HasPermission(TenantAdminPermissions.SettingsEdit)]
+    public async Task<IActionResult> CancelDeletion()
+    {
+        await _lifecycle.CancelDeletionAsync();
+        ViewData["Success"] = "Deletion cancelled. Your organization is safe.";
+        return await Index();
+    }
 }
 
 public class TenantSettingsViewModel
@@ -99,6 +131,8 @@ public class TenantSettingsViewModel
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public string PlanName { get; set; } = string.Empty;
+    public bool IsDeleted { get; set; }
+    public DateTime? ScheduledDeletionAt { get; set; }
 }
 
 public class TenantSettingsUpdateModel
