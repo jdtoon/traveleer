@@ -40,6 +40,10 @@ public class LitestreamConfigSyncServiceTests : IDisposable
         Assert.Contains("bucket: my-bucket", yaml);
         Assert.Contains("endpoint: https://r2.example.com", yaml);
         Assert.Contains("force-path-style: true", yaml);
+        Assert.Contains("sync-interval: 30s", yaml);
+        Assert.Contains("monitor-interval: 5s", yaml);
+        Assert.Contains("checkpoint-interval: 5m", yaml);
+        Assert.Contains("snapshot:", yaml);
     }
 
     [Fact]
@@ -95,7 +99,29 @@ public class LitestreamConfigSyncServiceTests : IDisposable
             bucket: "b",
             endpoint: "e");
 
-        Assert.StartsWith("dbs:", yaml);
+        Assert.Contains("dbs:", yaml);
+    }
+
+    [Fact]
+    public void GenerateYaml_AllowsCustomTuningValues()
+    {
+        var yaml = LitestreamConfigSyncService.GenerateYaml(
+            coreDbPath: "/app/db/core.db",
+            auditDbPath: "/app/db/audit.db",
+            tenantDbs: Array.Empty<string>(),
+            bucket: "b",
+            endpoint: "e",
+            syncInterval: "60s",
+            monitorInterval: "10s",
+            checkpointInterval: "10m",
+            snapshotInterval: "48h",
+            snapshotRetention: "336h");
+
+        Assert.Contains("sync-interval: 60s", yaml);
+        Assert.Contains("monitor-interval: 10s", yaml);
+        Assert.Contains("checkpoint-interval: 10m", yaml);
+        Assert.Contains("interval: 48h", yaml);
+        Assert.Contains("retention: 336h", yaml);
     }
 
     [Fact]

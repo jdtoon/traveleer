@@ -59,7 +59,17 @@ public class LitestreamConfigSyncService : BackgroundService, ILitestreamConfigS
             ? Directory.GetFiles(_tenantDbPath, "*.db")
             : Array.Empty<string>();
 
-        var yaml = GenerateYaml(_coreDbPath, _auditDbPath, tenantDbs, bucket, endpoint);
+        var yaml = GenerateYaml(
+            _coreDbPath,
+            _auditDbPath,
+            tenantDbs,
+            bucket,
+            endpoint,
+            _options.SyncInterval,
+            _options.MonitorInterval,
+            _options.CheckpointInterval,
+            _options.SnapshotInterval,
+            _options.SnapshotRetention);
 
         // Only write if changed
         var existingConfig = File.Exists(_options.LitestreamConfigPath)
@@ -91,23 +101,32 @@ public class LitestreamConfigSyncService : BackgroundService, ILitestreamConfigS
         string auditDbPath,
         string[] tenantDbs,
         string bucket,
-        string endpoint)
+        string endpoint,
+        string syncInterval = "30s",
+        string monitorInterval = "5s",
+        string checkpointInterval = "5m",
+        string snapshotInterval = "24h",
+        string snapshotRetention = "168h")
     {
         var yaml = new StringBuilder();
+        yaml.AppendLine($"sync-interval: {syncInterval}");
+        yaml.AppendLine("snapshot:");
+        yaml.AppendLine($"  interval: {snapshotInterval}");
+        yaml.AppendLine($"  retention: {snapshotRetention}");
         yaml.AppendLine("dbs:");
 
         // Core database
-        AppendDbEntry(yaml, coreDbPath, "core.db", bucket, endpoint);
+        AppendDbEntry(yaml, coreDbPath, "core.db", bucket, endpoint, monitorInterval, checkpointInterval);
 
         // Audit database
-        AppendDbEntry(yaml, auditDbPath, "audit.db", bucket, endpoint);
+        AppendDbEntry(yaml, auditDbPath, "audit.db", bucket, endpoint, monitorInterval, checkpointInterval);
 
         // Tenant databases
         foreach (var dbFile in tenantDbs.OrderBy(f => f))
         {
             var fileName = Path.GetFileName(dbFile);
             var r2Path = $"tenants/{fileName}";
-            AppendDbEntry(yaml, dbFile, r2Path, bucket, endpoint);
+            AppendDbEntry(yaml, dbFile, r2Path, bucket, endpoint, monitorInterval, checkpointInterval);
         }
 
         return yaml.ToString();
@@ -118,16 +137,20 @@ public class LitestreamConfigSyncService : BackgroundService, ILitestreamConfigS
         string path,
         string r2Path,
         string bucket,
-        string endpoint)
+        string endpoint,
+        string monitorInterval,
+        string checkpointInterval)
     {
         // Normalize to forward slashes for cross-platform compatibility (litestream runs on Linux)
         var normalizedPath = path.Replace('\\', '/');
         yaml.AppendLine($"  - path: {normalizedPath}");
-        yaml.AppendLine($"    replicas:");
-        yaml.AppendLine($"      - type: s3");
-        yaml.AppendLine($"        bucket: {bucket}");
-        yaml.AppendLine($"        path: {r2Path}");
-        yaml.AppendLine($"        endpoint: {endpoint}");
-        yaml.AppendLine($"        force-path-style: true");
+        yaml.AppendLine($"    monitor-interval: {monitorInterval}");
+        yaml.AppendLine($"    checkpoint-interval: {checkpointInterval}");
+        yaml.AppendLine($"    replica:");
+        yaml.AppendLine($"      type: s3");
+        yaml.AppendLine($"      bucket: {bucket}");
+        yaml.AppendLine($"      path: {r2Path}");
+        yaml.AppendLine($"      endpoint: {endpoint}");
+        yaml.AppendLine($"      force-path-style: true");
     }
 }
