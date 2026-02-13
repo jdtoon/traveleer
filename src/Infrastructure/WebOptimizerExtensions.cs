@@ -8,16 +8,13 @@ public static class WebOptimizerExtensions
     {
         services.AddWebOptimizer(pipeline =>
         {
-            // Bundle DaisyUI + custom theme CSS
+            // Tailwind CSS v4 + DaisyUI (compiled at build time by @tailwindcss/cli)
             pipeline.AddCssBundle("/css/styles.css",
-                "lib/daisyui/daisyui.css",
-                "lib/daisyui/themes.css",
-                "css/theme.css"
+                "css/app.css"
             );
 
-            // Bundle Tailwind + JS files
+            // JavaScript bundle (layout utilities only — Tailwind browser runtime removed)
             pipeline.AddJavaScriptBundle("/js/bundle.js",
-                "lib/tailwindcss/dist/index.global.min.js",
                 "js/layout.js"
             );
 

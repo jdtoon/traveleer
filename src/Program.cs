@@ -1,5 +1,6 @@
 using System.Globalization;
 using saas.Infrastructure;
+using saas.Infrastructure.Messaging;
 using saas.Data.Core;
 using saas.Data.Audit;
 using saas.Infrastructure.HealthChecks;
@@ -13,6 +14,12 @@ CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 var builder = WebApplication.CreateBuilder(args);
 
 // =============================================================================
+// STRUCTURED LOGGING (Serilog)
+// =============================================================================
+
+builder.AddSerilogConfig();
+
+// =============================================================================
 // INFRASTRUCTURE SERVICES
 // =============================================================================
 
@@ -20,6 +27,18 @@ builder.Services.AddDataProtectionConfig(builder.Environment);
 builder.Services.AddCompressionConfig();
 builder.Services.AddForwardedHeadersConfig();
 builder.Services.AddRateLimitingConfig();
+
+// =============================================================================
+// MESSAGING (MassTransit)
+// =============================================================================
+
+builder.Services.AddMessagingConfig(builder.Configuration);
+
+// =============================================================================
+// CACHING
+// =============================================================================
+
+builder.Services.AddCachingConfig(builder.Configuration);
 
 // =============================================================================
 // DATABASE & CORE SERVICES

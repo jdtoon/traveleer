@@ -78,6 +78,14 @@ services:
       - DevSeed__PlanSlug=${DevSeed__PlanSlug:-starter}
       # ── Health Check ────────────────────────────────────────
       - HealthCheck__AllowedIPs=${HealthCheck__AllowedIPs:-}
+      # ── Messaging (MassTransit / RabbitMQ) ──────────────────
+      - Messaging__Provider=${Messaging__Provider:-InMemory}
+      - Messaging__RabbitMQ__Host=${Messaging__RabbitMQ__Host:-rabbitmq}
+      - Messaging__RabbitMQ__Username=${Messaging__RabbitMQ__Username:-guest}
+      - Messaging__RabbitMQ__Password=${Messaging__RabbitMQ__Password:-guest}
+      # ── Caching (Redis) ────────────────────────────────────
+      - Caching__Provider=${Caching__Provider:-Memory}
+      - Caching__Redis__ConnectionString=${Caching__Redis__ConnectionString:-redis:6379}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -85,6 +93,40 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  # ── Redis (caching) ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: saas-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ── RabbitMQ (messaging) ────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: saas-rabbitmq
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${Messaging__RabbitMQ__Username:-guest}
+      RABBITMQ_DEFAULT_PASS: ${Messaging__RabbitMQ__Password:-guest}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # ── Litestream sidecar (production only) ──────────────────────
   # Start with: docker compose --profile production up
@@ -108,3 +150,5 @@ services:
 
 volumes:
   app-data:
+  redis-data:
+  rabbitmq-data:
