@@ -18,3 +18,26 @@ swap-nav {
     opacity: 0.6;
     pointer-events: none;
 }
+
+/* ── Mobile / Touch Optimizations ──────────────────────────── */
+
+/* Prevent 300ms click delay on touch devices */
+html {
+    touch-action: manipulation;
+}
+
+/* Ensure tap targets are at least 44px */
+@media (max-width: 768px) {
+    .btn-sm {
+        min-height: 2.75rem;
+    }
+    .menu a, .menu button {
+        min-height: 2.75rem;
+    }
+}
+
+/* Safe area insets for mobile notch/bottom bar */
+body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+}
