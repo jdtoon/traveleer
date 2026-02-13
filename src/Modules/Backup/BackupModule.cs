@@ -19,6 +19,9 @@ public class BackupModule : IModule
         services.AddSingleton<LitestreamConfigSyncService>();
         services.AddHostedService(sp => sp.GetRequiredService<LitestreamConfigSyncService>());
         services.AddSingleton<ILitestreamConfigSync>(sp => sp.GetRequiredService<LitestreamConfigSyncService>());
+        services.AddSingleton<ILitestreamRestoreService, LitestreamRestoreService>();
+        services.AddSingleton<IBackupStatusService, BackupStatusService>();
+        services.AddHostedService<KeyRingBackupService>();
     }
 
     public void RegisterMiddleware(WebApplication app)

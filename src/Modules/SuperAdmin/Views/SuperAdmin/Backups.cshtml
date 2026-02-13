@@ -1,0 +1,49 @@
+@model saas.Shared.BackupStatusModel
+@{
+    ViewData["Title"] = "Backups";
+}
+
+<div class="space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold">Backup & Restore Status</h1>
+        <p class="text-base-content/70 mt-1">Read-only operational view for Litestream replication, bootstrap restore readiness, and key durability.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div class="card bg-base-200">
+            <div class="card-body">
+                <h2 class="card-title text-base">Auto Restore Gate</h2>
+                <div class="text-sm">Enabled: <span class="font-semibold">@(Model.AutoRestoreEnabled ? "Yes" : "No")</span></div>
+                <div class="text-sm">Litestream Binary: <span class="font-semibold">@(Model.LitestreamBinaryAvailable ? "Available" : "Missing")</span></div>
+                <div class="text-sm">R2 Config: <span class="font-semibold">@(Model.LitestreamConfigured ? "Configured" : "Missing")</span></div>
+            </div>
+        </div>
+
+        <div class="card bg-base-200">
+            <div class="card-body">
+                <h2 class="card-title text-base">Litestream Config</h2>
+                <div class="text-sm">Config File Present: <span class="font-semibold">@(Model.LitestreamConfigExists ? "Yes" : "No")</span></div>
+                <div class="text-sm">Last Config Write: <span class="font-semibold">@(Model.LitestreamConfigUpdatedUtc?.ToString("u") ?? "N/A")</span></div>
+                <div class="text-sm">Last Reload Signal: <span class="font-semibold">@(Model.LitestreamReloadSignalUtc?.ToString("u") ?? "N/A")</span></div>
+            </div>
+        </div>
+
+        <div class="card bg-base-200">
+            <div class="card-body">
+                <h2 class="card-title text-base">Database Files</h2>
+                <div class="text-sm">Core DB: <span class="font-semibold">@(Model.CoreDatabaseExists ? "Present" : "Missing")</span></div>
+                <div class="text-sm">Audit DB: <span class="font-semibold">@(Model.AuditDatabaseExists ? "Present" : "Missing")</span></div>
+                <div class="text-sm">Tenant DB Count: <span class="font-semibold">@Model.TenantDatabaseCount</span></div>
+            </div>
+        </div>
+
+        <div class="card bg-base-200 md:col-span-2 xl:col-span-3">
+            <div class="card-body">
+                <h2 class="card-title text-base">DataProtection Key Backup</h2>
+                <div class="text-sm">Enabled: <span class="font-semibold">@(Model.KeyBackupEnabled ? "Yes" : "No")</span></div>
+                <div class="text-sm">Destination Path: <span class="font-semibold">@Model.KeyBackupPath</span></div>
+                <div class="text-sm">Last Successful Backup: <span class="font-semibold">@(Model.LastKeyBackupUtc?.ToString("u") ?? "N/A")</span></div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -65,6 +65,11 @@ services:
       - Backup__SentinelPath=/app/db/.litestream-reload
       - Backup__R2Bucket=${R2_BUCKET:-saas-backups}
       - Backup__R2Endpoint=${R2_ENDPOINT:-}
+      - Backup__AutoRestoreEnabled=${Backup__AutoRestoreEnabled:-true}
+      - Backup__KeyBackupEnabled=${Backup__KeyBackupEnabled:-true}
+      - Backup__KeyBackupInterval=${Backup__KeyBackupInterval:-1h}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
       # ── Dev Seeding (ignored when ASPNETCORE_ENVIRONMENT != Development) ─
       - DevSeed__Enabled=${DevSeed__Enabled:-true}
       - DevSeed__TenantSlug=${DevSeed__TenantSlug:-demo}

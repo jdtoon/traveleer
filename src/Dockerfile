@@ -5,6 +5,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 RUN dotnet tool install -g Microsoft.Web.LibraryManager.Cli
 ENV PATH="$PATH:/root/.dotnet/tools"
 
+FROM litestream/litestream:0.5 AS litestream
+
 WORKDIR /src
 COPY ["saas.csproj", "./"]
 RUN dotnet restore "saas.csproj"
@@ -27,6 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && \
 
 COPY --from=build /app/publish .
 COPY --from=build /src/wwwroot ./wwwroot
+COPY --from=litestream /usr/local/bin/litestream /usr/local/bin/litestream
 
 # Create data directories with restricted permissions for keys
 RUN mkdir -p /app/db/tenants /app/db/keys && chmod -R 700 /app/db/keys

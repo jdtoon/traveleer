@@ -177,6 +177,13 @@ public class SuperAdminController : SwapController
         return SwapView(model);
     }
 
+    [HttpGet("/super-admin/backups")]
+    public async Task<IActionResult> Backups()
+    {
+        var model = await _service.GetBackupStatusAsync();
+        return SwapView(model);
+    }
+
     [HttpPost("/super-admin/features/{featureId}/toggle")]
     public async Task<IActionResult> ToggleFeature(Guid featureId, [FromForm] Guid planId)
     {

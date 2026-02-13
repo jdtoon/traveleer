@@ -1,5 +1,6 @@
 using saas.Data;
 using saas.Data.Core;
+using saas.Shared;
 
 namespace saas.Modules.SuperAdmin.Services;
 
@@ -25,6 +26,9 @@ public interface ISuperAdminService
     Task TogglePlanFeatureAsync(Guid planId, Guid featureId);
     Task<TenantFeatureOverrideModel?> GetTenantFeatureOverrideAsync(Guid tenantId, Guid featureId);
     Task SaveTenantFeatureOverrideAsync(TenantFeatureOverrideModel model);
+
+    // Backup observability
+    Task<BackupStatusModel> GetBackupStatusAsync();
 }
 
 public class SuperAdminDashboardModel

@@ -11,12 +11,18 @@ public class SuperAdminService : ISuperAdminService
     private readonly CoreDbContext _coreDb;
     private readonly IServiceProvider _serviceProvider;
     private readonly IBillingService _billingService;
+    private readonly IBackupStatusService _backupStatusService;
 
-    public SuperAdminService(CoreDbContext coreDb, IServiceProvider serviceProvider, IBillingService billingService)
+    public SuperAdminService(
+        CoreDbContext coreDb,
+        IServiceProvider serviceProvider,
+        IBillingService billingService,
+        IBackupStatusService backupStatusService)
     {
         _coreDb = coreDb;
         _serviceProvider = serviceProvider;
         _billingService = billingService;
+        _backupStatusService = backupStatusService;
     }
 
     // ── Dashboard ────────────────────────────────────────────────────────────
@@ -307,6 +313,11 @@ public class SuperAdminService : ISuperAdminService
         }
 
         await _coreDb.SaveChangesAsync();
+    }
+
+    public Task<BackupStatusModel> GetBackupStatusAsync()
+    {
+        return _backupStatusService.GetStatusAsync();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

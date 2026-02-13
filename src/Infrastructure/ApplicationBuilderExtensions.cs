@@ -8,6 +8,7 @@ using saas.Data.Audit;
 using saas.Infrastructure.Middleware;
 using saas.Data.Tenant;
 using saas.Shared;
+using saas.Infrastructure.Services;
 using Swap.Htmx;
 
 namespace saas.Infrastructure;
@@ -16,6 +17,13 @@ public static class ApplicationBuilderExtensions
 {
     private static readonly SemaphoreSlim InitLock = new(1, 1);
     private static bool _initialized;
+
+    public static async Task RestoreFromBackupIfNeededAsync(this WebApplication app)
+    {
+        using var scope = app.Services.CreateScope();
+        var restoreService = scope.ServiceProvider.GetRequiredService<ILitestreamRestoreService>();
+        await restoreService.RestoreIfNeededAsync();
+    }
 
     public static async Task InitializeDatabaseAsync(this WebApplication app)
     {

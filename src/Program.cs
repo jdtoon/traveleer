@@ -101,6 +101,7 @@ var app = builder.Build();
 // Initialize error page cache from wwwroot/errors/ HTML files
 ErrorPages.Initialize(app.Environment);
 
+await app.RestoreFromBackupIfNeededAsync();
 await app.InitializeDatabaseAsync();
 
 foreach (var module in modules)

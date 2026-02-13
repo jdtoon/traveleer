@@ -13,4 +13,9 @@ public class BackupOptions
     public string CheckpointInterval { get; set; } = "5m";
     public string SnapshotInterval { get; set; } = "24h";
     public string SnapshotRetention { get; set; } = "168h";
+    public bool AutoRestoreEnabled { get; set; } = true;
+    public bool KeyBackupEnabled { get; set; } = true;
+    public string KeyBackupInterval { get; set; } = "1h";
+    public string KeyBackupPath { get; set; } = "system/keys/dataprotection-keys.zip";
+    public string KeyBackupMarkerPath { get; set; } = "/app/db/.keys-last-backup";
 }
