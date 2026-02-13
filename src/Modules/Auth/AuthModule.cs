@@ -16,7 +16,8 @@ public class AuthModule : IModule
     public IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>
     {
         ["TenantAuth"] = "Auth",
-        ["SuperAdminAuth"] = "Auth"
+        ["SuperAdminAuth"] = "Auth",
+        ["Profile"] = "Auth"
     };
 
     public IReadOnlyList<string> PublicRoutePrefixes =>
@@ -32,6 +33,7 @@ public class AuthModule : IModule
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<MagicLinkService>();
+        services.AddScoped<EmailVerificationService>();
         services.TryAddScoped<ICurrentUser, CurrentUser>();
         services.AddHostedService<MagicLinkCleanupService>();
 

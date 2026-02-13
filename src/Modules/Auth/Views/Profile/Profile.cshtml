@@ -1,0 +1,144 @@
+@model saas.Modules.Auth.Entities.AppUser
+@inject saas.Shared.ITenantContext TenantContext
+@{
+    ViewData["Title"] = "Profile";
+    var slug = TenantContext.Slug;
+}
+
+<div class="max-w-2xl mx-auto space-y-6">
+    <h1 class="text-2xl font-bold">Your Profile</h1>
+
+    @if (ViewData["Success"] is string success)
+    {
+        <div class="alert alert-success">
+            <span>@success</span>
+        </div>
+    }
+    @if (ViewData["Error"] is string error)
+    {
+        <div class="alert alert-error">
+            <span>@error</span>
+        </div>
+    }
+
+    <!-- Profile Information -->
+    <div class="card bg-base-200">
+        <div class="card-body">
+            <h2 class="card-title">Profile Information</h2>
+            <form method="post" action="/@slug/profile">
+                <div class="form-control w-full mb-4">
+                    <label class="label"><span class="label-text">Email</span></label>
+                    <input type="email" value="@Model.Email" class="input input-bordered w-full" disabled />
+                    <label class="label"><span class="label-text-alt text-base-content/60">Email cannot be changed</span></label>
+                </div>
+
+                <div class="form-control w-full mb-4">
+                    <label class="label"><span class="label-text">Display Name</span></label>
+                    <input type="text" name="displayName" value="@Model.DisplayName" 
+                           class="input input-bordered w-full" placeholder="Your name" />
+                </div>
+
+                <div class="form-control w-full mb-4">
+                    <label class="label"><span class="label-text">Time Zone</span></label>
+                    <select name="timeZone" class="select select-bordered w-full">
+                        <option value="">— Select —</option>
+                        @foreach (var tz in TimeZoneInfo.GetSystemTimeZones())
+                        {
+                            <option value="@tz.Id" selected="@(Model.TimeZone == tz.Id)">@tz.DisplayName</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="card-actions justify-end">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Password Section -->
+    <div class="card bg-base-200">
+        <div class="card-body">
+            <h2 class="card-title">Password</h2>
+            <p class="text-sm text-base-content/60 mb-4">
+                Set or change your password. You can still use magic links to sign in.
+            </p>
+            @if (ViewData["PasswordSuccess"] is string pwSuccess)
+            {
+                <div class="alert alert-success mb-4">
+                    <span>@pwSuccess</span>
+                </div>
+            }
+            @if (ViewData["PasswordError"] is string pwError)
+            {
+                <div class="alert alert-error mb-4">
+                    <span>@pwError</span>
+                </div>
+            }
+            <form method="post" action="/@slug/profile/change-password">
+                <div class="form-control w-full mb-4">
+                    <label class="label"><span class="label-text">Current Password</span></label>
+                    <input type="password" name="currentPassword" class="input input-bordered w-full" 
+                           placeholder="Leave empty if you haven't set one" />
+                </div>
+
+                <div class="form-control w-full mb-4">
+                    <label class="label"><span class="label-text">New Password</span></label>
+                    <input type="password" name="newPassword" class="input input-bordered w-full" required minlength="8" />
+                </div>
+
+                <div class="form-control w-full mb-4">
+                    <label class="label"><span class="label-text">Confirm New Password</span></label>
+                    <input type="password" name="confirmPassword" class="input input-bordered w-full" required minlength="8" />
+                </div>
+
+                <div class="card-actions justify-end">
+                    <button type="submit" class="btn btn-outline">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Account Info -->
+    <div class="card bg-base-200">
+        <div class="card-body">
+            <h2 class="card-title">Account Info</h2>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="text-base-content/60">Member since</span>
+                    <p class="font-medium">@Model.CreatedAt.ToString("MMMM d, yyyy")</p>
+                </div>
+                <div>
+                    <span class="text-base-content/60">Last login</span>
+                    <p class="font-medium">@(Model.LastLoginAt?.ToString("MMMM d, yyyy h:mm tt") ?? "Never")</p>
+                </div>
+                <div>
+                    <span class="text-base-content/60">Email verified</span>
+                    <p class="font-medium">
+                        @if (Model.IsEmailVerified)
+                        {
+                            <span class="badge badge-success badge-sm">Verified</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-warning badge-sm">Not verified</span>
+                        }
+                    </p>
+                </div>
+                <div>
+                    <span class="text-base-content/60">Two-factor auth</span>
+                    <p class="font-medium">
+                        @if (Model.IsTwoFactorEnabled)
+                        {
+                            <span class="badge badge-success badge-sm">Enabled</span>
+                        }
+                        else
+                        {
+                            <a href="/@slug/profile/two-factor" class="link link-primary text-sm">Set up</a>
+                        }
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
