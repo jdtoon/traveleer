@@ -1,3 +1,13 @@
+# =============================================================================
+# docker-compose.yml — Single compose file for dev and production
+# =============================================================================
+# Dev (default):   docker compose up
+# Production:      docker compose --profile production up
+#
+# All config comes from environment variables (set in .env or host env).
+# Copy .env.example → .env and fill in real values for production.
+# =============================================================================
+
 services:
   app:
     container_name: saas-app
@@ -5,50 +15,64 @@ services:
       context: ./src
       dockerfile: Dockerfile
     ports:
-      - "8089:8080"
+      - "${APP_PORT:-8080}:8080"
     env_file:
       - path: .env
         required: false
     volumes:
       - app-data:/app/db
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      # ── Core ────────────────────────────────────────────────
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
       - ASPNETCORE_HTTP_PORTS=8080
+      # ── Database (defaults from Dockerfile) ─────────────────
+      - ConnectionStrings__CoreDatabase=Data Source=/app/db/core.db
+      - ConnectionStrings__AuditDatabase=Data Source=/app/db/audit.db
+      - Tenancy__DatabasePath=/app/db/tenants
       # ── Site ────────────────────────────────────────────────
-      - Site__BaseUrl=https://your-domain.com
-      - Site__Name=Your SaaS
-      - Site__SupportEmail=support@your-domain.com
+      - Site__BaseUrl=${Site__BaseUrl:-http://localhost:8080}
+      - Site__Name=${Site__Name:-SaaS App (Local)}
+      - Site__SupportEmail=${Site__SupportEmail:-support@localhost}
       # ── Super Admin ─────────────────────────────────────────
-      - SuperAdmin__Email=admin@your-domain.com
+      - SuperAdmin__Email=${SuperAdmin__Email:-admin@localhost}
       # ── Feature Flags ───────────────────────────────────────
-      - FeatureFlags__AllEnabledLocally=false
+      - FeatureFlags__AllEnabledLocally=${FeatureFlags__AllEnabledLocally:-true}
       # ── Billing (Paystack) ──────────────────────────────────
-      - Billing__Provider=Paystack
-      - Billing__Paystack__SecretKey=CHANGE_ME
-      - Billing__Paystack__PublicKey=CHANGE_ME
-      - Billing__Paystack__WebhookSecret=CHANGE_ME
-      - Billing__Paystack__CallbackBaseUrl=https://your-domain.com
-      # ── Email (MailerSend) ───────────────────────────────────
-      - Email__Provider=MailerSend
-      - Email__FromAddress=noreply@your-domain.com
-      - Email__FromName=Your SaaS
-      - Email__MailerSend__ApiToken=CHANGE_ME
+      - Billing__Provider=${Billing__Provider:-Mock}
+      - Billing__Paystack__SecretKey=${Billing__Paystack__SecretKey:-}
+      - Billing__Paystack__PublicKey=${Billing__Paystack__PublicKey:-}
+      - Billing__Paystack__WebhookSecret=${Billing__Paystack__WebhookSecret:-}
+      - Billing__Paystack__CallbackBaseUrl=${Billing__Paystack__CallbackBaseUrl:-http://localhost:8080}
+      # ── Email ────────────────────────────────────────────────
+      - Email__Provider=${Email__Provider:-Console}
+      - Email__FromAddress=${Email__FromAddress:-no-reply@localhost}
+      - Email__FromName=${Email__FromName:-SaaS App}
+      - Email__MailerSend__ApiToken=${Email__MailerSend__ApiToken:-}
       # ── Bot Protection (Cloudflare Turnstile) ───────────────
-      - Turnstile__Provider=Cloudflare
-      - Turnstile__SiteKey=CHANGE_ME
-      - Turnstile__SecretKey=CHANGE_ME
+      - Turnstile__Provider=${Turnstile__Provider:-Mock}
+      - Turnstile__SiteKey=${Turnstile__SiteKey:-}
+      - Turnstile__SecretKey=${Turnstile__SecretKey:-}
       # ── Storage (Cloudflare R2) ─────────────────────────────
-      - Storage__Provider=R2
-      - Storage__R2Bucket=CHANGE_ME
-      - Storage__R2Endpoint=CHANGE_ME
-      - Storage__R2AccessKey=CHANGE_ME
-      - Storage__R2SecretKey=CHANGE_ME
-      - Storage__R2PublicUrl=CHANGE_ME
-      # ── Backup (Litestream R2 — also used by litestream sidecar) ─
+      - Storage__Provider=${Storage__Provider:-Local}
+      - Storage__LocalBasePath=${Storage__LocalBasePath:-/app/db/uploads}
+      - Storage__R2Bucket=${Storage__R2Bucket:-}
+      - Storage__R2Endpoint=${Storage__R2Endpoint:-}
+      - Storage__R2AccessKey=${Storage__R2AccessKey:-}
+      - Storage__R2SecretKey=${Storage__R2SecretKey:-}
+      - Storage__R2PublicUrl=${Storage__R2PublicUrl:-}
+      # ── Backup / Litestream ─────────────────────────────────
+      - Backup__LitestreamConfigPath=/app/db/litestream.yml
+      - Backup__SentinelPath=/app/db/.litestream-reload
       - Backup__R2Bucket=${R2_BUCKET:-saas-backups}
       - Backup__R2Endpoint=${R2_ENDPOINT:-}
+      # ── Dev Seeding (ignored when ASPNETCORE_ENVIRONMENT != Development) ─
+      - DevSeed__Enabled=${DevSeed__Enabled:-true}
+      - DevSeed__TenantSlug=${DevSeed__TenantSlug:-demo}
+      - DevSeed__AdminEmail=${DevSeed__AdminEmail:-admin@demo.local}
+      - DevSeed__MemberEmail=${DevSeed__MemberEmail:-member@demo.local}
+      - DevSeed__PlanSlug=${DevSeed__PlanSlug:-starter}
       # ── Health Check ────────────────────────────────────────
-      - HealthCheck__AllowedIPs=
+      - HealthCheck__AllowedIPs=${HealthCheck__AllowedIPs:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -57,18 +81,20 @@ services:
       retries: 3
       start_period: 10s
 
+  # ── Litestream sidecar (production only) ──────────────────────
+  # Start with: docker compose --profile production up
   litestream:
     image: litestream/litestream:0.5
     container_name: saas-litestream
+    profiles:
+      - production
     restart: unless-stopped
     volumes:
       - app-data:/app/db
       - ./litestream-wrapper.sh:/usr/local/bin/litestream-wrapper.sh:ro
     environment:
-      - LITESTREAM_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
-      - LITESTREAM_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
-      - R2_ENDPOINT=${R2_ENDPOINT:-}
-      - R2_BUCKET=${R2_BUCKET:-saas-backups}
+      - LITESTREAM_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:?R2_ACCESS_KEY_ID is required for Litestream}
+      - LITESTREAM_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:?R2_SECRET_ACCESS_KEY is required for Litestream}
     entrypoint: /bin/sh
     command: /usr/local/bin/litestream-wrapper.sh
     depends_on:
