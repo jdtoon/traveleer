@@ -1,11 +1,11 @@
 # =============================================================================
 # Stage 1 — Build
 # =============================================================================
+FROM litestream/litestream:0.5 AS litestream
+
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 RUN dotnet tool install -g Microsoft.Web.LibraryManager.Cli
 ENV PATH="$PATH:/root/.dotnet/tools"
-
-FROM litestream/litestream:0.5 AS litestream
 
 WORKDIR /src
 COPY ["saas.csproj", "./"]
