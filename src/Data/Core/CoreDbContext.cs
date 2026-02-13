@@ -21,6 +21,7 @@ public class CoreDbContext : DbContext
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SuperAdmin> SuperAdmins => Set<SuperAdmin>();
     public DbSet<MagicLinkToken> MagicLinkTokens => Set<MagicLinkToken>();
+    public DbSet<Billing.Entities.UsageRecord> UsageRecords => Set<Billing.Entities.UsageRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
