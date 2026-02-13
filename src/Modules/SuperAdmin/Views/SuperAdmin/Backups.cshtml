@@ -46,4 +46,19 @@
             </div>
         </div>
     </div>
+
+    <div class="card bg-base-200">
+        <div class="card-body">
+            <h2 class="card-title text-base">Disaster Recovery Order</h2>
+            <ol class="list-decimal list-inside text-sm space-y-1">
+                <li>Restore <span class="font-semibold">core.db</span> and <span class="font-semibold">audit.db</span> (auto-restore gate runs this on startup when files are missing).</li>
+                <li>Discover tenant slugs from <span class="font-semibold">core.db</span> and restore <span class="font-semibold">tenants/{slug}.db</span> files.</li>
+                <li>Restore DataProtection keys from <span class="font-semibold">@Model.KeyBackupPath</span>.</li>
+                <li>Run migrations and start normal app + Litestream replication.</li>
+            </ol>
+            <div class="alert alert-warning mt-3">
+                <span class="text-sm">Deployment model is <span class="font-semibold">single-writer</span>. Do not run multiple write-enabled app nodes against the same SQLite volume behind a load balancer.</span>
+            </div>
+        </div>
+    </div>
 </div>

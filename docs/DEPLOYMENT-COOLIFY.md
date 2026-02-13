@@ -347,6 +347,20 @@ If a deploy fails:
 1. The app's `LitestreamConfigSyncService` generates a YAML config listing all SQLite databases
 2. The Litestream sidecar continuously replicates WAL changes to Cloudflare R2
 3. New tenant databases are detected within 5 minutes and added to the backup
+4. On startup, if local DB files are missing, the app runs a restore gate before migrations
+
+### Restore Order (Automatic + Deterministic)
+
+When a server comes up with an empty data volume, startup follows this order:
+
+1. Restore `core.db` from `s3://<bucket>/core.db` (if replica exists)
+2. Restore `audit.db` from `s3://<bucket>/audit.db` (if replica exists)
+3. Read tenant slugs from restored `core.db`
+4. Restore each `tenants/{slug}.db` from R2 (if replica exists)
+5. Run EF migrations + seeders
+6. Start Litestream sidecar replication
+
+If no replica exists yet, restore steps succeed gracefully and startup continues as a fresh install.
 
 ### What's Backed Up
 
@@ -364,19 +378,16 @@ If you lose the data volume:
 # 1. Stop the app
 docker compose -f docker-compose.yml down
 
-# 2. Manually restore from R2 using litestream
-docker run --rm -v saas_app-data:/app/db \
-  -e LITESTREAM_ACCESS_KEY_ID=your-key \
-  -e LITESTREAM_SECRET_ACCESS_KEY=your-secret \
-  litestream/litestream:0.5 \
-  restore -config /app/db/litestream.yml /app/db/core.db
-
-# 3. Repeat for audit.db and each tenant DB
-# 4. Restart the app
+# 2. Start app again (auto-restore gate handles missing DB files)
 docker compose -f docker-compose.yml up -d
+
+# 3. Watch startup logs for restore + migration sequence
+docker compose -f docker-compose.yml logs -f app
 ```
 
-> **Recommendation**: Also take periodic snapshots of the Docker volume or host directory as a secondary backup.
+> **DataProtection keys** are critical state and are backed up separately from Litestream DB replication. Keep key backup enabled.
+>
+> **Single-writer model**: run one write-enabled app node for SQLite. Do not run active-active writers behind a load balancer.
 
 ---
 

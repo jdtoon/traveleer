@@ -28,7 +28,8 @@ builder.Services.AddRateLimitingConfig();
 builder.Services.AddDatabaseConfig(builder.Configuration);
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<CoreDbContext>("core-database")
-    .AddCheck<TenantDirectoryHealthCheck>("tenant-directory");
+    .AddCheck<TenantDirectoryHealthCheck>("tenant-directory")
+    .AddCheck<BackupReadinessHealthCheck>("backup-readiness");
 builder.Services.AddCoreServices(builder.Configuration);
 
 // =============================================================================

@@ -408,10 +408,18 @@ docker compose -f docker-compose.yml down
 # Remove the data volume
 docker volume rm saas_app-data
 
-# Restart — litestream would need to restore before app starts
-# (Note: automatic restore is not configured in the current entrypoint;
-#  manual restore: litestream restore -config /app/db/litestream.yml /app/db/core.db)
+# Restart — app startup restore gate restores missing DBs from R2 (if replicas exist)
+docker compose -f docker-compose.yml up -d
+
+# Watch app logs for restore -> migrations -> startup
+docker compose -f docker-compose.yml logs -f app
 ```
+
+Expected restore order on empty volume:
+1. `core.db`
+2. `audit.db`
+3. tenant databases based on tenant slugs in core DB
+4. migrations and normal startup
 
 ### Troubleshooting
 
@@ -421,6 +429,7 @@ docker volume rm saas_app-data
 | "access denied" in litestream logs | Wrong R2 credentials | Check `.env` values |
 | New tenant DB not backed up | Config sync hasn't run yet | Wait up to 5 minutes or restart app |
 | Sidecar not reloading | Sentinel file permission issue | Check volume permissions |
+| App healthy but `backup-readiness` degraded | Key backup stale or restore config incomplete | Check `/health` output and Super Admin Backups page |
 
 ---
 
