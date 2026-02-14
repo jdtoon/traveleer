@@ -73,6 +73,6 @@ public class SendEmailConsumer : IConsumer<SendEmailCommand>
         // For now, use the existing email service with a simple body
         // TODO: Integrate with Razor email templates (Item 18)
         var body = $"Template: {msg.TemplateName}";
-        await _emailService.SendEmailAsync(msg.ToAddress, msg.Subject, body);
+        await _emailService.SendAsync(new Shared.EmailMessage(msg.ToAddress, msg.Subject, body));
     }
 }

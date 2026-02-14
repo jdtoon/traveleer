@@ -20,7 +20,7 @@ public class BillingReconciliationJob
 
         using var scope = _scopeFactory.CreateScope();
         var billing = scope.ServiceProvider.GetRequiredService<Shared.IBillingService>();
-        await billing.ReconcileAsync(ct);
+        await billing.ReconcileSubscriptionsAsync();
 
         _logger.LogInformation("Billing reconciliation completed");
     }

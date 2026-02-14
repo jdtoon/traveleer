@@ -1,4 +1,5 @@
 using Hangfire;
+using Hangfire.Dashboard;
 using Hangfire.InMemory;
 
 namespace saas.Infrastructure;
@@ -70,6 +71,8 @@ public class SuperAdminDashboardAuthFilter : Hangfire.Dashboard.IDashboardAuthor
 {
     public bool Authorize(Hangfire.Dashboard.DashboardContext context)
     {
+        // In Hangfire, DashboardContext provides GetHttpContext() as an extension
+        // but it's in the Hangfire.AspNetCore package. Use reflection-safe cast.
         var httpContext = context.GetHttpContext();
         return httpContext.User.Identity?.IsAuthenticated == true
             && httpContext.User.HasClaim("SuperAdmin", "true");

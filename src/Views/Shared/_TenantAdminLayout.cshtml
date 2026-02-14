@@ -26,6 +26,9 @@
 </head>
 <body class="min-h-screen bg-base-100 text-base-content">
     <script src="/js/theme.js"></script>
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-primary focus:text-primary-content focus:px-4 focus:py-2 focus:rounded">
+        Skip to main content
+    </a>
     <!-- Drawer for mobile menu -->
     <div class="drawer lg:drawer-open">
         <input id="mobile-drawer" type="checkbox" class="drawer-toggle" />
@@ -33,8 +36,8 @@
             <!-- Navbar (mobile) -->
             <div class="navbar bg-base-100 border-b border-base-300 lg:hidden">
                 <div class="flex-none">
-                    <label for="mobile-drawer" class="btn btn-square btn-ghost drawer-button">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-5 h-5 stroke-current">
+                    <label for="mobile-drawer" class="btn btn-square btn-ghost drawer-button" aria-label="Open navigation menu">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-5 h-5 stroke-current" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </label>
@@ -59,7 +62,7 @@
             </div>
 
             <!-- Main Content -->
-            <main class="flex-1 p-4 md:p-6 overflow-auto" id="main-content">
+            <main class="flex-1 p-4 md:p-6 overflow-auto" id="main-content" role="main" aria-label="Main content">
                 @RenderBody()
             </main>
         </div>
@@ -67,7 +70,7 @@
         <!-- Sidebar -->
         <div class="drawer-side z-40">
             <label for="mobile-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-            <aside class="bg-base-200 w-64 min-h-full flex flex-col">
+            <aside class="bg-base-200 w-64 min-h-full flex flex-col" role="navigation" aria-label="Admin navigation">
                 <!-- Brand -->
                 <div class="p-4 border-b border-base-300">
                     <span class="text-lg font-bold">⚙️ Administration</span>
@@ -134,8 +137,11 @@
         </div>
     </div>
 
+    <!-- Toast container (screen reader announcements) -->
+    <div id="toast-container" class="toast toast-end" aria-live="polite" aria-atomic="true" role="status"></div>
+
     <!-- Modal container -->
-    <div id="modal-container"></div>
+    <div id="modal-container" role="dialog" aria-modal="true" aria-hidden="true"></div>
 
     <!-- Scripts -->
     <script src="~/lib/htmx/dist/htmx.min.js" asp-append-version="true"></script>

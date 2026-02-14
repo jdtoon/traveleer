@@ -31,12 +31,12 @@ public class EmailVerificationService
 
         var verifyUrl = $"{baseUrl.TrimEnd('/')}/{slug}/profile/verify-email?token={token}&userId={user.Id}";
 
-        await _emailService.SendEmailAsync(
+        await _emailService.SendAsync(new Shared.EmailMessage(
             user.Email!,
             "Verify your email address",
             $"<p>Click the link below to verify your email address:</p>" +
             $"<p><a href=\"{verifyUrl}\">Verify Email</a></p>" +
-            $"<p>If you didn't request this, you can ignore this email.</p>");
+            $"<p>If you didn't request this, you can ignore this email.</p>"));
 
         _logger.LogInformation("Verification email sent to {Email} for tenant {Slug}", user.Email, slug);
     }

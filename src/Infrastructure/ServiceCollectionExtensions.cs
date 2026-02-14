@@ -283,10 +283,24 @@ public static class ServiceCollectionExtensions
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = async (context, token) =>
             {
-                context.HttpContext.Response.ContentType = "text/html";
-                await context.HttpContext.Response.WriteAsync(
-                    "<h1>Too Many Requests</h1><p>Please slow down and try again shortly.</p>",
-                    token);
+                var retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfterValue)
+                    ? retryAfterValue.TotalSeconds.ToString("F0")
+                    : "60";
+
+                context.HttpContext.Response.Headers.RetryAfter = retryAfter;
+
+                // If the request comes from htmx, return a toast snippet instead of a full page
+                if (context.HttpContext.Request.Headers.ContainsKey("HX-Request"))
+                {
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    context.HttpContext.Response.ContentType = "text/html; charset=utf-8";
+                    context.HttpContext.Response.Headers["HX-Retarget"] = "#toast-container";
+                    context.HttpContext.Response.Headers["HX-Reswap"] = "beforeend";
+                    await context.HttpContext.Response.WriteAsync(ErrorPages.Get429Toast(), token);
+                    return;
+                }
+
+                await ErrorPages.Write429Async(context.HttpContext.Response);
             };
         });
 
