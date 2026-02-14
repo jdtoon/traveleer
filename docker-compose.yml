@@ -86,6 +86,15 @@ services:
       # ── Caching (Redis) ────────────────────────────────────
       - Caching__Provider=${Caching__Provider:-Memory}
       - Caching__Redis__ConnectionString=${Caching__Redis__ConnectionString:-redis:6379}
+      # ── Hangfire ─────────────────────────────────────────────
+      - Hangfire__Storage=${Hangfire__Storage:-InMemory}
+      - Hangfire__SQLitePath=${Hangfire__SQLitePath:-/app/db/hangfire.db}
+      - Hangfire__WorkerCount=${Hangfire__WorkerCount:-2}
+      # ── Rate Limiting ────────────────────────────────────────
+      - RateLimiting__GlobalPerMinute=${RateLimiting__GlobalPerMinute:-100}
+      - RateLimiting__StrictPerMinute=${RateLimiting__StrictPerMinute:-5}
+      - RateLimiting__RegistrationPerWindow=${RateLimiting__RegistrationPerWindow:-3}
+      - RateLimiting__RegistrationWindowMinutes=${RateLimiting__RegistrationWindowMinutes:-5}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]

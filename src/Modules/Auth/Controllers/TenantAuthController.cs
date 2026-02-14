@@ -1,12 +1,17 @@
 using System.Security.Claims;
+using System.Threading.RateLimiting;
+using MassTransit;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
 using saas.Modules.Auth.Entities;
 using saas.Modules.Auth.Services;
+using saas.Modules.Notifications.Services;
 using saas.Shared;
+using saas.Shared.Messages;
 using Swap.Htmx;
 
 namespace saas.Modules.Auth.Controllers;
@@ -19,19 +24,25 @@ public class TenantAuthController : SwapController
     private readonly IBotProtection _botProtection;
     private readonly UserManager<AppUser> _userManager;
     private readonly TenantDbContext _tenantDb;
+    private readonly INotificationService _notifications;
+    private readonly IPublishEndpoint _publishEndpoint;
 
     public TenantAuthController(
         MagicLinkService magicLinks, 
         IEmailService email,
         IBotProtection botProtection,
         UserManager<AppUser> userManager,
-        TenantDbContext tenantDb)
+        TenantDbContext tenantDb,
+        INotificationService notifications,
+        IPublishEndpoint publishEndpoint)
     {
         _magicLinks = magicLinks;
         _email = email;
         _botProtection = botProtection;
         _userManager = userManager;
         _tenantDb = tenantDb;
+        _notifications = notifications;
+        _publishEndpoint = publishEndpoint;
     }
 
     [HttpGet("login")]
@@ -42,6 +53,7 @@ public class TenantAuthController : SwapController
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("strict")]
     public async Task<IActionResult> LoginPost([FromRoute] string slug, [FromForm] string email, [FromForm] string? captchaToken)
     {
         if (!await _botProtection.ValidateAsync(captchaToken))
@@ -109,17 +121,22 @@ public class TenantAuthController : SwapController
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
         claims.AddRange(permissionKeys.Select(p => new Claim(AuthClaims.Permission, p)));
 
-        var identity = new ClaimsIdentity(claims, AuthSchemes.Tenant);
-        var principal = new ClaimsPrincipal(identity);
-
-        await HttpContext.SignInAsync(AuthSchemes.Tenant, principal);
+        // Check if 2FA is enabled — redirect to 2FA challenge instead of completing login
+        if (user.IsTwoFactorEnabled)
+        {
+            // Store pending login details in TempData for 2FA verification
+            TempData["Pending2FA_UserId"] = user.Id;
+            TempData["Pending2FA_Slug"] = slug;
+            return Redirect($"/{slug}/TwoFactor/Setup");
+        }
 
         // Track session
+        Guid sessionId = Guid.NewGuid();
         try
         {
             var session = new UserSession
             {
-                Id = Guid.NewGuid(),
+                Id = sessionId,
                 UserId = user.Id,
                 IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 UserAgent = Request.Headers.UserAgent.ToString(),
@@ -132,6 +149,36 @@ public class TenantAuthController : SwapController
             await _tenantDb.SaveChangesAsync();
         }
         catch { /* Don't block login if session tracking fails */ }
+
+        // Add session ID to claims so middleware can validate it
+        claims.Add(new Claim(AuthClaims.SessionId, sessionId.ToString()));
+
+        var identity = new ClaimsIdentity(claims, AuthSchemes.Tenant);
+        var principal = new ClaimsPrincipal(identity);
+
+        await HttpContext.SignInAsync(AuthSchemes.Tenant, principal);
+
+        // Send login notification
+        try
+        {
+            var device = ParseDeviceInfo(Request.Headers.UserAgent.ToString());
+            await _notifications.SendAsync(user.Id, "Sign-in detected",
+                $"You signed in from {device}",
+                $"/{slug}/Session");
+        }
+        catch { /* Don't block login if notification fails */ }
+
+        // Publish domain event
+        try
+        {
+            await _publishEndpoint.Publish(new UserLoggedInEvent(
+                UserId: user.Id,
+                Email: user.Email ?? string.Empty,
+                TenantId: 0,
+                Slug: slug,
+                LoggedInAtUtc: DateTime.UtcNow));
+        }
+        catch { /* Don't block login if event publish fails */ }
 
         return Redirect($"/{slug}");
     }

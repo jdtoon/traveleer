@@ -14,3 +14,5 @@ global using saas.Modules.Tenancy.Entities;
 global using saas.Modules.SuperAdmin.Entities;
 global using saas.Modules.Audit.Entities;
 global using saas.Modules.Notes.Entities;
+global using saas.Modules.Notifications.Entities;
+global using saas.Modules.TenantAdmin.Entities;

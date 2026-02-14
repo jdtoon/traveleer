@@ -107,4 +107,5 @@ public static class AuthClaims
     public const string IsSuperAdmin = "is_super_admin";
     public const string TenantSlug = "tenant_slug";
     public const string Permission = "permission";
+    public const string SessionId = "session_id";
 }

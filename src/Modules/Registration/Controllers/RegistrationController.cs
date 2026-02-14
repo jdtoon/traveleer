@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Core;
 using saas.Infrastructure.Provisioning;
@@ -71,6 +72,7 @@ public class RegistrationController : SwapController
 
     [HttpPost("/register")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("registration")]
     public async Task<IActionResult> Register([FromForm] RegisterRequest request)
     {
         if (!ModelState.IsValid)

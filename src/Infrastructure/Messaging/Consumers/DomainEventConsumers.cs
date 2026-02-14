@@ -1,4 +1,5 @@
 using MassTransit;
+using saas.Shared;
 using saas.Shared.Messages;
 
 namespace saas.Infrastructure.Messaging.Consumers;
@@ -8,27 +9,32 @@ namespace saas.Infrastructure.Messaging.Consumers;
 /// </summary>
 public class TenantCreatedConsumer : IConsumer<TenantCreatedEvent>
 {
+    private readonly IEmailService _emailService;
     private readonly ILogger<TenantCreatedConsumer> _logger;
 
-    public TenantCreatedConsumer(ILogger<TenantCreatedConsumer> logger)
+    public TenantCreatedConsumer(IEmailService emailService, ILogger<TenantCreatedConsumer> logger)
     {
+        _emailService = emailService;
         _logger = logger;
     }
 
-    public Task Consume(ConsumeContext<TenantCreatedEvent> context)
+    public async Task Consume(ConsumeContext<TenantCreatedEvent> context)
     {
         var msg = context.Message;
         _logger.LogInformation(
             "Tenant created: {TenantName} ({Slug}) on plan {PlanSlug}",
             msg.TenantName, msg.Slug, msg.PlanSlug);
 
-        // TODO: Send welcome email, provision resources, etc.
-        return Task.CompletedTask;
+        await _emailService.SendAsync(new EmailMessage(
+            msg.ContactEmail,
+            $"Welcome to {msg.TenantName}!",
+            $"Your workspace '{msg.TenantName}' has been created. " +
+            $"Sign in at /{msg.Slug}/login to get started."));
     }
 }
 
 /// <summary>
-/// Handles plan change events — update feature flags, notify tenant, etc.
+/// Handles plan change events — logs and sends notification email.
 /// </summary>
 public class TenantPlanChangedConsumer : IConsumer<TenantPlanChangedEvent>
 {
@@ -45,21 +51,19 @@ public class TenantPlanChangedConsumer : IConsumer<TenantPlanChangedEvent>
         _logger.LogInformation(
             "Tenant {Slug} changed plan from {OldPlan} to {NewPlan}",
             msg.Slug, msg.OldPlanSlug, msg.NewPlanSlug);
-
-        // TODO: Update feature flags, send notification
         return Task.CompletedTask;
     }
 }
 
 /// <summary>
-/// Processes email send commands asynchronously.
+/// Processes email send commands asynchronously via queue.
 /// </summary>
 public class SendEmailConsumer : IConsumer<SendEmailCommand>
 {
-    private readonly Shared.IEmailService _emailService;
+    private readonly IEmailService _emailService;
     private readonly ILogger<SendEmailConsumer> _logger;
 
-    public SendEmailConsumer(Shared.IEmailService emailService, ILogger<SendEmailConsumer> logger)
+    public SendEmailConsumer(IEmailService emailService, ILogger<SendEmailConsumer> logger)
     {
         _emailService = emailService;
         _logger = logger;
@@ -70,9 +74,11 @@ public class SendEmailConsumer : IConsumer<SendEmailCommand>
         var msg = context.Message;
         _logger.LogInformation("Sending email to {To}: {Subject}", msg.ToAddress, msg.Subject);
 
-        // For now, use the existing email service with a simple body
-        // TODO: Integrate with Razor email templates (Item 18)
-        var body = $"Template: {msg.TemplateName}";
-        await _emailService.SendAsync(new Shared.EmailMessage(msg.ToAddress, msg.Subject, body));
+        // Build body from template data
+        var body = msg.TemplateData.Count > 0
+            ? string.Join("\n", msg.TemplateData.Select(kv => $"{kv.Key}: {kv.Value}"))
+            : $"Template: {msg.TemplateName}";
+
+        await _emailService.SendAsync(new EmailMessage(msg.ToAddress, msg.Subject, body));
     }
 }

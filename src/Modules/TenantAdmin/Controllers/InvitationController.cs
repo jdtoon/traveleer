@@ -7,6 +7,7 @@ using saas.Data.Tenant;
 using saas.Modules.Auth;
 using saas.Modules.Auth.Entities;
 using saas.Modules.Auth.Filters;
+using saas.Modules.Notifications.Services;
 using saas.Modules.TenantAdmin.Entities;
 using saas.Shared;
 using Swap.Htmx;
@@ -21,24 +22,27 @@ public class InvitationController : SwapController
     private readonly IEmailService _emailService;
     private readonly ICurrentUser _currentUser;
     private readonly ITenantContext _tenantContext;
+    private readonly INotificationService _notifications;
 
     public InvitationController(
         TenantDbContext db,
         UserManager<AppUser> userManager,
         IEmailService emailService,
         ICurrentUser currentUser,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        INotificationService notifications)
     {
         _db = db;
         _userManager = userManager;
         _emailService = emailService;
         _currentUser = currentUser;
         _tenantContext = tenantContext;
+        _notifications = notifications;
     }
 
     [HttpGet]
     [HasPermission(TenantAdminPermissions.UsersRead)]
-    public async Task<IActionResult> Pending()
+    public async Task<IActionResult> Index()
     {
         var invitations = await _db.Set<TeamInvitation>()
             .Where(i => i.Status == InvitationStatus.Pending && i.ExpiresAt > DateTime.UtcNow)
@@ -195,6 +199,20 @@ public class InvitationController : SwapController
         invitation.Status = InvitationStatus.Accepted;
         invitation.AcceptedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+
+        // Notify the person who sent the invitation
+        if (!string.IsNullOrEmpty(invitation.InvitedByUserId))
+        {
+            try
+            {
+                await _notifications.SendAsync(invitation.InvitedByUserId,
+                    "Invitation accepted",
+                    $"{invitation.Email} accepted your team invitation",
+                    $"/{slug}/Invitation",
+                    Notifications.Entities.NotificationType.Success);
+            }
+            catch { /* Don't block accept if notification fails */ }
+        }
 
         // Redirect to login
         return Redirect($"/{slug}/login");

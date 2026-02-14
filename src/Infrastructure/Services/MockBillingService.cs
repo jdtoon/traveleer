@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Core;
+using saas.Modules.Billing.Entities;
 using saas.Shared;
 
 namespace saas.Infrastructure.Services;
@@ -36,24 +37,42 @@ public class MockBillingService : IBillingService
         _db.Subscriptions.Add(subscription);
 
         var plan = await _db.Plans.FindAsync(request.PlanId);
+        var amount = plan?.MonthlyPrice ?? 0;
+
         var payment = new Payment
         {
             Id = Guid.NewGuid(),
             TenantId = request.TenantId,
-            Amount = plan?.MonthlyPrice ?? 0,
+            Amount = amount,
             Currency = "ZAR",
             Status = PaymentStatus.Success,
             TransactionDate = DateTime.UtcNow,
             GatewayResponse = "MOCK",
             PaystackReference = $"MOCK-TXN-{Guid.NewGuid():N}"
         };
-
         _db.Payments.Add(payment);
+
+        // Create mock invoice
+        var invoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
+        _db.Invoices.Add(new Invoice
+        {
+            Id = Guid.NewGuid(),
+            TenantId = request.TenantId,
+            SubscriptionId = subscription.Id,
+            InvoiceNumber = invoiceNumber,
+            Amount = amount,
+            Currency = "ZAR",
+            Status = InvoiceStatus.Paid,
+            IssuedDate = DateTime.UtcNow,
+            DueDate = DateTime.UtcNow,
+            PaidDate = DateTime.UtcNow,
+            Description = $"Subscription to {plan?.Name ?? "plan"} ({request.BillingCycle})",
+            CreatedAt = DateTime.UtcNow
+        });
+
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("[MOCK BILLING] Subscription created (no redirect needed): {SubCode}", subscription.PaystackSubscriptionCode);
-
-        // Mock provider provisions inline — no payment redirect needed
         return new SubscriptionInitResult(true, RequiresRedirect: false);
     }
 
@@ -125,6 +144,7 @@ public class MockBillingService : IBillingService
         // Record prorated payment (upgrade) or credit (downgrade)
         if (preview.AmountDue > 0)
         {
+            var paymentRef = $"MOCK-PRORATE-{Guid.NewGuid():N}";
             _db.Payments.Add(new Payment
             {
                 Id = Guid.NewGuid(),
@@ -134,7 +154,25 @@ public class MockBillingService : IBillingService
                 Status = PaymentStatus.Success,
                 TransactionDate = DateTime.UtcNow,
                 GatewayResponse = $"MOCK-PRORATE: Upgrade from {preview.CurrentPlanName} to {preview.NewPlanName}",
-                PaystackReference = $"MOCK-PRORATE-{Guid.NewGuid():N}"
+                PaystackReference = paymentRef
+            });
+
+            // Create prorated invoice
+            var invoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
+            _db.Invoices.Add(new Invoice
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                InvoiceNumber = invoiceNumber,
+                Amount = preview.AmountDue,
+                Currency = "ZAR",
+                Status = InvoiceStatus.Paid,
+                IssuedDate = DateTime.UtcNow,
+                DueDate = DateTime.UtcNow,
+                PaidDate = DateTime.UtcNow,
+                PaystackReference = paymentRef,
+                Description = $"Plan change: {preview.CurrentPlanName} → {preview.NewPlanName} (prorated)",
+                CreatedAt = DateTime.UtcNow
             });
         }
 

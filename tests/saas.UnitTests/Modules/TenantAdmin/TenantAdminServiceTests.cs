@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using saas.Data.Core;
 using saas.Data.Tenant;
 using saas.Modules.Billing.Entities;
+using saas.Modules.TenantAdmin.Entities;
 using saas.Modules.TenantAdmin.Services;
 using saas.Shared;
 using Xunit;
@@ -115,14 +116,18 @@ public class TenantAdminServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task InviteUserAsync_CreatesNewUser()
+    public async Task InviteUserAsync_CreatesInvitation()
     {
         var result = await _service.InviteUserAsync("new@testcorp.com");
 
         Assert.True(result.Success);
-        var users = await _service.GetUsersAsync();
-        Assert.Equal(2, users.Items.Count);
-        Assert.Contains(users.Items, u => u.Email == "new@testcorp.com");
+
+        // Should create a TeamInvitation, NOT a user
+        var invitation = await _db.Set<TeamInvitation>()
+            .FirstOrDefaultAsync(i => i.Email == "new@testcorp.com");
+        Assert.NotNull(invitation);
+        Assert.Equal(InvitationStatus.Pending, invitation!.Status);
+        Assert.False(string.IsNullOrEmpty(invitation.Token));
     }
 
     [Fact]
@@ -225,10 +230,12 @@ public class TenantAdminServiceTests : IAsyncLifetime
 
     private class FakeEmailService : IEmailService
     {
+        public List<EmailMessage> SentEmails { get; } = [];
         public List<(string to, string url)> SentLinks { get; } = [];
 
         public Task SendAsync(EmailMessage message)
         {
+            SentEmails.Add(message);
             return Task.CompletedTask;
         }
 

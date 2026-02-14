@@ -14,8 +14,19 @@ public static class SchedulingExtensions
             config.UseSimpleAssemblyNameTypeSerializer();
             config.UseRecommendedSerializerSettings();
 
-            // Use in-memory storage (lightweight for SQLite-based apps)
-            config.UseInMemoryStorage();
+            var storageProvider = configuration.GetValue("Hangfire:Storage", "InMemory");
+            if (string.Equals(storageProvider, "SQLite", StringComparison.OrdinalIgnoreCase))
+            {
+                var dbPath = configuration.GetValue("Hangfire:SQLitePath", "db/hangfire.db");
+                var dir = Path.GetDirectoryName(dbPath);
+                if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+                config.UseInMemoryStorage(); // TODO: Replace with Hangfire.Storage.SQLite NuGet when ready
+                // config.UseSQLiteStorage(dbPath);
+            }
+            else
+            {
+                config.UseInMemoryStorage();
+            }
         });
 
         services.AddHangfireServer(options =>
@@ -58,6 +69,12 @@ public static class SchedulingExtensions
             "expired-trial-check",
             job => job.ExecuteAsync(CancellationToken.None),
             Cron.Daily(6, 0), // 6 AM daily
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+        RecurringJob.AddOrUpdate<Jobs.TenantDeletionJob>(
+            "tenant-deletion-purge",
+            job => job.ExecuteAsync(CancellationToken.None),
+            Cron.Daily(3, 0), // 3 AM daily
             new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
         return app;

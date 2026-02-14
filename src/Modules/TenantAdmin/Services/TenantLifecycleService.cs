@@ -50,6 +50,60 @@ public class TenantLifecycleService : ITenantLifecycleService
             })
             .ToListAsync();
 
+        // Export notes
+        var notes = await _tenantDb.Notes
+            .AsNoTracking()
+            .Select(n => new
+            {
+                n.Title,
+                n.Content,
+                n.CreatedAt,
+                n.UpdatedAt,
+                CreatedBy = n.CreatedBy ?? "unknown"
+            })
+            .ToListAsync();
+
+        // Export sessions
+        var sessions = await _tenantDb.Set<saas.Modules.Auth.Entities.UserSession>()
+            .AsNoTracking()
+            .Select(s => new
+            {
+                s.UserId,
+                s.IpAddress,
+                s.DeviceInfo,
+                s.CreatedAt,
+                s.LastActivityAt,
+                IsRevoked = s.IsRevoked
+            })
+            .ToListAsync();
+
+        // Export notifications
+        var notifications = await _tenantDb.Set<Notification>()
+            .AsNoTracking()
+            .Select(n => new
+            {
+                n.Title,
+                n.Message,
+                n.Type,
+                n.IsRead,
+                n.CreatedAt
+            })
+            .ToListAsync();
+
+        // Export team invitations
+        var invitations = await _tenantDb.Set<Entities.TeamInvitation>()
+            .AsNoTracking()
+            .Select(i => new
+            {
+                i.Email,
+                Status = i.Status.ToString(),
+                i.RoleName,
+                i.InvitedByEmail,
+                i.CreatedAt,
+                i.ExpiresAt
+            })
+            .ToListAsync();
+
         var export = new
         {
             ExportedAt = DateTime.UtcNow,
@@ -63,7 +117,11 @@ public class TenantLifecycleService : ITenantLifecycleService
                 tenant.CreatedAt
             },
             Users = users,
-            UserCount = users.Count
+            UserCount = users.Count,
+            Notes = notes,
+            Sessions = sessions,
+            Notifications = notifications,
+            Invitations = invitations
         };
 
         return JsonSerializer.SerializeToUtf8Bytes(export, new JsonSerializerOptions

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using saas.Data;
 using saas.Data.Core;
 using saas.Data.Tenant;
+using saas.Modules.TenantAdmin.Entities;
 using saas.Shared;
 
 namespace saas.Modules.TenantAdmin.Services;
@@ -81,34 +82,41 @@ public class TenantAdminService : ITenantAdminService
         if (existing is not null)
             return new InviteUserResult(false, "A user with this email already exists.");
 
-        // Create AppUser in tenant DB
-        var user = new AppUser
-        {
-            UserName = email,
-            Email = email,
-            EmailConfirmed = true,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
+        // Check for existing pending invitation
+        var existingInvite = await _db.Set<TeamInvitation>()
+            .AnyAsync(i => i.Email == email && i.Status == InvitationStatus.Pending && i.ExpiresAt > DateTime.UtcNow);
+        if (existingInvite)
+            return new InviteUserResult(false, "An invitation is already pending for this email.");
 
-        var result = await _userManager.CreateAsync(user);
-        if (!result.Succeeded)
-            return new InviteUserResult(false, "Failed to create user.");
-
-        // Assign role if specified
+        string? roleName = null;
         if (!string.IsNullOrEmpty(roleId))
         {
             var role = await _db.Roles.FindAsync(roleId);
-            if (role?.Name is not null)
-            {
-                await _userManager.AddToRoleAsync(user, role.Name);
-            }
+            roleName = role?.Name;
         }
 
-        // Send magic link invitation
+        var token = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+
+        var invitation = new TeamInvitation
+        {
+            Id = Guid.NewGuid(),
+            Email = email.Trim(),
+            RoleId = roleId,
+            RoleName = roleName,
+            Token = token,
+            InvitedByUserId = string.Empty,
+            InvitedByEmail = null,
+            Status = InvitationStatus.Pending,
+            ExpiresAt = DateTime.UtcNow.AddDays(7)
+        };
+
+        _db.Set<TeamInvitation>().Add(invitation);
+        await _db.SaveChangesAsync();
+
+        // Send invitation link (not login page, but acceptance URL)
         var slug = _tenantContext.Slug;
-        var loginUrl = $"/{slug}/login";
-        await _emailService.SendMagicLinkAsync(email, loginUrl);
+        var acceptUrl = $"/{slug}/Invitation/Accept?token={Uri.EscapeDataString(token)}";
+        await _emailService.SendMagicLinkAsync(email, acceptUrl);
 
         return new InviteUserResult(true);
     }

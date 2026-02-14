@@ -26,7 +26,7 @@ builder.AddSerilogConfig();
 builder.Services.AddDataProtectionConfig(builder.Environment);
 builder.Services.AddCompressionConfig();
 builder.Services.AddForwardedHeadersConfig();
-builder.Services.AddRateLimitingConfig();
+builder.Services.AddRateLimitingConfig(builder.Configuration);
 
 // =============================================================================
 // MESSAGING (MassTransit)
@@ -104,6 +104,10 @@ var publicRoutePrefixes = modules
     .SelectMany(m => m.PublicRoutePrefixes)
     .Distinct(StringComparer.OrdinalIgnoreCase)
     .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+// System-level reserved prefixes — never treated as tenant slugs
+foreach (var reserved in new[] { "api", "swagger", ".well-known", "assets", "static", "webhook", "hangfire", "health", "favicon.svg", "manifest.json", "css", "js", "lib", "errors" })
+    publicRoutePrefixes.Add(reserved);
 
 // =============================================================================
 // MVC & WEB

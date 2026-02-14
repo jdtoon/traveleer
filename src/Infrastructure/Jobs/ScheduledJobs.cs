@@ -1,3 +1,8 @@
+using Microsoft.EntityFrameworkCore;
+using saas.Data.Core;
+using saas.Modules.Auth.Entities;
+using saas.Modules.TenantAdmin.Services;
+
 namespace saas.Infrastructure.Jobs;
 
 /// <summary>
@@ -27,27 +32,71 @@ public class BillingReconciliationJob
 }
 
 /// <summary>
-/// Hourly cleanup of stale/expired user sessions.
+/// Hourly cleanup of stale/expired user sessions across all tenant databases.
 /// </summary>
 public class StaleSessionCleanupJob
 {
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<StaleSessionCleanupJob> _logger;
 
-    public StaleSessionCleanupJob(ILogger<StaleSessionCleanupJob> logger)
+    public StaleSessionCleanupJob(IServiceScopeFactory scopeFactory, ILogger<StaleSessionCleanupJob> logger)
     {
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
-    public Task ExecuteAsync(CancellationToken ct)
+    public async Task ExecuteAsync(CancellationToken ct)
     {
-        _logger.LogInformation("Stale session cleanup — placeholder (sessions module pending)");
-        // TODO: Implement when Session Management (Item 10) is built
-        return Task.CompletedTask;
+        _logger.LogInformation("Starting stale session cleanup");
+
+        using var scope = _scopeFactory.CreateScope();
+        var coreDb = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
+
+        var tenantSlugs = await coreDb.Tenants
+            .Where(t => t.Status == TenantStatus.Active && !t.IsDeleted)
+            .Select(t => t.Slug)
+            .ToListAsync(ct);
+
+        var totalCleaned = 0;
+        foreach (var slug in tenantSlugs)
+        {
+            try
+            {
+                var dbPath = Path.Combine("db", "tenants", $"{slug}.db");
+                if (!File.Exists(dbPath)) continue;
+
+                var connectionString = $"Data Source={dbPath}";
+                var optionsBuilder = new DbContextOptionsBuilder<Data.Tenant.TenantDbContext>();
+                optionsBuilder.UseSqlite(connectionString);
+
+                using var tenantDb = new Data.Tenant.TenantDbContext(optionsBuilder.Options);
+
+                var cutoff = DateTime.UtcNow;
+                var stale = await tenantDb.Set<UserSession>()
+                    .Where(s => !s.IsRevoked && s.ExpiresAt.HasValue && s.ExpiresAt < cutoff)
+                    .ToListAsync(ct);
+
+                foreach (var session in stale)
+                    session.IsRevoked = true;
+
+                if (stale.Count > 0)
+                {
+                    await tenantDb.SaveChangesAsync(ct);
+                    totalCleaned += stale.Count;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to clean sessions for tenant {Slug}", slug);
+            }
+        }
+
+        _logger.LogInformation("Stale session cleanup completed — revoked {Count} sessions", totalCleaned);
     }
 }
 
 /// <summary>
-/// Daily check for expired trial tenants — suspend or notify.
+/// Daily check for expired trial tenants — suspends them.
 /// </summary>
 public class ExpiredTrialJob
 {
@@ -65,22 +114,68 @@ public class ExpiredTrialJob
         _logger.LogInformation("Checking for expired trials");
 
         using var scope = _scopeFactory.CreateScope();
-        var coreDb = scope.ServiceProvider.GetRequiredService<Data.Core.CoreDbContext>();
+        var coreDb = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
 
-        // Find tenants on trial that have expired
         var now = DateTime.UtcNow;
-        var expiredTrials = coreDb.Tenants
+        var expiredTrials = await coreDb.Tenants
             .Where(t => t.Status == TenantStatus.Active
                 && t.TrialEndsAt != null
                 && t.TrialEndsAt < now)
-            .ToList();
+            .ToListAsync(ct);
 
         foreach (var tenant in expiredTrials)
         {
-            _logger.LogWarning("Tenant {Slug} trial expired at {TrialEnd}", tenant.Slug, tenant.TrialEndsAt);
-            // TODO: Send notification, suspend, or prompt for payment
+            tenant.Status = TenantStatus.Suspended;
+            _logger.LogWarning("Tenant {Slug} trial expired at {TrialEnd} — suspended", tenant.Slug, tenant.TrialEndsAt);
         }
 
-        _logger.LogInformation("Expired trial check done — found {Count} expired", expiredTrials.Count);
+        if (expiredTrials.Count > 0)
+            await coreDb.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Expired trial check done — suspended {Count} tenants", expiredTrials.Count);
+    }
+}
+
+/// <summary>
+/// Daily purge of tenants past their scheduled deletion date.
+/// </summary>
+public class TenantDeletionJob
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<TenantDeletionJob> _logger;
+
+    public TenantDeletionJob(IServiceScopeFactory scopeFactory, ILogger<TenantDeletionJob> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
+
+    public async Task ExecuteAsync(CancellationToken ct)
+    {
+        _logger.LogInformation("Checking for tenants scheduled for deletion");
+
+        using var scope = _scopeFactory.CreateScope();
+        var coreDb = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
+        var lifecycle = scope.ServiceProvider.GetRequiredService<ITenantLifecycleService>();
+
+        var now = DateTime.UtcNow;
+        var toDelete = await coreDb.Tenants
+            .Where(t => t.IsDeleted && t.ScheduledDeletionAt.HasValue && t.ScheduledDeletionAt <= now)
+            .ToListAsync(ct);
+
+        foreach (var tenant in toDelete)
+        {
+            try
+            {
+                await lifecycle.PermanentlyDeleteTenantAsync(tenant.Id);
+                _logger.LogWarning("Permanently deleted tenant {Slug} (scheduled at {Date})", tenant.Slug, tenant.ScheduledDeletionAt);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to permanently delete tenant {Slug}", tenant.Slug);
+            }
+        }
+
+        _logger.LogInformation("Tenant deletion check done — deleted {Count} tenants", toDelete.Count);
     }
 }

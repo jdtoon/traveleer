@@ -177,60 +177,69 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddRateLimitingConfig(this IServiceCollection services)
+    public static IServiceCollection AddRateLimitingConfig(this IServiceCollection services, IConfiguration configuration)
     {
+        var rateLimitSection = configuration.GetSection("RateLimiting");
+
         services.AddRateLimiter(options =>
         {
+            var globalLimit = rateLimitSection.GetValue("GlobalPerMinute", 100);
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 100,
+                        PermitLimit = globalLimit,
                         Window = TimeSpan.FromMinutes(1),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0
                     }));
 
+            var strictLimit = rateLimitSection.GetValue("StrictPerMinute", 5);
             options.AddPolicy("strict", httpContext =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 5,
+                        PermitLimit = strictLimit,
                         Window = TimeSpan.FromMinutes(1),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0
                     }));
 
+            var regLimit = rateLimitSection.GetValue("RegistrationPerWindow", 3);
+            var regWindow = rateLimitSection.GetValue("RegistrationWindowMinutes", 5);
             options.AddPolicy("registration", httpContext =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 3,
-                        Window = TimeSpan.FromMinutes(5),
+                        PermitLimit = regLimit,
+                        Window = TimeSpan.FromMinutes(regWindow),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0
                     }));
 
+            var contactLimit = rateLimitSection.GetValue("ContactPerWindow", 3);
+            var contactWindow = rateLimitSection.GetValue("ContactWindowMinutes", 5);
             options.AddPolicy("contact", httpContext =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 3,
-                        Window = TimeSpan.FromMinutes(5),
+                        PermitLimit = contactLimit,
+                        Window = TimeSpan.FromMinutes(contactWindow),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0
                     }));
 
+            var webhookLimit = rateLimitSection.GetValue("WebhookPerMinute", 50);
             options.AddPolicy("webhook", httpContext =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 50,
+                        PermitLimit = webhookLimit,
                         Window = TimeSpan.FromMinutes(1),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0

@@ -1,3 +1,4 @@
+using MassTransit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -74,6 +75,7 @@ public class TenantProvisionerTests : IAsyncLifetime
 
         services.AddSingleton<IEmailService, ConsoleEmailService>();
         services.AddSingleton<IBotProtection, MockBotProtection>();
+        services.AddSingleton<IPublishEndpoint>(new NullPublishEndpoint());
         services.AddSingleton<IReadOnlyList<IModule>>(new IModule[]
         {
             new saas.Modules.Tenancy.TenancyModule(),
@@ -271,5 +273,22 @@ public class TenantProvisionerTests : IAsyncLifetime
 
         Assert.False(result.Success);
         Assert.Equal("Invalid plan selected", result.ErrorMessage);
+    }
+
+    /// <summary>No-op IPublishEndpoint for testing without MassTransit container.</summary>
+    private class NullPublishEndpoint : IPublishEndpoint
+    {
+        public ConnectHandle ConnectPublishObserver(IPublishObserver observer) => new NullConnectHandle();
+        public Task Publish<T>(T message, CancellationToken cancellationToken = default) where T : class => Task.CompletedTask;
+        public Task Publish<T>(T message, IPipe<PublishContext<T>> publishPipe, CancellationToken cancellationToken = default) where T : class => Task.CompletedTask;
+        public Task Publish<T>(T message, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default) where T : class => Task.CompletedTask;
+        public Task Publish(object message, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task Publish(object message, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task Publish(object message, Type messageType, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task Publish(object message, Type messageType, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task Publish<T>(object values, CancellationToken cancellationToken = default) where T : class => Task.CompletedTask;
+        public Task Publish<T>(object values, IPipe<PublishContext<T>> publishPipe, CancellationToken cancellationToken = default) where T : class => Task.CompletedTask;
+        public Task Publish<T>(object values, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default) where T : class => Task.CompletedTask;
+        private class NullConnectHandle : ConnectHandle { public void Disconnect() { } public void Dispose() { } }
     }
 }
