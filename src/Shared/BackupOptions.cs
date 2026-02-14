@@ -4,6 +4,7 @@ public class BackupOptions
 {
     public const string SectionName = "Backup";
 
+    public bool Enabled { get; set; }
     public string LitestreamConfigPath { get; set; } = "/app/db/litestream.yml";
     public string SentinelPath { get; set; } = "/app/db/.litestream-reload";
     public string R2Bucket { get; set; } = "saas-backups";

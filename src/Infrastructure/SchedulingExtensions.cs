@@ -1,6 +1,7 @@
 using Hangfire;
 using Hangfire.Dashboard;
 using Hangfire.InMemory;
+using Hangfire.Storage.SQLite;
 
 namespace saas.Infrastructure;
 
@@ -20,8 +21,7 @@ public static class SchedulingExtensions
                 var dbPath = configuration.GetValue("Hangfire:SQLitePath", "db/hangfire.db");
                 var dir = Path.GetDirectoryName(dbPath);
                 if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-                config.UseInMemoryStorage(); // TODO: Replace with Hangfire.Storage.SQLite NuGet when ready
-                // config.UseSQLiteStorage(dbPath);
+                config.UseSQLiteStorage(dbPath);
             }
             else
             {

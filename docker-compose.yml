@@ -61,6 +61,7 @@ services:
       - Storage__R2SecretKey=${Storage__R2SecretKey:-}
       - Storage__R2PublicUrl=${Storage__R2PublicUrl:-}
       # ── Backup / Litestream ─────────────────────────────────
+      - Backup__Enabled=${Backup__Enabled:-false}
       - Backup__LitestreamConfigPath=/app/db/litestream.yml
       - Backup__SentinelPath=/app/db/.litestream-reload
       - Backup__R2Bucket=${R2_BUCKET:-saas-backups}

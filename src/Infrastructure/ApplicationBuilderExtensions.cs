@@ -21,8 +21,9 @@ public static class ApplicationBuilderExtensions
     public static async Task RestoreFromBackupIfNeededAsync(this WebApplication app)
     {
         using var scope = app.Services.CreateScope();
-        var restoreService = scope.ServiceProvider.GetRequiredService<ILitestreamRestoreService>();
-        await restoreService.RestoreIfNeededAsync();
+        var restoreService = scope.ServiceProvider.GetService<ILitestreamRestoreService>();
+        if (restoreService is not null)
+            await restoreService.RestoreIfNeededAsync();
     }
 
     public static async Task InitializeDatabaseAsync(this WebApplication app)
