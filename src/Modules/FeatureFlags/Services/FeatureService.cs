@@ -6,20 +6,14 @@ namespace saas.Modules.FeatureFlags.Services;
 public class FeatureService : IFeatureService
 {
     private readonly IFeatureManager _featureManager;
-    private readonly IConfiguration _configuration;
 
-    public FeatureService(IFeatureManager featureManager, IConfiguration configuration)
+    public FeatureService(IFeatureManager featureManager)
     {
         _featureManager = featureManager;
-        _configuration = configuration;
     }
 
     public async Task<bool> IsEnabledAsync(string featureKey)
     {
-        // Local dev override: all features enabled
-        if (_configuration.GetValue<bool>("FeatureFlags:AllEnabledLocally"))
-            return true;
-
         return await _featureManager.IsEnabledAsync(featureKey);
     }
 

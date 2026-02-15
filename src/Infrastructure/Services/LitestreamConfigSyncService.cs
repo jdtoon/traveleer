@@ -8,15 +8,16 @@ public class LitestreamConfigSyncService : BackgroundService, ILitestreamConfigS
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<LitestreamConfigSyncService> _logger;
-    private readonly BackupOptions _options;
+    private readonly LitestreamOptions _options;
     private readonly string _coreDbPath;
     private readonly string _auditDbPath;
     private readonly string _tenantDbPath;
+    private readonly string _hangfireDbPath;
     private readonly TimeSpan _syncInterval = TimeSpan.FromMinutes(5);
 
     public LitestreamConfigSyncService(
         IConfiguration configuration,
-        IOptions<BackupOptions> options,
+        IOptions<LitestreamOptions> options,
         ILogger<LitestreamConfigSyncService> logger)
     {
         _configuration = configuration;
@@ -29,6 +30,7 @@ public class LitestreamConfigSyncService : BackgroundService, ILitestreamConfigS
         _coreDbPath = coreCs.Replace("Data Source=", "", StringComparison.OrdinalIgnoreCase).Trim();
         _auditDbPath = auditCs.Replace("Data Source=", "", StringComparison.OrdinalIgnoreCase).Trim();
         _tenantDbPath = configuration["Tenancy:DatabasePath"] ?? "/app/db/tenants";
+        _hangfireDbPath = configuration["Hangfire:SQLitePath"] ?? "/app/db/hangfire.db";
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -59,6 +61,12 @@ public class LitestreamConfigSyncService : BackgroundService, ILitestreamConfigS
             ? Directory.GetFiles(_tenantDbPath, "*.db")
             : Array.Empty<string>();
 
+        // Include hangfire.db if Hangfire is using SQLite storage
+        var hangfireStorage = _configuration.GetValue("Hangfire:Storage", "InMemory");
+        var hangfireDbPath = string.Equals(hangfireStorage, "SQLite", StringComparison.OrdinalIgnoreCase)
+            ? _hangfireDbPath
+            : null;
+
         var yaml = GenerateYaml(
             _coreDbPath,
             _auditDbPath,
@@ -69,7 +77,8 @@ public class LitestreamConfigSyncService : BackgroundService, ILitestreamConfigS
             _options.MonitorInterval,
             _options.CheckpointInterval,
             _options.SnapshotInterval,
-            _options.SnapshotRetention);
+            _options.SnapshotRetention,
+            hangfireDbPath);
 
         // Only write if changed
         var existingConfig = File.Exists(_options.LitestreamConfigPath)
@@ -106,7 +115,8 @@ public class LitestreamConfigSyncService : BackgroundService, ILitestreamConfigS
         string monitorInterval = "5s",
         string checkpointInterval = "5m",
         string snapshotInterval = "24h",
-        string snapshotRetention = "168h")
+        string snapshotRetention = "168h",
+        string? hangfireDbPath = null)
     {
         var yaml = new StringBuilder();
         yaml.AppendLine($"sync-interval: {syncInterval}");
@@ -120,6 +130,12 @@ public class LitestreamConfigSyncService : BackgroundService, ILitestreamConfigS
 
         // Audit database
         AppendDbEntry(yaml, auditDbPath, "audit.db", bucket, endpoint, monitorInterval, checkpointInterval);
+
+        // Hangfire database (when using SQLite storage)
+        if (!string.IsNullOrEmpty(hangfireDbPath))
+        {
+            AppendDbEntry(yaml, hangfireDbPath, "hangfire.db", bucket, endpoint, monitorInterval, checkpointInterval);
+        }
 
         // Tenant databases
         foreach (var dbFile in tenantDbs.OrderBy(f => f))

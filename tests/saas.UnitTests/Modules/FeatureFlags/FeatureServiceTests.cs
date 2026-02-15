@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.FeatureManagement;
 using saas.Modules.FeatureFlags.Services;
 using Xunit;
@@ -8,42 +7,15 @@ namespace saas.Tests.Modules.FeatureFlags;
 public class FeatureServiceTests
 {
     /// <summary>
-    /// When AllEnabledLocally = true, every feature returns true regardless of IFeatureManager.
-    /// </summary>
-    [Fact]
-    public async Task IsEnabledAsync_AllEnabledLocally_ReturnsTrue()
-    {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["FeatureFlags:AllEnabledLocally"] = "true"
-            })
-            .Build();
-
-        var featureManager = new StubFeatureManager(enabledFeatures: []);
-        var sut = new FeatureService(featureManager, config);
-
-        Assert.True(await sut.IsEnabledAsync("notes"));
-        Assert.True(await sut.IsEnabledAsync("some_nonexistent_feature"));
-    }
-
-    /// <summary>
-    /// When AllEnabledLocally = false, the service delegates to IFeatureManager.
+    /// The service delegates to IFeatureManager for enabled features.
     /// </summary>
     [Theory]
     [InlineData("notes", true)]
     [InlineData("sso", false)]
     public async Task IsEnabledAsync_DelegatesToFeatureManager(string featureKey, bool expected)
     {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["FeatureFlags:AllEnabledLocally"] = "false"
-            })
-            .Build();
-
         var featureManager = new StubFeatureManager(enabledFeatures: ["notes", "projects"]);
-        var sut = new FeatureService(featureManager, config);
+        var sut = new FeatureService(featureManager);
 
         Assert.Equal(expected, await sut.IsEnabledAsync(featureKey));
     }
@@ -51,15 +23,8 @@ public class FeatureServiceTests
     [Fact]
     public async Task GetEnabledFeaturesAsync_ReturnsOnlyEnabled()
     {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["FeatureFlags:AllEnabledLocally"] = "false"
-            })
-            .Build();
-
         var featureManager = new StubFeatureManager(enabledFeatures: ["notes", "projects"]);
-        var sut = new FeatureService(featureManager, config);
+        var sut = new FeatureService(featureManager);
 
         var enabled = await sut.GetEnabledFeaturesAsync();
 

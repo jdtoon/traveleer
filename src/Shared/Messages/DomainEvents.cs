@@ -4,7 +4,7 @@ namespace saas.Shared.Messages;
 /// Published when a new tenant completes registration and their database is provisioned.
 /// </summary>
 public record TenantCreatedEvent(
-    int TenantId,
+    Guid TenantId,
     string TenantName,
     string Slug,
     string ContactEmail,
@@ -16,7 +16,7 @@ public record TenantCreatedEvent(
 /// Published when a tenant's subscription plan changes (upgrade or downgrade).
 /// </summary>
 public record TenantPlanChangedEvent(
-    int TenantId,
+    Guid TenantId,
     string Slug,
     string OldPlanSlug,
     string NewPlanSlug,
@@ -27,7 +27,7 @@ public record TenantPlanChangedEvent(
 /// Published when a tenant is suspended (e.g., non-payment, admin action).
 /// </summary>
 public record TenantSuspendedEvent(
-    int TenantId,
+    Guid TenantId,
     string Slug,
     string Reason,
     DateTime SuspendedAtUtc
@@ -37,7 +37,7 @@ public record TenantSuspendedEvent(
 /// Published when a user is invited to a tenant workspace.
 /// </summary>
 public record UserInvitedEvent(
-    int TenantId,
+    Guid TenantId,
     string Slug,
     string InvitedEmail,
     string InvitedByEmail,
@@ -51,7 +51,7 @@ public record UserInvitedEvent(
 public record UserLoggedInEvent(
     string UserId,
     string Email,
-    int TenantId,
+    Guid TenantId,
     string Slug,
     DateTime LoggedInAtUtc
 );
@@ -71,7 +71,7 @@ public record SendEmailCommand(
 /// Published when a billing subscription event occurs (payment succeeded, failed, etc.).
 /// </summary>
 public record SubscriptionPaymentEvent(
-    int TenantId,
+    Guid TenantId,
     string Slug,
     string EventType,
     decimal Amount,

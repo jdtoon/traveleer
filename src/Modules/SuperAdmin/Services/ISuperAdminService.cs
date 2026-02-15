@@ -27,8 +27,8 @@ public interface ISuperAdminService
     Task<TenantFeatureOverrideModel?> GetTenantFeatureOverrideAsync(Guid tenantId, Guid featureId);
     Task SaveTenantFeatureOverrideAsync(TenantFeatureOverrideModel model);
 
-    // Backup observability
-    Task<BackupStatusModel> GetBackupStatusAsync();
+    // Litestream observability
+    Task<LitestreamStatusModel> GetLitestreamStatusAsync();
 }
 
 public class SuperAdminDashboardModel

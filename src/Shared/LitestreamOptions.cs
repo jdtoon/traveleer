@@ -1,8 +1,8 @@
 namespace saas.Shared;
 
-public class BackupOptions
+public class LitestreamOptions
 {
-    public const string SectionName = "Backup";
+    public const string SectionName = "Litestream";
 
     public bool Enabled { get; set; }
     public string LitestreamConfigPath { get; set; } = "/app/db/litestream.yml";

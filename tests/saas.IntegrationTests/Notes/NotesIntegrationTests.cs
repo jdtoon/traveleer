@@ -59,14 +59,14 @@ public class NotesIntegrationTests : IClassFixture<AppFixture>
                 ["Content"] = "Test Content"
             });
 
-        // Should NOT return 200 OK without authentication
-        Assert.True(
-            response.StatusCode != System.Net.HttpStatusCode.OK ||
-            response.StatusCode == System.Net.HttpStatusCode.Found ||
-            response.StatusCode == System.Net.HttpStatusCode.Redirect ||
-            response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
-            response.StatusCode == System.Net.HttpStatusCode.Forbidden ||
-            response.StatusCode == System.Net.HttpStatusCode.NotFound,
-            $"Expected non-success status, got {response.StatusCode}");
+        // Without authentication, the request should either:
+        // - Return a non-success status (302/401/403/404), OR
+        // - Return 200 with HX-Redirect header (HTMX auth redirect pattern)
+        // Both mean the app correctly prevents unauthenticated note creation.
+        if (response.StatusCode == System.Net.HttpStatusCode.OK)
+        {
+            // 200 means HTMX auth redirect — verify HX-Redirect header points to login
+            response.AssertHxRedirect($"/{TenantSlug}/login");
+        }
     }
 }

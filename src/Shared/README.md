@@ -8,13 +8,14 @@ Interfaces, option classes, and contract records that modules depend on. This is
 |-----------|---------|----------------|
 | `IModule` | Module contract for registration, features, permissions, seeding | Each module |
 | `IStorageService` | Blob storage (upload/download/delete) | `LocalStorageService`, `R2StorageService` |
-| `IEmailService` | Email sending | `ConsoleEmailService`, `SesEmailService` |
+| `IEmailService` | Email sending | `ConsoleEmailService`, `SmtpEmailService`, `MailerSendEmailService` |
 | `IBillingService` | Payment/subscription management | `MockBillingService`, `PaystackBillingService` |
 | `IBotProtection` | Bot/spam protection | `MockBotProtection`, `TurnstileBotProtection` |
 | `IFeatureService` | Feature flag checks | `FeatureService` |
 | `IAuditWriter` | Audit log writing | `ChannelAuditWriter` |
 | `ICurrentUser` | Current authenticated user context | `CurrentUser` |
 | `ITenantContext` | Current tenant context | `TenantContext` |
+| `ILitestreamStatusService` | Litestream backup status | `LitestreamStatusService` |
 
 ## Contract Records (`ModuleContracts.cs`)
 
@@ -32,6 +33,6 @@ Interfaces, option classes, and contract records that modules depend on. This is
 | `SiteSettings` | `Site` | Base URL, name, support email |
 | `EmailOptions` | `Email` | Provider, from address, SES config |
 | `StorageOptions` | `Storage` | Provider, local path, R2 config |
-| `BackupOptions` | `Backup` | Litestream config paths |
+| `LitestreamOptions` | `Litestream` | Litestream config paths, R2 backup settings |
 | `TurnstileOptions` | `Turnstile` | Provider, site/secret keys |
 | `DevSeedOptions` | `DevSeed` | Dev seeding: enabled, tenant slug, emails, plan |

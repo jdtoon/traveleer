@@ -38,11 +38,13 @@ public class StaleSessionCleanupJob
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<StaleSessionCleanupJob> _logger;
+    private readonly IConfiguration _configuration;
 
-    public StaleSessionCleanupJob(IServiceScopeFactory scopeFactory, ILogger<StaleSessionCleanupJob> logger)
+    public StaleSessionCleanupJob(IServiceScopeFactory scopeFactory, ILogger<StaleSessionCleanupJob> logger, IConfiguration configuration)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public async Task ExecuteAsync(CancellationToken ct)
@@ -57,12 +59,17 @@ public class StaleSessionCleanupJob
             .Select(t => t.Slug)
             .ToListAsync(ct);
 
+        var tenantPath = _configuration["Tenancy:DatabasePath"] ?? Path.Combine("db", "tenants");
+        var basePath = Path.IsPathRooted(tenantPath)
+            ? tenantPath
+            : Path.Combine(Directory.GetCurrentDirectory(), tenantPath);
+
         var totalCleaned = 0;
         foreach (var slug in tenantSlugs)
         {
             try
             {
-                var dbPath = Path.Combine("db", "tenants", $"{slug}.db");
+                var dbPath = Path.Combine(basePath, $"{slug}.db");
                 if (!File.Exists(dbPath)) continue;
 
                 var connectionString = $"Data Source={dbPath}";

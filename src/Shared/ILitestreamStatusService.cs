@@ -1,11 +1,11 @@
 namespace saas.Shared;
 
-public interface IBackupStatusService
+public interface ILitestreamStatusService
 {
-    Task<BackupStatusModel> GetStatusAsync(CancellationToken ct = default);
+    Task<LitestreamStatusModel> GetStatusAsync(CancellationToken ct = default);
 }
 
-public class BackupStatusModel
+public class LitestreamStatusModel
 {
     public bool AutoRestoreEnabled { get; set; }
     public bool LitestreamConfigured { get; set; }

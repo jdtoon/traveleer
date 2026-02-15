@@ -7,7 +7,7 @@ namespace saas.Modules.Auth.Filters;
 /// <summary>
 /// MVC filter that gates controller/action access on an <see cref="IFeatureService"/> check.
 /// Unlike Microsoft.FeatureManagement's [FeatureGate], this uses our IFeatureService
-/// which respects the AllEnabledLocally dev override.
+/// which respects tenant plan-based feature gating.
 /// Returns 404 when the feature is disabled (hides the feature entirely).
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]

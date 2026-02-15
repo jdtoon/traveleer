@@ -1,22 +1,22 @@
 using saas.Infrastructure.Services;
 using saas.Shared;
 
-namespace saas.Modules.Backup;
+namespace saas.Modules.Litestream;
 
-public class BackupModule : IModule
+public class LitestreamModule : IModule
 {
-    public string Name => "Backup";
+    public string Name => "Litestream";
 
     public Dictionary<string, string> ControllerViewPaths => new();
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         // Always bind options + status service so SuperAdmin Backups page works
-        services.AddOptions<BackupOptions>()
-            .BindConfiguration(BackupOptions.SectionName);
-        services.AddSingleton<IBackupStatusService, BackupStatusService>();
+        services.AddOptions<LitestreamOptions>()
+            .BindConfiguration(LitestreamOptions.SectionName);
+        services.AddSingleton<ILitestreamStatusService, LitestreamStatusService>();
 
-        if (!configuration.GetValue<bool>("Backup:Enabled", false)) return;
+        if (!configuration.GetValue<bool>("Litestream:Enabled", false)) return;
 
         services.AddSingleton<LitestreamConfigSyncService>();
         services.AddHostedService(sp => sp.GetRequiredService<LitestreamConfigSyncService>());

@@ -57,7 +57,12 @@ public static class DevDataSeeder
             options.TenantSlug, options.PlanSlug);
 
         // Create Member user on the demo tenant
-        var tenantDbPath = Path.Combine("db", "tenants", $"{options.TenantSlug.ToLowerInvariant()}.db");
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var tenantPath = configuration["Tenancy:DatabasePath"] ?? Path.Combine("db", "tenants");
+        var tenantBasePath = Path.IsPathRooted(tenantPath)
+            ? tenantPath
+            : Path.Combine(Directory.GetCurrentDirectory(), tenantPath);
+        var tenantDbPath = Path.Combine(tenantBasePath, $"{options.TenantSlug.ToLowerInvariant()}.db");
         var connectionString = $"Data Source={tenantDbPath}";
 
         // Use a new scope so UserManager resolves against the correct tenant DB

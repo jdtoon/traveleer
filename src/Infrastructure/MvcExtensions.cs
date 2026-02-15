@@ -1,5 +1,5 @@
+using System.Reflection;
 using Swap.Htmx;
-using saas.Modules.Notes.Events;
 
 namespace saas.Infrastructure;
 
@@ -38,7 +38,17 @@ public static class MvcExtensions
             foreach (var path in partialViewSearchPaths)
                 options.PartialViewSearchPaths.Add(path);
 
-            options.AddConfig<NotesEventConfig>();
+            // Auto-discover and register all ISwapEventConfiguration implementations
+            var configTypes = Assembly.GetExecutingAssembly()
+                .GetTypes()
+                .Where(t => t is { IsClass: true, IsAbstract: false }
+                         && typeof(ISwapEventConfiguration).IsAssignableFrom(t));
+
+            foreach (var configType in configTypes)
+            {
+                if (Activator.CreateInstance(configType) is ISwapEventConfiguration config)
+                    config.Configure(options.EventBus);
+            }
         });
 
         return services;

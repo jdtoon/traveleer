@@ -8,15 +8,18 @@ public class MailerSendEmailService : IEmailService
 {
     private readonly HttpClient _httpClient;
     private readonly EmailOptions _options;
+    private readonly IEmailTemplateService _templateService;
     private readonly ILogger<MailerSendEmailService> _logger;
 
     public MailerSendEmailService(
         HttpClient httpClient,
         IOptions<EmailOptions> options,
+        IEmailTemplateService templateService,
         ILogger<MailerSendEmailService> logger)
     {
         _httpClient = httpClient;
         _options = options.Value;
+        _templateService = templateService;
         _logger = logger;
     }
 
@@ -54,11 +57,10 @@ public class MailerSendEmailService : IEmailService
 
     public Task SendMagicLinkAsync(string to, string magicLinkUrl)
     {
-        var htmlBody = $"""
-            <p>Use this magic link to sign in:</p>
-            <p><a href="{magicLinkUrl}">Sign in</a></p>
-            <p>If you did not request this, you can ignore this email.</p>
-            """;
+        var htmlBody = _templateService.Render("MagicLink", new Dictionary<string, string>
+        {
+            ["MagicLinkUrl"] = magicLinkUrl
+        });
 
         var plainText = $"Sign in using this link: {magicLinkUrl}";
 

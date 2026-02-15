@@ -28,15 +28,14 @@ public class AppFixture : IDisposable
                 builder.UseSetting("Billing:Provider", "Mock");
                 builder.UseSetting("Turnstile:Provider", "Mock");
                 builder.UseSetting("Email:Provider", "Console");
-                builder.UseSetting("FeatureFlags:AllEnabledLocally", "true");
                 builder.UseSetting("Storage:Provider", "Local");
 
                 builder.ConfigureAppConfiguration((_, configBuilder) =>
                 {
                     configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["Backup:AutoRestoreEnabled"] = "false",
-                        ["Backup:KeyBackupEnabled"] = "false"
+                        ["Litestream:AutoRestoreEnabled"] = "false",
+                        ["Litestream:KeyBackupEnabled"] = "false"
                     });
                 });
             });

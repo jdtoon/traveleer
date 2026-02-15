@@ -26,6 +26,7 @@ public class TenantAuthController : SwapController
     private readonly TenantDbContext _tenantDb;
     private readonly INotificationService _notifications;
     private readonly IPublishEndpoint _publishEndpoint;
+    private readonly ITenantContext _tenantContext;
 
     public TenantAuthController(
         MagicLinkService magicLinks, 
@@ -34,7 +35,8 @@ public class TenantAuthController : SwapController
         UserManager<AppUser> userManager,
         TenantDbContext tenantDb,
         INotificationService notifications,
-        IPublishEndpoint publishEndpoint)
+        IPublishEndpoint publishEndpoint,
+        ITenantContext tenantContext)
     {
         _magicLinks = magicLinks;
         _email = email;
@@ -43,6 +45,7 @@ public class TenantAuthController : SwapController
         _tenantDb = tenantDb;
         _notifications = notifications;
         _publishEndpoint = publishEndpoint;
+        _tenantContext = tenantContext;
     }
 
     [HttpGet("login")]
@@ -174,7 +177,7 @@ public class TenantAuthController : SwapController
             await _publishEndpoint.Publish(new UserLoggedInEvent(
                 UserId: user.Id,
                 Email: user.Email ?? string.Empty,
-                TenantId: 0,
+                TenantId: _tenantContext.TenantId ?? Guid.Empty,
                 Slug: slug,
                 LoggedInAtUtc: DateTime.UtcNow));
         }

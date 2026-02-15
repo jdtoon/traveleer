@@ -54,7 +54,7 @@ builder.Services.AddDatabaseConfig(builder.Configuration);
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<CoreDbContext>("core-database")
     .AddCheck<TenantDirectoryHealthCheck>("tenant-directory")
-    .AddCheck<BackupReadinessHealthCheck>("backup-readiness");
+    .AddCheck<LitestreamReadinessHealthCheck>("litestream-readiness");
 builder.Services.AddCoreServices(builder.Configuration);
 builder.Services.AddSingleton<saas.Infrastructure.Services.IEmailTemplateService, saas.Infrastructure.Services.EmailTemplateService>();
 
@@ -75,7 +75,7 @@ var modules = new IModule[]
     new saas.Modules.Notes.NotesModule(),
     new saas.Modules.Audit.AuditModule(),
     new saas.Modules.TenantAdmin.TenantAdminModule(),
-    new saas.Modules.Backup.BackupModule(),
+    new saas.Modules.Litestream.LitestreamModule(),
     new saas.Modules.Notifications.NotificationsModule()
 };
 

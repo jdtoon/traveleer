@@ -23,6 +23,7 @@ public partial class TenantProvisionerService : ITenantProvisioner
     private readonly HashSet<string> _reservedSlugs;
     private readonly ILitestreamConfigSync? _litestreamSync;
     private readonly IPublishEndpoint _publishEndpoint;
+    private readonly string _tenantDbBasePath;
 
     public TenantProvisionerService(
         CoreDbContext coreDb,
@@ -30,6 +31,7 @@ public partial class TenantProvisionerService : ITenantProvisioner
         ILogger<TenantProvisionerService> logger,
         IReadOnlyList<IModule> modules,
         IPublishEndpoint publishEndpoint,
+        IConfiguration configuration,
         ILitestreamConfigSync? litestreamSync = null)
     {
         _coreDb = coreDb;
@@ -38,6 +40,11 @@ public partial class TenantProvisionerService : ITenantProvisioner
         _modules = modules;
         _publishEndpoint = publishEndpoint;
         _litestreamSync = litestreamSync;
+
+        var tenantPath = configuration["Tenancy:DatabasePath"] ?? Path.Combine("db", "tenants");
+        _tenantDbBasePath = Path.IsPathRooted(tenantPath)
+            ? tenantPath
+            : Path.Combine(Directory.GetCurrentDirectory(), tenantPath);
 
         // Collect reserved slugs from all modules (explicit + public route prefixes)
         _reservedSlugs = new HashSet<string>(
@@ -138,7 +145,7 @@ public partial class TenantProvisionerService : ITenantProvisioner
             }
 
             // Create tenant database
-            var dbPath = Path.Combine("db", "tenants", $"{tenant.Slug}.db");
+            var dbPath = Path.Combine(_tenantDbBasePath, $"{tenant.Slug}.db");
             var dbDirectory = Path.GetDirectoryName(dbPath);
             if (!string.IsNullOrEmpty(dbDirectory) && !Directory.Exists(dbDirectory))
             {
@@ -310,7 +317,7 @@ public partial class TenantProvisionerService : ITenantProvisioner
             {
                 var tenantPlan = await _coreDb.Plans.FindAsync(planId);
                 await _publishEndpoint.Publish(new TenantCreatedEvent(
-                    TenantId: tenant.Id.GetHashCode(),
+                    TenantId: tenant.Id,
                     TenantName: tenant.Name,
                     Slug: tenant.Slug,
                     ContactEmail: adminEmail,

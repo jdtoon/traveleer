@@ -35,8 +35,6 @@ services:
       - Site__SupportEmail=${Site__SupportEmail:-support@localhost}
       # ── Super Admin ─────────────────────────────────────────
       - SuperAdmin__Email=${SuperAdmin__Email:-admin@localhost}
-      # ── Feature Flags ───────────────────────────────────────
-      - FeatureFlags__AllEnabledLocally=${FeatureFlags__AllEnabledLocally:-true}
       # ── Billing (Paystack) ──────────────────────────────────
       - Billing__Provider=${Billing__Provider:-Mock}
       - Billing__Paystack__SecretKey=${Billing__Paystack__SecretKey:-}
@@ -60,15 +58,15 @@ services:
       - Storage__R2AccessKey=${Storage__R2AccessKey:-}
       - Storage__R2SecretKey=${Storage__R2SecretKey:-}
       - Storage__R2PublicUrl=${Storage__R2PublicUrl:-}
-      # ── Backup / Litestream ─────────────────────────────────
-      - Backup__Enabled=${Backup__Enabled:-false}
-      - Backup__LitestreamConfigPath=/app/db/litestream.yml
-      - Backup__SentinelPath=/app/db/.litestream-reload
-      - Backup__R2Bucket=${R2_BUCKET:-saas-backups}
-      - Backup__R2Endpoint=${R2_ENDPOINT:-}
-      - Backup__AutoRestoreEnabled=${Backup__AutoRestoreEnabled:-true}
-      - Backup__KeyBackupEnabled=${Backup__KeyBackupEnabled:-true}
-      - Backup__KeyBackupInterval=${Backup__KeyBackupInterval:-1h}
+      # ── Litestream ─────────────────────────────────────────
+      - Litestream__Enabled=${Litestream__Enabled:-true}
+      - Litestream__LitestreamConfigPath=/app/db/litestream.yml
+      - Litestream__SentinelPath=/app/db/.litestream-reload
+      - Litestream__R2Bucket=${R2_BUCKET:-saas-backups}
+      - Litestream__R2Endpoint=${R2_ENDPOINT:-}
+      - Litestream__AutoRestoreEnabled=${Litestream__AutoRestoreEnabled:-true}
+      - Litestream__KeyBackupEnabled=${Litestream__KeyBackupEnabled:-true}
+      - Litestream__KeyBackupInterval=${Litestream__KeyBackupInterval:-1h}
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
       # ── Dev Seeding (ignored when ASPNETCORE_ENVIRONMENT != Development) ─
@@ -80,15 +78,15 @@ services:
       # ── Health Check ────────────────────────────────────────
       - HealthCheck__AllowedIPs=${HealthCheck__AllowedIPs:-}
       # ── Messaging (MassTransit / RabbitMQ) ──────────────────
-      - Messaging__Provider=${Messaging__Provider:-InMemory}
+      - Messaging__Provider=${Messaging__Provider:-RabbitMQ}
       - Messaging__RabbitMQ__Host=${Messaging__RabbitMQ__Host:-rabbitmq}
       - Messaging__RabbitMQ__Username=${Messaging__RabbitMQ__Username:-guest}
       - Messaging__RabbitMQ__Password=${Messaging__RabbitMQ__Password:-guest}
       # ── Caching (Redis) ────────────────────────────────────
-      - Caching__Provider=${Caching__Provider:-Memory}
+      - Caching__Provider=${Caching__Provider:-Redis}
       - Caching__Redis__ConnectionString=${Caching__Redis__ConnectionString:-redis:6379}
       # ── Hangfire ─────────────────────────────────────────────
-      - Hangfire__Storage=${Hangfire__Storage:-InMemory}
+      - Hangfire__Storage=${Hangfire__Storage:-SQLite}
       - Hangfire__SQLitePath=${Hangfire__SQLitePath:-/app/db/hangfire.db}
       - Hangfire__WorkerCount=${Hangfire__WorkerCount:-2}
       # ── Rate Limiting ────────────────────────────────────────
@@ -97,6 +95,11 @@ services:
       - RateLimiting__RegistrationPerWindow=${RateLimiting__RegistrationPerWindow:-3}
       - RateLimiting__RegistrationWindowMinutes=${RateLimiting__RegistrationWindowMinutes:-5}
     restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s

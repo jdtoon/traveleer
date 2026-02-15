@@ -2,6 +2,7 @@ using MassTransit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using saas.Data.Core;
@@ -22,6 +23,7 @@ public class TenantProvisionerTests : IAsyncLifetime
     private string _testDbPath = null!;
     private Guid _testPlanId;
     private readonly List<string> _provisionedDbPaths = [];
+    private string _testTenantDir = null!;
 
     public async Task InitializeAsync()
     {
@@ -76,6 +78,18 @@ public class TenantProvisionerTests : IAsyncLifetime
         services.AddSingleton<IEmailService, ConsoleEmailService>();
         services.AddSingleton<IBotProtection, MockBotProtection>();
         services.AddSingleton<IPublishEndpoint>(new NullPublishEndpoint());
+
+        // TenantProvisionerService requires IConfiguration for Tenancy:DatabasePath
+        _testTenantDir = Path.Combine(Path.GetTempPath(), $"tenant-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_testTenantDir);
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Tenancy:DatabasePath"] = _testTenantDir
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
         services.AddSingleton<IReadOnlyList<IModule>>(new IModule[]
         {
             new saas.Modules.Tenancy.TenancyModule(),
@@ -114,6 +128,10 @@ public class TenantProvisionerTests : IAsyncLifetime
                     try { File.Delete(path); } catch { }
             }
         }
+
+        // Clean up the temp tenant directory
+        if (Directory.Exists(_testTenantDir))
+            try { Directory.Delete(_testTenantDir, recursive: true); } catch { }
     }
 
     [Fact]
@@ -199,8 +217,8 @@ public class TenantProvisionerTests : IAsyncLifetime
         Assert.NotNull(subscription);
         Assert.Equal(SubscriptionStatus.Trialing, subscription!.Status);
 
-        // Tenant DB assertions — the provisioner creates db/tenants/{slug}.db
-        var provisionedDbPath = Path.Combine("db", "tenants", $"{slug}.db");
+        // Tenant DB assertions — the provisioner creates {Tenancy:DatabasePath}/{slug}.db
+        var provisionedDbPath = Path.Combine(_testTenantDir, $"{slug}.db");
         _provisionedDbPaths.Add(provisionedDbPath);
         Assert.True(File.Exists(provisionedDbPath), $"Tenant DB file not found at {provisionedDbPath}");
 
