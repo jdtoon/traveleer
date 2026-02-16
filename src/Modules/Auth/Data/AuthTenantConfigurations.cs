@@ -45,6 +45,7 @@ public class UserSessionConfiguration : IEntityTypeConfiguration<UserSession>, I
 {
     public void Configure(EntityTypeBuilder<UserSession> builder)
     {
+        builder.ToTable("UserSession");
         builder.HasKey(e => e.Id);
         builder.Property(e => e.UserId).IsRequired();
         builder.Property(e => e.IpAddress).HasMaxLength(50);

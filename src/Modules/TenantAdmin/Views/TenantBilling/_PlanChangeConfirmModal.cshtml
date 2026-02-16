@@ -99,7 +99,7 @@
         <div class="modal-action">
             <button type="button" class="btn" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
             <button class="btn btn-primary"
-                    hx-post="@Url.Action("ChangePlan", "TenantBilling")"
+                    hx-post="@Url.Action("ChangePlan", "TenantBilling", new { slug = ViewContext.RouteData.Values["slug"] })"
                     hx-vals='{"planId": "@Model.NewPlanId"}'
                     hx-target="#modal-container">
                 @(p.IsUpgrade ? "Upgrade Now" : "Confirm Downgrade")

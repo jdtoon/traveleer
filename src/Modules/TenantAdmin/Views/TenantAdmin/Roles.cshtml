@@ -1,6 +1,8 @@
 @model List<RoleListItem>
+@inject ITenantContext TenantContext
 @{
     ViewData["Title"] = "Roles";
+    var slug = TenantContext.Slug;
 }
 
 <div class="flex flex-col gap-6">
@@ -11,7 +13,7 @@
         </div>
         <has-permission name="roles.create">
             <button class="btn btn-primary btn-sm"
-                    hx-get="@Url.Action("CreateRole")"
+                    hx-get="@Url.Action("CreateRole", "TenantAdmin", new { slug })"
                     hx-target="#modal-container">
                 + New Role
             </button>

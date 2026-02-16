@@ -130,7 +130,7 @@ public class TenantAuthController : SwapController
             // Store pending login details in TempData for 2FA verification
             TempData["Pending2FA_UserId"] = user.Id;
             TempData["Pending2FA_Slug"] = slug;
-            return Redirect($"/{slug}/TwoFactor/Setup");
+            return Redirect($"/{slug}/profile/two-factor");
         }
 
         // Track session

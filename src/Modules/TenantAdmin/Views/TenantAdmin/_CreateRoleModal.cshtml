@@ -1,6 +1,6 @@
 <dialog class="modal modal-open">
     <div class="modal-box">
-        <form hx-post="@Url.Action("CreateRole", "TenantAdmin")" hx-target="#modal-container">
+        <form hx-post="@Url.Action("CreateRole", "TenantAdmin", new { slug = ViewContext.RouteData.Values["slug"] })" hx-target="#modal-container">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold">Create Role</h3>
                 <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>

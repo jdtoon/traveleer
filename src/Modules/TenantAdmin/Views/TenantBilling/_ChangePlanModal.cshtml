@@ -39,7 +39,7 @@
                         @if (!isCurrent)
                         {
                             <button class="btn btn-primary btn-sm mt-2"
-                                    hx-post="@Url.Action("PreviewPlanChange", "TenantBilling")"
+                                    hx-post="@Url.Action("PreviewPlanChange", "TenantBilling", new { slug = ViewContext.RouteData.Values["slug"] })"
                                     hx-vals='{"planId": "@plan.Id"}'
                                     hx-target="#modal-container">
                                 Select
