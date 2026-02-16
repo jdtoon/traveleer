@@ -56,6 +56,6 @@ public class MarketingIntegrationTests : IClassFixture<AppFixture>
             response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable,
             $"Unexpected status: {response.StatusCode}");
 
-        await response.AssertContainsAsync("backup-readiness");
+        await response.AssertContainsAsync("litestream-readiness");
     }
 }

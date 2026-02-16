@@ -65,8 +65,9 @@ public class NotesIntegrationTests : IClassFixture<AppFixture>
         // Both mean the app correctly prevents unauthenticated note creation.
         if (response.StatusCode == System.Net.HttpStatusCode.OK)
         {
-            // 200 means HTMX auth redirect — verify HX-Redirect header points to login
-            response.AssertHxRedirect($"/{TenantSlug}/login");
+            // 200 means HTMX auth redirect — verify HX-Redirect header starts with login path
+            // The header includes a returnUrl query string, so use AssertHeader with the full expected value
+            response.AssertHeader("HX-Redirect", $"/{TenantSlug}/login?returnUrl=%2F{TenantSlug}%2FNotes%2FCreate");
         }
     }
 }
