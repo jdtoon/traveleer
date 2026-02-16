@@ -1,23 +1,27 @@
 using Microsoft.Extensions.Options;
+using saas.Infrastructure.Services;
 using saas.Shared;
 
 namespace saas.Modules.Registration.Services;
 
 /// <summary>
-/// Composes and sends registration-related emails using SiteSettings for dynamic URLs and branding.
+/// Composes and sends registration-related emails using email templates and SiteSettings.
 /// </summary>
 public class RegistrationEmailService : IRegistrationEmailService
 {
     private readonly IEmailService _email;
+    private readonly IEmailTemplateService _templateService;
     private readonly SiteSettings _site;
     private readonly ILogger<RegistrationEmailService> _logger;
 
     public RegistrationEmailService(
         IEmailService email,
+        IEmailTemplateService templateService,
         IOptions<SiteSettings> siteOptions,
         ILogger<RegistrationEmailService> logger)
     {
         _email = email;
+        _templateService = templateService;
         _site = siteOptions.Value;
         _logger = logger;
     }
@@ -26,42 +30,18 @@ public class RegistrationEmailService : IRegistrationEmailService
     {
         var baseUrl = _site.BaseUrl.TrimEnd('/');
         var verifyUrl = $"{baseUrl}/register/verify?token={verificationToken}";
-        var siteName = _site.Name;
 
-        var htmlBody = $"""
-            <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h1 style="color: #333;">Verify your email address</h1>
-                <p>You're registering for <strong>{slug}</strong> on {siteName}.</p>
-                <p>Please click the button below to verify your email and complete your registration.</p>
-                <p style="text-align: center; margin: 32px 0;">
-                    <a href="{verifyUrl}" style="display: inline-block; padding: 0.75rem 1.5rem; background: #6366f1; color: #fff; text-decoration: none; border-radius: 0.5rem; font-weight: bold;">
-                        Verify Email &amp; Create Workspace
-                    </a>
-                </p>
-                <p style="font-size: 13px; color: #666;">This link expires in 24 hours. If you didn't request this, you can safely ignore this email.</p>
-            </div>
-            """;
-
-        var plainBody = $"""
-            Verify your email address
-
-            You're registering for {slug} on {siteName}.
-            Please visit the following URL to verify your email and complete registration:
-
-            {verifyUrl}
-
-            This link expires in 24 hours.
-            If you didn't request this, you can safely ignore this email.
-            """;
+        var htmlBody = _templateService.Render("EmailVerification", new Dictionary<string, string>
+        {
+            ["VerificationUrl"] = verifyUrl
+        });
 
         try
         {
             await _email.SendAsync(new EmailMessage(
                 To: email,
-                Subject: $"Verify your email — {siteName}",
-                HtmlBody: htmlBody,
-                PlainTextBody: plainBody
-            ));
+                Subject: $"Verify your email — {_site.Name}",
+                HtmlBody: htmlBody));
         }
         catch (Exception ex)
         {
@@ -72,64 +52,24 @@ public class RegistrationEmailService : IRegistrationEmailService
     public async Task SendWelcomeEmailAsync(string adminEmail, string tenantSlug)
     {
         var baseUrl = _site.BaseUrl.TrimEnd('/');
-        var workspaceUrl = $"{baseUrl}/{tenantSlug}";
-        var loginUrl = $"{workspaceUrl}/login";
-        var siteName = _site.Name;
+        var loginUrl = $"{baseUrl}/{tenantSlug}/login";
 
-        var htmlBody = $"""
-            <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h1 style="color: #333;">Welcome to {siteName}!</h1>
-                <p>Your workspace has been created successfully.</p>
-                <table style="margin: 1.5rem 0; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 0.5rem 1rem 0.5rem 0; font-weight: bold; color: #555;">Workspace URL</td>
-                        <td style="padding: 0.5rem 0;"><a href="{workspaceUrl}" style="color: #6366f1;">{workspaceUrl}</a></td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 0.5rem 1rem 0.5rem 0; font-weight: bold; color: #555;">Login URL</td>
-                        <td style="padding: 0.5rem 0;"><a href="{loginUrl}" style="color: #6366f1;">{loginUrl}</a></td>
-                    </tr>
-                </table>
-                <p>Your workspace is on a <strong>14-day free trial</strong>. Log in using the magic link system — just enter your email address at the login page.</p>
-                <p style="margin-top: 2rem;">
-                    <a href="{loginUrl}" style="display: inline-block; padding: 0.75rem 1.5rem; background: #6366f1; color: #fff; text-decoration: none; border-radius: 0.5rem; font-weight: bold;">
-                        Go to Login →
-                    </a>
-                </p>
-                <hr style="margin-top: 2rem; border: none; border-top: 1px solid #eee;" />
-                <p style="font-size: 0.875rem; color: #888;">You're receiving this because someone registered a workspace with this email on {siteName}. If this wasn't you, you can ignore this email.</p>
-            </div>
-            """;
-
-        var plainBody = $"""
-            Welcome to {siteName}!
-
-            Your workspace has been created successfully.
-
-            Workspace URL: {workspaceUrl}
-            Login URL: {loginUrl}
-
-            Your workspace is on a 14-day free trial.
-            Log in using the magic link system — just enter your email at the login page.
-
-            ---
-            You're receiving this because someone registered a workspace with this email on {siteName}.
-            If this wasn't you, you can ignore this email.
-            """;
+        var htmlBody = _templateService.Render("Welcome", new Dictionary<string, string>
+        {
+            ["TenantSlug"] = tenantSlug,
+            ["LoginUrl"] = loginUrl
+        });
 
         try
         {
             await _email.SendAsync(new EmailMessage(
                 To: adminEmail,
-                Subject: $"Welcome to {siteName} — Your Workspace is Ready",
-                HtmlBody: htmlBody,
-                PlainTextBody: plainBody
-            ));
+                Subject: $"Welcome to {_site.Name} — Your Workspace is Ready",
+                HtmlBody: htmlBody));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send welcome email to {Email} for tenant {Slug}", adminEmail, tenantSlug);
-            // Don't fail registration if email fails — log and swallow
         }
     }
 }

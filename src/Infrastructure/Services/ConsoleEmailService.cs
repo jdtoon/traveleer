@@ -4,10 +4,12 @@ namespace saas.Infrastructure.Services;
 
 public class ConsoleEmailService : IEmailService
 {
+    private readonly IEmailTemplateService _templateService;
     private readonly ILogger<ConsoleEmailService> _logger;
 
-    public ConsoleEmailService(ILogger<ConsoleEmailService> logger)
+    public ConsoleEmailService(IEmailTemplateService templateService, ILogger<ConsoleEmailService> logger)
     {
+        _templateService = templateService;
         _logger = logger;
     }
 
@@ -19,7 +21,17 @@ public class ConsoleEmailService : IEmailService
 
     public Task SendMagicLinkAsync(string to, string magicLinkUrl)
     {
+        var htmlBody = _templateService.Render("MagicLink", new Dictionary<string, string>
+        {
+            ["MagicLinkUrl"] = magicLinkUrl
+        });
+
         _logger.LogInformation("\n================ MAGIC LINK ================\nTo: {To}\nUrl: {Url}\n===========================================\n", to, magicLinkUrl);
-        return Task.CompletedTask;
+
+        return SendAsync(new EmailMessage(
+            To: to,
+            Subject: "Your magic link",
+            HtmlBody: htmlBody,
+            PlainTextBody: $"Sign in using this link: {magicLinkUrl}"));
     }
 }

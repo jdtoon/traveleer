@@ -54,7 +54,7 @@
                 Enter the 6-digit code from your authenticator app to verify setup.
             </p>
 
-            <form method="post" action="/@slug/profile/two-factor/verify">
+            <form hx-post="/@slug/profile/two-factor/verify" hx-target="#main-content">
                 <div class="form-control w-full mb-4">
                     <label class="label"><span class="label-text">Verification Code</span></label>
                     <input type="text" name="code" class="input input-bordered w-full text-center text-2xl tracking-widest"

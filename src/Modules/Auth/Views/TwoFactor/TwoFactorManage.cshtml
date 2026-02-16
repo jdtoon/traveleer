@@ -25,12 +25,11 @@
                 This will make your account less secure.
             </p>
 
-            <form method="post" action="/@slug/profile/two-factor/disable">
-                <button type="submit" class="btn btn-error btn-outline w-full"
-                        onclick="return confirm('Are you sure? This will disable 2FA on your account.')">
-                    Disable 2FA
-                </button>
-            </form>
+            <button hx-post="/@slug/profile/two-factor/disable" hx-target="#main-content"
+                    hx-confirm="Are you sure? This will disable 2FA on your account."
+                    class="btn btn-error btn-outline w-full">
+                Disable 2FA
+            </button>
         </div>
     </div>
 </div>

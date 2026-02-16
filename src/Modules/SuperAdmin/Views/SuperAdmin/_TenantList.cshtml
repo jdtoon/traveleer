@@ -1,4 +1,5 @@
 @model PaginatedList<saas.Modules.SuperAdmin.Services.TenantListItem>
+@using saas.Modules.Billing.Entities
 @{
     var search = ViewData["Search"] as string;
     var listUrl = string.IsNullOrEmpty(search)
@@ -15,6 +16,7 @@
                 <th>Email</th>
                 <th>Plan</th>
                 <th>Status</th>
+                <th>Billing</th>
                 <th>Registered</th>
                 <th></th>
             </tr>
@@ -23,7 +25,7 @@
             @if (Model.Items.Count == 0)
             {
                 <tr>
-                    <td colspan="7" class="text-center opacity-60 py-8">No tenants found</td>
+                    <td colspan="8" class="text-center opacity-60 py-8">No tenants found</td>
                 </tr>
             }
             @foreach (var tenant in Model.Items)
@@ -35,6 +37,24 @@
                     <td>@tenant.PlanName</td>
                     <td>
                         <partial name="_StatusBadge" model="tenant.Status" />
+                    </td>
+                    <td>
+                        @if (tenant.SubscriptionStatus.HasValue)
+                        {
+                            var subClass = tenant.SubscriptionStatus.Value switch
+                            {
+                                SubscriptionStatus.Active => "badge-success",
+                                SubscriptionStatus.PastDue => "badge-warning",
+                                SubscriptionStatus.Cancelled => "badge-error",
+                                SubscriptionStatus.NonRenewing => "badge-warning",
+                                _ => "badge-ghost"
+                            };
+                            <span class="badge @subClass badge-sm">@tenant.SubscriptionStatus</span>
+                        }
+                        else
+                        {
+                            <span class="text-xs opacity-50">Free</span>
+                        }
                     </td>
                     <td class="opacity-70">@tenant.CreatedAt.ToString("dd MMM yyyy")</td>
                     <td>

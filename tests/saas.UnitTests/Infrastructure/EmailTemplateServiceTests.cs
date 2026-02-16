@@ -1,5 +1,7 @@
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using saas.Infrastructure.Services;
+using saas.Shared;
 using Xunit;
 
 namespace saas.Tests.Infrastructure;
@@ -28,7 +30,8 @@ public class EmailTemplateServiceTests : IDisposable
             "<p>No variables here.</p>");
 
         var env = new FakeWebHostEnvironment(_tempDir);
-        _service = new EmailTemplateService(env);
+        var siteOptions = Options.Create(new SiteSettings { Name = "TestApp" });
+        _service = new EmailTemplateService(env, siteOptions);
     }
 
     public void Dispose()
@@ -42,12 +45,12 @@ public class EmailTemplateServiceTests : IDisposable
     {
         var result = _service.Render("Welcome", new Dictionary<string, string>
         {
-            ["Name"] = "John",
-            ["AppName"] = "SaaSKit"
+            ["Name"] = "John"
         });
 
         Assert.Contains("Hello John", result);
-        Assert.Contains("Welcome to SaaSKit!", result);
+        // AppName is auto-injected from SiteSettings ("TestApp")
+        Assert.Contains("Welcome to TestApp!", result);
     }
 
     [Fact]
@@ -68,16 +71,16 @@ public class EmailTemplateServiceTests : IDisposable
     }
 
     [Fact]
-    public void Render_LeavesUnmatchedPlaceholders()
+    public void Render_AutoInjectsAppNameAndYear()
     {
         var result = _service.Render("Welcome", new Dictionary<string, string>
         {
             ["Name"] = "Test"
-            // AppName intentionally not provided
         });
 
         Assert.Contains("Hello Test", result);
-        Assert.Contains("{{AppName}}", result);
+        // AppName is auto-injected from SiteSettings
+        Assert.Contains("Welcome to TestApp!", result);
     }
 
     [Fact]

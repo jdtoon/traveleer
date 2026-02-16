@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using saas.Data;
 using saas.Data.Audit;
+using saas.Modules.Audit.Models;
 using saas.Modules.Auth.Filters;
 using Swap.Htmx;
 
@@ -113,24 +114,4 @@ public class AuditLogController : SwapController
 
         return SwapView("_AuditDetailModal", entry);
     }
-}
-
-public class AuditLogItem
-{
-    public long Id { get; set; }
-    public string EntityType { get; set; } = string.Empty;
-    public string EntityId { get; set; } = string.Empty;
-    public string Action { get; set; } = string.Empty;
-    public string UserEmail { get; set; } = string.Empty;
-    public string TenantSlug { get; set; } = string.Empty;
-    public DateTime Timestamp { get; set; }
-    public bool HasChanges { get; set; }
-}
-
-public class AuditLogViewModel
-{
-    public PaginatedList<AuditLogItem> Entries { get; set; } = null!;
-    public string? FilterEntity { get; set; }
-    public string? FilterAction { get; set; }
-    public string? FilterSlug { get; set; }
 }

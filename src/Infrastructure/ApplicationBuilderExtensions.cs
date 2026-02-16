@@ -53,6 +53,9 @@ public static class ApplicationBuilderExtensions
             var modules = scope.ServiceProvider.GetRequiredService<IReadOnlyList<IModule>>();
             await CoreDataSeeder.SeedAsync(coreDb, app.Configuration, modules);
 
+            // Sync permissions to all existing tenant DBs (idempotent)
+            await SyncPermissionsToTenantsAsync(modules, logger);
+
             // Dev seeding — only when explicitly enabled in config
             var devSeedOptions = app.Configuration.GetSection(DevSeedOptions.SectionName).Get<DevSeedOptions>();
             if (devSeedOptions?.Enabled == true)
@@ -111,6 +114,64 @@ public static class ApplicationBuilderExtensions
 
             logger.LogInformation("Applying {Count} pending migrations to tenant DB {DbFile}", pendingList.Count, Path.GetFileName(dbFile));
             await tenantDb.Database.MigrateAsync();
+        }
+    }
+
+    /// <summary>
+    /// Sync module-defined permissions to all existing tenant databases.
+    /// Adds any new permissions that don't exist yet (idempotent by Key).
+    /// </summary>
+    private static async Task SyncPermissionsToTenantsAsync(IReadOnlyList<IModule> modules, ILogger logger)
+    {
+        var basePath = Path.Combine(Directory.GetCurrentDirectory(), "db", "tenants");
+        if (!Directory.Exists(basePath))
+            return;
+
+        var modulePermissions = modules.SelectMany(m => m.Permissions).ToList();
+        if (modulePermissions.Count == 0)
+            return;
+
+        var dbFiles = Directory.GetFiles(basePath, "*.db");
+        foreach (var dbFile in dbFiles)
+        {
+            try
+            {
+                var options = new DbContextOptionsBuilder<TenantDbContext>()
+                    .UseSqlite($"Data Source={dbFile}")
+                    .Options;
+
+                await using var tenantDb = new TenantDbContext(options);
+                var existingKeys = await tenantDb.Permissions
+                    .Select(p => p.Key)
+                    .ToListAsync();
+
+                var existingSet = new HashSet<string>(existingKeys, StringComparer.OrdinalIgnoreCase);
+                var newPermissions = modulePermissions
+                    .Where(mp => !existingSet.Contains(mp.Key))
+                    .Select(mp => new saas.Modules.Auth.Entities.Permission
+                    {
+                        Id = Guid.NewGuid(),
+                        Key = mp.Key,
+                        Name = mp.Name,
+                        Group = mp.Group,
+                        SortOrder = mp.SortOrder,
+                        Description = mp.Description
+                    })
+                    .ToList();
+
+                if (newPermissions.Count > 0)
+                {
+                    tenantDb.Permissions.AddRange(newPermissions);
+                    await tenantDb.SaveChangesAsync();
+                    logger.LogInformation(
+                        "Synced {Count} new permissions to tenant DB {DbFile}",
+                        newPermissions.Count, Path.GetFileName(dbFile));
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to sync permissions to tenant DB {DbFile}", Path.GetFileName(dbFile));
+            }
         }
     }
 

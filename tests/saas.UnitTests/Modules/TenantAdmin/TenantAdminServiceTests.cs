@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using saas.Data.Core;
 using saas.Data.Tenant;
+using saas.Infrastructure.Services;
 using saas.Modules.Billing.Entities;
 using saas.Modules.TenantAdmin.Entities;
 using saas.Modules.TenantAdmin.Services;
@@ -70,7 +71,7 @@ public class TenantAdminServiceTests : IAsyncLifetime
         var emailService = mainScope.ServiceProvider.GetRequiredService<IEmailService>();
         var tenantContext = mainScope.ServiceProvider.GetRequiredService<ITenantContext>();
 
-        _service = new TenantAdminService(_db, _coreDb, _userManager, emailService, tenantContext, new FakeHttpContextAccessor());
+        _service = new TenantAdminService(_db, _coreDb, _userManager, emailService, new FakeEmailTemplateService(), tenantContext, new FakeHttpContextAccessor(), new FakeFeatureService(), Array.Empty<IModule>());
 
         // Seed an admin user
         var admin = new AppUser
@@ -138,8 +139,8 @@ public class TenantAdminServiceTests : IAsyncLifetime
 
         await _service.InviteUserAsync("invited@testcorp.com");
 
-        Assert.Single(emailService!.SentLinks);
-        Assert.Contains("invited@testcorp.com", emailService.SentLinks[0].to);
+        Assert.Single(emailService!.SentEmails);
+        Assert.Equal("invited@testcorp.com", emailService.SentEmails[0].To);
     }
 
     [Fact]
@@ -245,6 +246,19 @@ public class TenantAdminServiceTests : IAsyncLifetime
             SentLinks.Add((to, magicLinkUrl));
             return Task.CompletedTask;
         }
+    }
+
+    private class FakeFeatureService : IFeatureService
+    {
+        public Task<bool> IsEnabledAsync(string featureKey) => Task.FromResult(true);
+        public Task<IReadOnlyList<string>> GetEnabledFeaturesAsync()
+            => Task.FromResult<IReadOnlyList<string>>(new List<string>());
+    }
+
+    private class FakeEmailTemplateService : IEmailTemplateService
+    {
+        public string Render(string templateName, Dictionary<string, string>? variables = null)
+            => $"<html>{templateName}</html>";
     }
 
     private class FakeHttpContextAccessor : IHttpContextAccessor

@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
+using saas.Infrastructure.Services;
 using saas.Modules.Auth.Entities;
 
 namespace saas.Modules.Auth.Services;
@@ -8,15 +9,18 @@ public class EmailVerificationService
 {
     private readonly UserManager<AppUser> _userManager;
     private readonly Shared.IEmailService _emailService;
+    private readonly IEmailTemplateService _templateService;
     private readonly ILogger<EmailVerificationService> _logger;
 
     public EmailVerificationService(
         UserManager<AppUser> userManager,
         Shared.IEmailService emailService,
+        IEmailTemplateService templateService,
         ILogger<EmailVerificationService> logger)
     {
         _userManager = userManager;
         _emailService = emailService;
+        _templateService = templateService;
         _logger = logger;
     }
 
@@ -31,12 +35,15 @@ public class EmailVerificationService
 
         var verifyUrl = $"{baseUrl.TrimEnd('/')}/{slug}/profile/verify-email?token={token}&userId={user.Id}";
 
+        var htmlBody = _templateService.Render("EmailVerification", new Dictionary<string, string>
+        {
+            ["VerificationUrl"] = verifyUrl
+        });
+
         await _emailService.SendAsync(new Shared.EmailMessage(
             user.Email!,
             "Verify your email address",
-            $"<p>Click the link below to verify your email address:</p>" +
-            $"<p><a href=\"{verifyUrl}\">Verify Email</a></p>" +
-            $"<p>If you didn't request this, you can ignore this email.</p>"));
+            htmlBody));
 
         _logger.LogInformation("Verification email sent to {Email} for tenant {Slug}", user.Email, slug);
     }

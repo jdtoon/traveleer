@@ -1,4 +1,6 @@
 using MassTransit;
+using Microsoft.Extensions.Options;
+using saas.Infrastructure.Services;
 using saas.Shared;
 using saas.Shared.Messages;
 
@@ -10,11 +12,19 @@ namespace saas.Infrastructure.Messaging.Consumers;
 public class TenantCreatedConsumer : IConsumer<TenantCreatedEvent>
 {
     private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _templateService;
+    private readonly SiteSettings _site;
     private readonly ILogger<TenantCreatedConsumer> _logger;
 
-    public TenantCreatedConsumer(IEmailService emailService, ILogger<TenantCreatedConsumer> logger)
+    public TenantCreatedConsumer(
+        IEmailService emailService,
+        IEmailTemplateService templateService,
+        IOptions<SiteSettings> siteOptions,
+        ILogger<TenantCreatedConsumer> logger)
     {
         _emailService = emailService;
+        _templateService = templateService;
+        _site = siteOptions.Value;
         _logger = logger;
     }
 
@@ -25,11 +35,19 @@ public class TenantCreatedConsumer : IConsumer<TenantCreatedEvent>
             "Tenant created: {TenantName} ({Slug}) on plan {PlanSlug}",
             msg.TenantName, msg.Slug, msg.PlanSlug);
 
+        var baseUrl = _site.BaseUrl.TrimEnd('/');
+        var loginUrl = $"{baseUrl}/{msg.Slug}/login";
+
+        var htmlBody = _templateService.Render("Welcome", new Dictionary<string, string>
+        {
+            ["TenantSlug"] = msg.Slug,
+            ["LoginUrl"] = loginUrl
+        });
+
         await _emailService.SendAsync(new EmailMessage(
             msg.ContactEmail,
-            $"Welcome to {msg.TenantName}!",
-            $"Your workspace '{msg.TenantName}' has been created. " +
-            $"Sign in at /{msg.Slug}/login to get started."));
+            $"Welcome to {_site.Name}!",
+            htmlBody));
     }
 }
 
@@ -61,11 +79,16 @@ public class TenantPlanChangedConsumer : IConsumer<TenantPlanChangedEvent>
 public class SendEmailConsumer : IConsumer<SendEmailCommand>
 {
     private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _templateService;
     private readonly ILogger<SendEmailConsumer> _logger;
 
-    public SendEmailConsumer(IEmailService emailService, ILogger<SendEmailConsumer> logger)
+    public SendEmailConsumer(
+        IEmailService emailService,
+        IEmailTemplateService templateService,
+        ILogger<SendEmailConsumer> logger)
     {
         _emailService = emailService;
+        _templateService = templateService;
         _logger = logger;
     }
 
@@ -74,11 +97,10 @@ public class SendEmailConsumer : IConsumer<SendEmailCommand>
         var msg = context.Message;
         _logger.LogInformation("Sending email to {To}: {Subject}", msg.ToAddress, msg.Subject);
 
-        // Build body from template data
-        var body = msg.TemplateData.Count > 0
-            ? string.Join("\n", msg.TemplateData.Select(kv => $"{kv.Key}: {kv.Value}"))
-            : $"Template: {msg.TemplateName}";
+        var htmlBody = !string.IsNullOrWhiteSpace(msg.TemplateName)
+            ? _templateService.Render(msg.TemplateName, msg.TemplateData)
+            : string.Join("\n", msg.TemplateData.Select(kv => $"{kv.Key}: {kv.Value}"));
 
-        await _emailService.SendAsync(new EmailMessage(msg.ToAddress, msg.Subject, body));
+        await _emailService.SendAsync(new EmailMessage(msg.ToAddress, msg.Subject, htmlBody));
     }
 }

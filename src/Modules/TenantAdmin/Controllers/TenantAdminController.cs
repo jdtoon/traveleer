@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using saas.Modules.Auth.Filters;
+using saas.Modules.TenantAdmin.Models;
 using saas.Modules.TenantAdmin.Services;
 using Swap.Htmx;
 
@@ -312,23 +313,4 @@ public class TenantAdminController : SwapController
             .WithSuccessToast("Role removed")
             .Build();
     }
-}
-
-public class RoleDetailViewModel
-{
-    public RoleListItem Role { get; set; } = null!;
-    public List<Permission> AllPermissions { get; set; } = [];
-}
-
-public class InviteUserViewModel
-{
-    public List<RoleListItem> AvailableRoles { get; set; } = [];
-}
-
-public class ManageUserRolesViewModel
-{
-    public string UserId { get; set; } = string.Empty;
-    public string UserEmail { get; set; } = string.Empty;
-    public List<RoleListItem> AllRoles { get; set; } = [];
-    public List<string> AssignedRoleIds { get; set; } = [];
 }

@@ -30,6 +30,14 @@ public static class LoggingExtensions
                     retainedFileCountLimit: 14,
                     fileSizeLimitBytes: 50_000_000);
             }
+
+            // Seq structured log server (optional — configure via Seq:Url)
+            var seqUrl = context.Configuration["Seq:Url"];
+            if (!string.IsNullOrEmpty(seqUrl))
+            {
+                var seqApiKey = context.Configuration["Seq:ApiKey"];
+                configuration.WriteTo.Seq(seqUrl, apiKey: seqApiKey);
+            }
         });
 
         return builder;

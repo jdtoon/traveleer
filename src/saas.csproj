@@ -33,6 +33,7 @@
     <PackageReference Include="Serilog.AspNetCore" Version="9.*" />
     <PackageReference Include="Serilog.Enrichers.Environment" Version="3.*" />
     <PackageReference Include="Serilog.Enrichers.Thread" Version="4.*" />
+    <PackageReference Include="Serilog.Sinks.Seq" Version="8.*" />
     <PackageReference Include="Hangfire.Core" Version="1.*" />
     <PackageReference Include="Hangfire.AspNetCore" Version="1.*" />
     <PackageReference Include="Hangfire.InMemory" Version="1.*" />

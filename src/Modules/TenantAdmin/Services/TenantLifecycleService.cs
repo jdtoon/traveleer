@@ -188,9 +188,13 @@ public class TenantLifecycleService : ITenantLifecycleService
         _coreDb.Tenants.Remove(tenant);
         await _coreDb.SaveChangesAsync();
 
-        // Optionally: delete tenant SQLite database file
-        // var dbPath = Path.Combine("db", "tenants", $"{tenant.Slug}.db");
-        // if (File.Exists(dbPath)) File.Delete(dbPath);
+        // Delete the tenant SQLite database file and related WAL/SHM files
+        var dbPath = Path.Combine("db", "tenants", $"{tenant.Slug}.db");
+        foreach (var ext in new[] { "", "-wal", "-shm" })
+        {
+            var path = dbPath + ext;
+            if (File.Exists(path)) File.Delete(path);
+        }
 
         return true;
     }

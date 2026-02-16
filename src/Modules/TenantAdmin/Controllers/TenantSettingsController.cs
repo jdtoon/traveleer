@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using saas.Data.Core;
 using saas.Infrastructure.Middleware;
 using saas.Modules.Auth.Filters;
+using saas.Modules.TenantAdmin.Models;
 using saas.Modules.TenantAdmin.Services;
 using saas.Shared;
 using Swap.Htmx;
@@ -121,23 +122,4 @@ public class TenantSettingsController : SwapController
         ViewData["Success"] = "Deletion cancelled. Your organization is safe.";
         return await Index();
     }
-}
-
-public class TenantSettingsViewModel
-{
-    public string Name { get; set; } = string.Empty;
-    public string ContactEmail { get; set; } = string.Empty;
-    public string? CustomDomain { get; set; }
-    public string Slug { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
-    public string PlanName { get; set; } = string.Empty;
-    public bool IsDeleted { get; set; }
-    public DateTime? ScheduledDeletionAt { get; set; }
-}
-
-public class TenantSettingsUpdateModel
-{
-    public string Name { get; set; } = string.Empty;
-    public string? ContactEmail { get; set; }
 }

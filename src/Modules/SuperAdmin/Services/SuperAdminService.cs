@@ -38,6 +38,7 @@ public class SuperAdminService : ISuperAdminService
             .CountAsync(t => t.CreatedAt >= thirtyDaysAgo);
         var recentTenants = await _coreDb.Tenants
             .Include(t => t.Plan)
+            .Include(t => t.ActiveSubscription)
             .OrderByDescending(t => t.CreatedAt)
             .Take(5)
             .Select(t => new TenantListItem
@@ -48,6 +49,7 @@ public class SuperAdminService : ISuperAdminService
                 ContactEmail = t.ContactEmail,
                 Status = t.Status,
                 PlanName = t.Plan.Name,
+                SubscriptionStatus = t.ActiveSubscription != null ? t.ActiveSubscription.Status : null,
                 CreatedAt = t.CreatedAt
             })
             .ToListAsync();
@@ -65,7 +67,7 @@ public class SuperAdminService : ISuperAdminService
 
     public async Task<PaginatedList<TenantListItem>> GetTenantsAsync(string? search = null, int page = 1, int pageSize = 20)
     {
-        var query = _coreDb.Tenants.Include(t => t.Plan).AsQueryable();
+        var query = _coreDb.Tenants.Include(t => t.Plan).Include(t => t.ActiveSubscription).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -86,6 +88,7 @@ public class SuperAdminService : ISuperAdminService
                 ContactEmail = t.ContactEmail,
                 Status = t.Status,
                 PlanName = t.Plan.Name,
+                SubscriptionStatus = t.ActiveSubscription != null ? t.ActiveSubscription.Status : null,
                 CreatedAt = t.CreatedAt
             });
 

@@ -53,13 +53,12 @@
                                     <div>Started: @session.CreatedAt.ToString("MMM dd, yyyy HH:mm") UTC</div>
                                 </div>
                             </div>
-                            <form method="post" action="/@slug/profile/sessions/@session.Id/revoke">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-error btn-sm btn-outline"
-                                        onclick="return confirm('Revoke this session?')">
-                                    Revoke
-                                </button>
-                            </form>
+                            <button hx-post="/@slug/profile/sessions/@session.Id/revoke"
+                                    hx-target="#main-content"
+                                    hx-confirm="Revoke this session?"
+                                    class="btn btn-error btn-sm btn-outline">
+                                Revoke
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -75,13 +74,12 @@
                             <p class="font-semibold text-sm">Revoke All Sessions</p>
                             <p class="text-xs text-base-content/60">Sign out from all devices including this one.</p>
                         </div>
-                        <form method="post" action="/@slug/profile/sessions/revoke-all">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-error btn-sm"
-                                    onclick="return confirm('Revoke ALL sessions? You will need to log in again.')">
-                                Revoke All
-                            </button>
-                        </form>
+                        <button hx-post="/@slug/profile/sessions/revoke-all"
+                                hx-target="#main-content"
+                                hx-confirm="Revoke ALL sessions? You will need to log in again."
+                                class="btn btn-error btn-sm">
+                            Revoke All
+                        </button>
                     </div>
                 </div>
             </div>

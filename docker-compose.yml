@@ -94,6 +94,8 @@ services:
       - RateLimiting__StrictPerMinute=${RateLimiting__StrictPerMinute:-5}
       - RateLimiting__RegistrationPerWindow=${RateLimiting__RegistrationPerWindow:-3}
       - RateLimiting__RegistrationWindowMinutes=${RateLimiting__RegistrationWindowMinutes:-5}
+      # ── Seq (structured logging) ────────────────────────────
+      - Seq__Url=${Seq__Url:-http://seq:5341}
     restart: unless-stopped
     depends_on:
       redis:
@@ -141,6 +143,29 @@ services:
       retries: 3
       start_period: 15s
 
+  # ── Seq (structured log viewer) ─────────────────────────────
+  seq:
+    image: datalust/seq:latest
+    container_name: saas-seq
+    ports:
+      - "${SEQ_PORT:-5341}:5341"    # ingestion API
+      - "${SEQ_UI_PORT:-8081}:80"   # web UI
+    environment:
+      ACCEPT_EULA: "Y"
+    volumes:
+      - seq-data:/data
+    restart: unless-stopped
+
+  # ── Uptime Kuma (uptime monitoring) ────────────────────────
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: saas-uptime-kuma
+    ports:
+      - "${KUMA_PORT:-3001}:3001"
+    volumes:
+      - kuma-data:/app/data
+    restart: unless-stopped
+
   # ── Litestream sidecar (production only) ──────────────────────
   # Start with: docker compose --profile production up
   litestream:
@@ -165,3 +190,5 @@ volumes:
   app-data:
   redis-data:
   rabbitmq-data:
+  seq-data:
+  kuma-data:

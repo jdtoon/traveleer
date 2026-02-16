@@ -1,8 +1,11 @@
+using Microsoft.Extensions.Options;
+using saas.Shared;
+
 namespace saas.Infrastructure.Services;
 
 /// <summary>
-/// Razor-inspired email template engine using simple string replacement.
-/// Templates live in the EmailTemplates folder. Uses {{Variable}} placeholders.
+/// Simple email template engine using {{Variable}} placeholder replacement.
+/// Templates live in the EmailTemplates folder. Layout variables (AppName, Year) are auto-injected.
 /// </summary>
 public interface IEmailTemplateService
 {
@@ -12,11 +15,13 @@ public interface IEmailTemplateService
 public class EmailTemplateService : IEmailTemplateService
 {
     private readonly string _templateDirectory;
+    private readonly string _appName;
     private readonly Dictionary<string, string> _templateCache = new();
 
-    public EmailTemplateService(IWebHostEnvironment env)
+    public EmailTemplateService(IWebHostEnvironment env, IOptions<SiteSettings> siteOptions)
     {
         _templateDirectory = Path.Combine(env.ContentRootPath, "EmailTemplates");
+        _appName = siteOptions.Value.Name;
     }
 
     public string Render(string templateName, Dictionary<string, string> variables)
@@ -27,7 +32,11 @@ public class EmailTemplateService : IEmailTemplateService
         var layout = LoadTemplate("_Layout");
         template = layout.Replace("{{Content}}", template);
 
-        // Replace variables
+        // Auto-inject layout-level variables
+        template = template.Replace("{{AppName}}", _appName);
+        template = template.Replace("{{Year}}", DateTime.UtcNow.Year.ToString());
+
+        // Replace caller-provided variables
         foreach (var kvp in variables)
         {
             template = template.Replace($"{{{{{kvp.Key}}}}}", kvp.Value);

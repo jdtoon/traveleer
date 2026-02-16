@@ -47,6 +47,7 @@ public class TenantListItem
     public string ContactEmail { get; set; } = string.Empty;
     public TenantStatus Status { get; set; }
     public string PlanName { get; set; } = string.Empty;
+    public SubscriptionStatus? SubscriptionStatus { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 

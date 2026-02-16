@@ -150,35 +150,5 @@ public static class CoreDataSeeder
 
         db.Features.AddRange(newFeatures);
         await db.SaveChangesAsync();
-
-        // Create plan-feature mappings for new features
-        var plans = await db.Plans.OrderBy(p => p.SortOrder).ToListAsync();
-        var planSortOrder = plans.ToDictionary(p => p.Slug, p => p.SortOrder, StringComparer.OrdinalIgnoreCase);
-        var featureMinPlan = newModuleFeatures.ToDictionary(
-            x => x.Feature.Key,
-            x => x.Feature.MinPlanSlug,
-            StringComparer.OrdinalIgnoreCase);
-
-        foreach (var plan in plans)
-        {
-            foreach (var feature in newFeatures)
-            {
-                if (!featureMinPlan.TryGetValue(feature.Key, out var minSlug))
-                    continue;
-
-                if (minSlug is null)
-                {
-                    db.PlanFeatures.Add(new PlanFeature { PlanId = plan.Id, FeatureId = feature.Id });
-                    continue;
-                }
-
-                if (planSortOrder.TryGetValue(minSlug, out var minSortOrder) && plan.SortOrder >= minSortOrder)
-                {
-                    db.PlanFeatures.Add(new PlanFeature { PlanId = plan.Id, FeatureId = feature.Id });
-                }
-            }
-        }
-
-        await db.SaveChangesAsync();
     }
 }

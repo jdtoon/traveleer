@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
+using saas.Infrastructure.Services;
 using saas.Modules.Auth;
 using saas.Modules.Auth.Entities;
 using saas.Modules.Auth.Filters;
@@ -21,6 +22,7 @@ public class InvitationController : SwapController
     private readonly TenantDbContext _db;
     private readonly UserManager<AppUser> _userManager;
     private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _templateService;
     private readonly ICurrentUser _currentUser;
     private readonly ITenantContext _tenantContext;
     private readonly INotificationService _notifications;
@@ -29,6 +31,7 @@ public class InvitationController : SwapController
         TenantDbContext db,
         UserManager<AppUser> userManager,
         IEmailService emailService,
+        IEmailTemplateService templateService,
         ICurrentUser currentUser,
         ITenantContext tenantContext,
         INotificationService notifications)
@@ -36,6 +39,7 @@ public class InvitationController : SwapController
         _db = db;
         _userManager = userManager;
         _emailService = emailService;
+        _templateService = templateService;
         _currentUser = currentUser;
         _tenantContext = tenantContext;
         _notifications = notifications;
@@ -97,10 +101,10 @@ public class InvitationController : SwapController
         _db.Set<TeamInvitation>().Add(invitation);
         await _db.SaveChangesAsync();
 
-        // Send invitation email
+        // Send invitation email using TeamInvitation template
         var slug = _tenantContext.Slug;
         var acceptUrl = Url.Action("Accept", "Invitation", new { slug, token }, Request.Scheme) ?? $"/{slug}/admin/invitation/accept?token={Uri.EscapeDataString(token)}";
-        await _emailService.SendMagicLinkAsync(email, acceptUrl);
+        await SendInvitationEmailAsync(email, acceptUrl, roleName, invitation.ExpiresAt);
 
         return SwapResponse()
             .WithSuccessToast("Invitation sent!")
@@ -137,7 +141,7 @@ public class InvitationController : SwapController
 
         var slug = _tenantContext.Slug;
         var acceptUrl = Url.Action("Accept", "Invitation", new { slug, token = invitation.Token }, Request.Scheme) ?? $"/{slug}/admin/invitation/accept?token={Uri.EscapeDataString(invitation.Token)}";
-        await _emailService.SendMagicLinkAsync(invitation.Email, acceptUrl);
+        await SendInvitationEmailAsync(invitation.Email, acceptUrl, invitation.RoleName ?? "Member", invitation.ExpiresAt);
 
         return SwapResponse()
             .WithSuccessToast("Invitation resent!")
@@ -217,5 +221,22 @@ public class InvitationController : SwapController
 
         // Redirect to login
         return Redirect($"/{slug}/login");
+    }
+
+    private async Task SendInvitationEmailAsync(string email, string acceptUrl, string roleName, DateTime expiresAt)
+    {
+        var htmlBody = _templateService.Render("TeamInvitation", new Dictionary<string, string>
+        {
+            ["InviterEmail"] = _currentUser.Email ?? "A team member",
+            ["TenantName"] = _tenantContext.Slug,
+            ["RoleName"] = roleName,
+            ["AcceptUrl"] = acceptUrl,
+            ["ExpiresAt"] = expiresAt.ToString("MMMM d, yyyy")
+        });
+
+        await _emailService.SendAsync(new EmailMessage(
+            email,
+            $"You've been invited to join {_tenantContext.Slug}",
+            htmlBody));
     }
 }

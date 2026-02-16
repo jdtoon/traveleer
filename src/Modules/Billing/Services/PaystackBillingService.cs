@@ -195,8 +195,7 @@ public class PaystackBillingService : IBillingService
 
         // Cancel any existing Paystack subscription first
         if (existingSub is not null
-            && !string.IsNullOrEmpty(existingSub.PaystackSubscriptionCode)
-            && existingSub.PaystackSubscriptionCode.StartsWith("SUB_"))
+            && HasPaystackSubscription(existingSub.PaystackSubscriptionCode))
         {
             try
             {
@@ -563,15 +562,15 @@ public class PaystackBillingService : IBillingService
             .FirstOrDefaultAsync(s => s.PaystackSubscriptionCode == data.Reference
                 || s.PaystackSubscriptionCode == subscriptionCode);
 
-        // Strategy 2: Find by customer email + active subscription without a real SUB_ code
+        // Strategy 2: Find by customer email + active subscription that doesn't already
+        // have this subscription code (Strategy 1 already checked direct matches,
+        // so any existing code is a stale transaction reference safe to replace)
         if (subscription is null && data.Customer is not null)
         {
             subscription = await _coreDb.Subscriptions
                 .Include(s => s.Tenant)
                 .Where(s => s.Tenant!.ContactEmail == data.Customer.Email
-                    && s.Status == SubscriptionStatus.Active
-                    && (s.PaystackSubscriptionCode == null
-                        || !s.PaystackSubscriptionCode.StartsWith("SUB_")))
+                    && s.Status == SubscriptionStatus.Active)
                 .OrderByDescending(s => s.StartDate)
                 .FirstOrDefaultAsync();
         }
@@ -865,7 +864,7 @@ public class PaystackBillingService : IBillingService
                 {
                     subscription = await _coreDb.Subscriptions
                         .Where(s => s.TenantId == tid && s.Status == SubscriptionStatus.Active
-                            && (s.PaystackSubscriptionCode == null || !s.PaystackSubscriptionCode.StartsWith("SUB_")))
+                            && (s.PaystackSubscriptionCode == null || s.PaystackSubscriptionCode == ""))
                         .OrderByDescending(s => s.StartDate)
                         .FirstOrDefaultAsync();
                 }
@@ -916,7 +915,7 @@ public class PaystackBillingService : IBillingService
         var subscription = await _coreDb.Subscriptions
             .Where(s => s.TenantId == tenantId
                 && s.PaystackSubscriptionCode != null
-                && s.PaystackSubscriptionCode.StartsWith("SUB_"))
+                && s.PaystackSubscriptionCode != "")
             .OrderByDescending(s => s.StartDate)
             .FirstOrDefaultAsync();
 
@@ -997,7 +996,7 @@ public class PaystackBillingService : IBillingService
         var subscriptions = await _coreDb.Subscriptions
             .Include(s => s.Tenant)
             .Where(s => s.PaystackSubscriptionCode != null
-                && s.PaystackSubscriptionCode.StartsWith("SUB_")
+                && s.PaystackSubscriptionCode != ""
                 && (s.Status == SubscriptionStatus.Active
                     || s.Status == SubscriptionStatus.NonRenewing
                     || s.Status == SubscriptionStatus.PastDue))
@@ -1069,6 +1068,13 @@ public class PaystackBillingService : IBillingService
     };
 
     /// <summary>
+    /// Check if a PaystackSubscriptionCode represents a real Paystack subscription.
+    /// Accepts SUB_ prefix (standard) or any non-empty code (fallback for older formats).
+    /// </summary>
+    private static bool HasPaystackSubscription(string? code)
+        => !string.IsNullOrEmpty(code);
+
+    /// <summary>
     /// Try to link the real subscription code by verifying the transaction reference with Paystack.
     /// Used as a fallback from charge.success since subscription.create webhooks may arrive late.
     /// </summary>
@@ -1078,8 +1084,7 @@ public class PaystackBillingService : IBillingService
         {
             var subscription = await _coreDb.Subscriptions
                 .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active
-                    && (s.PaystackSubscriptionCode == null
-                        || !s.PaystackSubscriptionCode.StartsWith("SUB_")))
+                    && (s.PaystackSubscriptionCode == null || s.PaystackSubscriptionCode == ""))
                 .OrderByDescending(s => s.StartDate)
                 .FirstOrDefaultAsync();
 
