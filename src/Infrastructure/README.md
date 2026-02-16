@@ -34,7 +34,10 @@ All providers are config-driven via `{Section}:Provider`:
 
 | Service | Config Key | Options |
 |---------|-----------|---------|
-| Email | `Email:Provider` | `Console` (dev), `SES` (production) |
+| Email | `Email:Provider` | `Console` (dev), `Smtp` (staging), `MailerSend` (production) |
 | Billing | `Billing:Provider` | `Mock` (dev), `Paystack` (production) |
 | Bot Protection | `Turnstile:Provider` | `Mock` (dev), `Cloudflare` (production) |
 | Storage | `Storage:Provider` | `Local` (dev), `R2` (production) |
+| Messaging | `Messaging:Provider` | `InMemory` (local), `RabbitMQ` (Docker/production) |
+| Caching | `Caching:Provider` | `Memory` (local), `Redis` (Docker/production) |
+| Hangfire | `Hangfire:Storage` | `InMemory` (local), `SQLite` (Docker/production) |

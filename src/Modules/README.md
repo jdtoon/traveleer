@@ -54,4 +54,4 @@ Every module implements `IModule` from `Shared/`. The contract provides:
 | Registration | — | — | Tenant signup flow |
 | Dashboard | — | — | Tenant dashboard |
 | FeatureFlags | — | — | Feature flag service |
-| Backup | — | — | Litestream config sync |
+| Litestream | — | — | Litestream backup config sync, restore, key backup |

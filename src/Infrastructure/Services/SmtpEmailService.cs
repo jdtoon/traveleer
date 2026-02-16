@@ -9,13 +9,16 @@ namespace saas.Infrastructure.Services;
 public class SmtpEmailService : IEmailService
 {
     private readonly EmailOptions _options;
+    private readonly IEmailTemplateService _templateService;
     private readonly ILogger<SmtpEmailService> _logger;
 
     public SmtpEmailService(
         IOptions<EmailOptions> options,
+        IEmailTemplateService templateService,
         ILogger<SmtpEmailService> logger)
     {
         _options = options.Value;
+        _templateService = templateService;
         _logger = logger;
     }
 
@@ -61,11 +64,10 @@ public class SmtpEmailService : IEmailService
 
     public Task SendMagicLinkAsync(string to, string magicLinkUrl)
     {
-        var htmlBody = $"""
-            <p>Use this magic link to sign in:</p>
-            <p><a href="{magicLinkUrl}">Sign in</a></p>
-            <p>If you did not request this, you can ignore this email.</p>
-            """;
+        var htmlBody = _templateService.Render("MagicLink", new Dictionary<string, string>
+        {
+            ["MagicLinkUrl"] = magicLinkUrl
+        });
 
         var plainText = $"Sign in using this link: {magicLinkUrl}";
 

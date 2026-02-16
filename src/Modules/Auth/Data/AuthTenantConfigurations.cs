@@ -33,6 +33,27 @@ public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>, ITenantEn
     public void Configure(EntityTypeBuilder<AppUser> builder)
     {
         builder.Property(e => e.DisplayName).HasMaxLength(200);
+        builder.Property(e => e.AvatarUrl).HasMaxLength(500);
+        builder.Property(e => e.TimeZone).HasMaxLength(100);
+        builder.Property(e => e.EmailVerificationToken).HasMaxLength(100);
+        builder.Property(e => e.TwoFactorSecret).HasMaxLength(100);
+        builder.Property(e => e.TwoFactorRecoveryCodes).HasMaxLength(1000);
+    }
+}
+
+public class UserSessionConfiguration : IEntityTypeConfiguration<UserSession>, ITenantEntityConfiguration
+{
+    public void Configure(EntityTypeBuilder<UserSession> builder)
+    {
+        builder.ToTable("UserSession");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.UserId).IsRequired();
+        builder.Property(e => e.IpAddress).HasMaxLength(50);
+        builder.Property(e => e.UserAgent).HasMaxLength(500);
+        builder.Property(e => e.DeviceInfo).HasMaxLength(200);
+        builder.HasIndex(e => e.UserId);
+        builder.HasIndex(e => e.ExpiresAt);
+        builder.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
     }
 }
 

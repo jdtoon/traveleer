@@ -17,6 +17,17 @@ public class Tenant : IAuditableEntity
     public ICollection<Invoice> Invoices { get; set; } = [];
     public ICollection<Payment> Payments { get; set; } = [];
 
+    // Trial support
+    public DateTime? TrialEndsAt { get; set; }
+
+    // Custom domain support
+    public string? CustomDomain { get; set; }
+
+    // Soft delete support
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public DateTime? ScheduledDeletionAt { get; set; }
+
     // IAuditableEntity
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

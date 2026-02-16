@@ -1,4 +1,8 @@
 @model BillingViewModel
+@inject ITenantContext TenantContext
+@{
+    var slug = TenantContext.Slug;
+}
 
 <!-- Subscription Card -->
 <div class="card bg-base-100 shadow-sm border border-base-300 mb-6">
@@ -42,16 +46,27 @@
                 }
             </div>
             <div class="flex gap-2">
-                <button class="btn btn-primary btn-sm"
-                        hx-get="@Url.Action("ChangePlanModal", "TenantBilling")"
-                        hx-target="#modal-container">
-                    Change Plan
-                </button>
+                @if (Model.SubscriptionStatus == SubscriptionStatus.Cancelled)
+                {
+                    <button class="btn btn-primary btn-sm"
+                            hx-get="@Url.Action("ChangePlanModal", "TenantBilling", new { slug })"
+                            hx-target="#modal-container">
+                        Reactivate Subscription
+                    </button>
+                }
+                else
+                {
+                    <button class="btn btn-primary btn-sm"
+                            hx-get="@Url.Action("ChangePlanModal", "TenantBilling", new { slug })"
+                            hx-target="#modal-container">
+                        Change Plan
+                    </button>
+                }
                 @if (Model.SubscriptionStatus == SubscriptionStatus.Active
                     || Model.SubscriptionStatus == SubscriptionStatus.NonRenewing)
                 {
                     <button class="btn btn-outline btn-error btn-sm"
-                            hx-get="@Url.Action("CancelModal", "TenantBilling")"
+                            hx-get="@Url.Action("CancelModal", "TenantBilling", new { slug })"
                             hx-target="#modal-container">
                         Cancel
                     </button>
@@ -61,7 +76,7 @@
                         || Model.SubscriptionStatus == SubscriptionStatus.NonRenewing))
                 {
                     <button class="btn btn-outline btn-sm"
-                            hx-post="@Url.Action("ManageSubscription", "TenantBilling")"
+                            hx-post="@Url.Action("ManageSubscription", "TenantBilling", new { slug })"
                             hx-swap="none">
                         Update Card
                     </button>

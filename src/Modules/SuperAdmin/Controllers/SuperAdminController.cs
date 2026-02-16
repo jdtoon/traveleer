@@ -180,7 +180,7 @@ public class SuperAdminController : SwapController
     [HttpGet("/super-admin/backups")]
     public async Task<IActionResult> Backups()
     {
-        var model = await _service.GetBackupStatusAsync();
+        var model = await _service.GetLitestreamStatusAsync();
         return SwapView(model);
     }
 

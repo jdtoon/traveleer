@@ -1,10 +1,14 @@
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Core;
 using saas.Infrastructure.Provisioning;
+using saas.Modules.Registration.Entities;
 using saas.Modules.Registration.Models;
 using saas.Modules.Registration.Services;
 using saas.Shared;
+using saas.Modules.Tenancy.Entities;
 using Swap.Htmx;
 
 namespace saas.Modules.Registration.Controllers;
@@ -70,6 +74,7 @@ public class RegistrationController : SwapController
 
     [HttpPost("/register")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("registration")]
     public async Task<IActionResult> Register([FromForm] RegisterRequest request)
     {
         if (!ModelState.IsValid)
@@ -95,24 +100,110 @@ public class RegistrationController : SwapController
             return PartialView("_RegistrationError", new { Message = "Invalid plan selected" });
         }
 
-        // ── Paid plan: create tenant as PendingSetup, redirect to Paystack ──
+        // Validate slug uniqueness
+        var slugValidation = await _provisioner.ValidateSlugAsync(request.Slug);
+        if (!slugValidation.IsValid)
+        {
+            return PartialView("_RegistrationError", new { Message = slugValidation.ErrorMessage });
+        }
+
+        // Check if there's already a pending (unexpired) registration for this slug
+        var existingPending = await _coreDb.PendingRegistrations
+            .FirstOrDefaultAsync(p => p.Slug == request.Slug.ToLowerInvariant() && !p.IsVerified && p.ExpiresAt > DateTime.UtcNow);
+
+        if (existingPending is not null)
+        {
+            // Resend verification email for existing pending registration
+            await _registrationEmail.SendVerificationEmailAsync(existingPending.Email, existingPending.Slug, existingPending.VerificationToken);
+            _logger.LogInformation("Resent verification email for pending slug {Slug}", request.Slug);
+            return PartialView("_VerifyEmailSent", new { Email = request.Email });
+        }
+
+        // Clean up any expired pending registrations for this slug
+        var expired = await _coreDb.PendingRegistrations
+            .Where(p => p.Slug == request.Slug.ToLowerInvariant() && p.ExpiresAt <= DateTime.UtcNow)
+            .ToListAsync();
+        if (expired.Count > 0)
+        {
+            _coreDb.PendingRegistrations.RemoveRange(expired);
+        }
+
+        // Create a pending registration with a verification token
+        var token = GenerateToken();
+        var pending = new PendingRegistration
+        {
+            Id = Guid.NewGuid(),
+            Slug = request.Slug.ToLowerInvariant(),
+            Email = request.Email,
+            PlanId = request.PlanId,
+            BillingCycle = request.BillingCycle,
+            VerificationToken = token,
+            ExpiresAt = DateTime.UtcNow.AddHours(24),
+            CreatedAt = DateTime.UtcNow
+        };
+        _coreDb.PendingRegistrations.Add(pending);
+        await _coreDb.SaveChangesAsync();
+
+        // Send verification email
+        await _registrationEmail.SendVerificationEmailAsync(request.Email, request.Slug, token);
+
+        _logger.LogInformation("Pending registration created for {Slug}, verification email sent to {Email}", request.Slug, request.Email);
+
+        return PartialView("_VerifyEmailSent", new { Email = request.Email });
+    }
+
+    /// <summary>
+    /// Email verification callback. When the user clicks the verification link,
+    /// this endpoint provisions their tenant (free plan) or redirects to payment (paid plan).
+    /// </summary>
+    [HttpGet("/register/verify")]
+    public async Task<IActionResult> Verify([FromQuery] string? token)
+    {
+        if (string.IsNullOrEmpty(token))
+        {
+            return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                ErrorMessage = "Invalid verification link." });
+        }
+
+        var pending = await _coreDb.PendingRegistrations
+            .FirstOrDefaultAsync(p => p.VerificationToken == token && !p.IsVerified);
+
+        if (pending is null)
+        {
+            return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                ErrorMessage = "This verification link is invalid or has already been used." });
+        }
+
+        if (pending.ExpiresAt < DateTime.UtcNow)
+        {
+            return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                ErrorMessage = "This verification link has expired. Please register again." });
+        }
+
+        // Mark as verified
+        pending.IsVerified = true;
+        await _coreDb.SaveChangesAsync();
+
+        // Look up the plan
+        var plan = await _coreDb.Plans.FindAsync(pending.PlanId);
+        if (plan is null)
+        {
+            return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                ErrorMessage = "The selected plan is no longer available." });
+        }
+
+        // ── Paid plan: create PendingSetup tenant, redirect to payment ──
         if (plan.MonthlyPrice > 0)
         {
-            // Validate slug uniqueness before creating the pending tenant
-            var slugValidation = await _provisioner.ValidateSlugAsync(request.Slug);
-            if (!slugValidation.IsValid)
-            {
-                return PartialView("_RegistrationError", new { Message = slugValidation.ErrorMessage });
-            }
+            var billingCycle = pending.BillingCycle == "Annual" ? BillingCycle.Annual : BillingCycle.Monthly;
 
-            // Create tenant in PendingSetup state (not fully provisioned yet)
             var tenant = new Tenant
             {
                 Id = Guid.NewGuid(),
-                Slug = request.Slug.ToLowerInvariant(),
-                Name = request.Slug,
-                ContactEmail = request.Email,
-                PlanId = request.PlanId,
+                Slug = pending.Slug,
+                Name = pending.Slug,
+                ContactEmail = pending.Email,
+                PlanId = pending.PlanId,
                 Status = TenantStatus.PendingSetup,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -120,87 +211,75 @@ public class RegistrationController : SwapController
             _coreDb.Tenants.Add(tenant);
             await _coreDb.SaveChangesAsync();
 
-            // Initialize payment with billing provider
             var billingResult = await _billingService.InitializeSubscriptionAsync(
                 new SubscriptionInitRequest(
                     tenant.Id,
-                    request.Email,
-                    request.PlanId,
-                    BillingCycle.Monthly));
+                    pending.Email,
+                    pending.PlanId,
+                    billingCycle));
 
             if (!billingResult.Success)
             {
-                _logger.LogError("Billing initialization failed for {Slug}: {Error}",
-                    request.Slug, billingResult.Error);
-
-                // Clean up the pending tenant
+                _logger.LogError("Billing initialization failed for {Slug}: {Error}", pending.Slug, billingResult.Error);
                 _coreDb.Tenants.Remove(tenant);
                 await _coreDb.SaveChangesAsync();
 
-                return PartialView("_RegistrationError", new
-                {
-                    Message = billingResult.Error ?? "Payment initialization failed. Please try again."
-                });
+                return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                    ErrorMessage = billingResult.Error ?? "Payment initialization failed. Please try again." });
             }
 
             // Mock/dev billing: no redirect needed — provision immediately
             if (!billingResult.RequiresRedirect)
             {
-                var provisionResult = await _provisioner.ProvisionTenantAsync(request.Slug, request.Email, request.PlanId);
+                var provisionResult = await _provisioner.ProvisionTenantAsync(pending.Slug, pending.Email, pending.PlanId);
                 if (!provisionResult.Success)
                 {
-                    _logger.LogWarning("Registration failed for {Slug}: {Error}", request.Slug, provisionResult.ErrorMessage);
-                    return PartialView("_RegistrationError", new { Message = provisionResult.ErrorMessage });
+                    return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                        ErrorMessage = provisionResult.ErrorMessage });
                 }
-
-                await _registrationEmail.SendWelcomeEmailAsync(request.Email, request.Slug);
-                _logger.LogInformation("Successfully registered tenant {Slug} (mock billing, no redirect)", request.Slug);
-                return PartialView("_RegistrationSuccess", new { Slug = request.Slug, Email = request.Email });
+                await _registrationEmail.SendWelcomeEmailAsync(pending.Email, pending.Slug);
+                _logger.LogInformation("Verified and provisioned paid tenant {Slug} (mock billing)", pending.Slug);
+                return SwapView("VerifyResult", new { Success = true, Slug = pending.Slug, Email = pending.Email,
+                    ErrorMessage = (string?)null });
             }
 
             // Real billing: redirect to payment gateway
             if (string.IsNullOrEmpty(billingResult.PaymentUrl))
             {
-                _logger.LogError("Billing returned no PaymentUrl for {Slug}", request.Slug);
-
                 _coreDb.Tenants.Remove(tenant);
                 await _coreDb.SaveChangesAsync();
-
-                return PartialView("_RegistrationError", new
-                {
-                    Message = "Payment initialization failed. Please try again."
-                });
+                return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                    ErrorMessage = "Payment initialization failed. Please try again." });
             }
 
-            _logger.LogInformation(
-                "Redirecting tenant {Slug} to Paystack checkout: {Url}",
-                request.Slug, billingResult.PaymentUrl);
-
-            // For HTMX requests, use HX-Redirect header (full page navigation).
-            // For regular form submits, use a standard redirect.
-            if (Request.Headers.ContainsKey("HX-Request"))
-            {
-                Response.Headers["HX-Redirect"] = billingResult.PaymentUrl;
-                return Ok();
-            }
+            _logger.LogInformation("Email verified for {Slug}, redirecting to payment: {Url}", pending.Slug, billingResult.PaymentUrl);
             return Redirect(billingResult.PaymentUrl);
         }
 
         // ── Free plan: provision immediately ──
-        var result = await _provisioner.ProvisionTenantAsync(request.Slug, request.Email, request.PlanId);
+        var result = await _provisioner.ProvisionTenantAsync(pending.Slug, pending.Email, pending.PlanId);
 
         if (!result.Success)
         {
-            _logger.LogWarning("Registration failed for {Slug}: {Error}", request.Slug, result.ErrorMessage);
-            return PartialView("_RegistrationError", new { Message = result.ErrorMessage });
+            _logger.LogWarning("Post-verification provisioning failed for {Slug}: {Error}", pending.Slug, result.ErrorMessage);
+            return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                ErrorMessage = result.ErrorMessage });
         }
 
-        // Delegate email to dedicated service (swallows errors internally)
-        await _registrationEmail.SendWelcomeEmailAsync(request.Email, request.Slug);
+        // Set 14-day trial on free plan tenants
+        var freeTenant = await _coreDb.Tenants.FirstOrDefaultAsync(t => t.Slug == pending.Slug);
+        if (freeTenant is not null)
+        {
+            freeTenant.TrialEndsAt = DateTime.UtcNow.AddDays(14);
+            await _coreDb.SaveChangesAsync();
+        }
 
-        _logger.LogInformation("Successfully registered tenant {Slug} with admin {Email}", request.Slug, request.Email);
+        await _registrationEmail.SendWelcomeEmailAsync(pending.Email, pending.Slug);
 
-        return PartialView("_RegistrationSuccess", new { Slug = request.Slug, Email = request.Email });
+        _logger.LogInformation("Email verified and tenant {Slug} provisioned successfully", pending.Slug);
+
+        return SwapView("VerifyResult", new { Success = true, Slug = pending.Slug, Email = pending.Email,
+            ErrorMessage = (string?)null });
     }
 
     /// <summary>
@@ -260,5 +339,14 @@ public class RegistrationController : SwapController
 
         return SwapView("Callback", new { Success = true, Slug = tenant.Slug, Email = tenant.ContactEmail,
             ErrorMessage = (string?)null });
+    }
+
+    private static string GenerateToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        return Convert.ToBase64String(bytes)
+            .Replace("+", "-")
+            .Replace("/", "_")
+            .TrimEnd('=');
     }
 }

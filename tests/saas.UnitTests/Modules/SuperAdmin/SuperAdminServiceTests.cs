@@ -60,7 +60,7 @@ public class SuperAdminServiceTests : IAsyncLifetime
         await _coreDb.SaveChangesAsync();
 
         // Use a mock service provider — we won't test GetTenantUserCountAsync (needs real tenant DB)
-        _service = new SuperAdminService(_coreDb, null!, new MockBillingForAdmin(), new MockBackupStatusService());
+        _service = new SuperAdminService(_coreDb, null!, new MockBillingForAdmin(), new MockLitestreamStatusService());
     }
 
     private class MockBillingForAdmin : IBillingService
@@ -78,10 +78,10 @@ public class SuperAdminServiceTests : IAsyncLifetime
         public Task ReconcileSubscriptionsAsync() => Task.CompletedTask;
     }
 
-    private class MockBackupStatusService : IBackupStatusService
+    private class MockLitestreamStatusService : ILitestreamStatusService
     {
-        public Task<BackupStatusModel> GetStatusAsync(CancellationToken ct = default)
-            => Task.FromResult(new BackupStatusModel());
+        public Task<LitestreamStatusModel> GetStatusAsync(CancellationToken ct = default)
+            => Task.FromResult(new LitestreamStatusModel());
     }
 
     public async Task DisposeAsync()

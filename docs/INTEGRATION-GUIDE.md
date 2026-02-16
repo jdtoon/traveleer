@@ -14,7 +14,7 @@ dotnet run
 - Opens at `https://localhost:5001` (or per `launchSettings.json`)
 - Uses `appsettings.Development.json` overrides
 - All providers default to mocks: `Billing=Mock`, `Email=Console`, `Turnstile=Mock`
-- `FeatureFlags:AllEnabledLocally=false` — features are gated by plan (set to `true` via env var to bypass for debugging)
+- Features are gated by tenant plan — controlled via `[RequireFeature]` and `IFeatureService`
 - Dev seed creates a `demo` tenant if `DevSeed:Enabled=true`
 
 ---
@@ -192,7 +192,12 @@ public class MyController : SwapController
 | `Storage__R2AccessKey` | — | R2 access key |
 | `Storage__R2SecretKey` | — | R2 secret key |
 | `Storage__R2PublicUrl` | — | R2 public URL for assets |
-| `FeatureFlags__AllEnabledLocally` | `false` | Bypass plan-based feature checks |
+
 | `DevSeed__Enabled` | `false` | Auto-create demo tenant |
+| `Litestream__Enabled` | `false` | Enable Litestream backup config sync |
+| `Litestream__R2Bucket` | `saas-backups` | R2 bucket for Litestream backups |
+| `Litestream__R2Endpoint` | — | R2 endpoint URL |
+| `Messaging__Provider` | `InMemory` | `InMemory` or `RabbitMQ` |
+| `Caching__Provider` | `Memory` | `Memory` or `Redis` |
+| `Hangfire__Storage` | `InMemory` | `InMemory` or `SQLite` |
 | `HealthCheck__AllowedIPs` | _(empty)_ | Comma-separated IPs for `/health` |
-| `HealthCheck__AllowedIPs` | _(empty)_ | Comma-separated IPs |

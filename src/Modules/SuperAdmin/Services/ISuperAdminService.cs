@@ -27,8 +27,8 @@ public interface ISuperAdminService
     Task<TenantFeatureOverrideModel?> GetTenantFeatureOverrideAsync(Guid tenantId, Guid featureId);
     Task SaveTenantFeatureOverrideAsync(TenantFeatureOverrideModel model);
 
-    // Backup observability
-    Task<BackupStatusModel> GetBackupStatusAsync();
+    // Litestream observability
+    Task<LitestreamStatusModel> GetLitestreamStatusAsync();
 }
 
 public class SuperAdminDashboardModel
@@ -47,6 +47,7 @@ public class TenantListItem
     public string ContactEmail { get; set; } = string.Empty;
     public TenantStatus Status { get; set; }
     public string PlanName { get; set; } = string.Empty;
+    public SubscriptionStatus? SubscriptionStatus { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 

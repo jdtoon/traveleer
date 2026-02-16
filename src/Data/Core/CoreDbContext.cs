@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using saas.Modules.Auth.Entities;
 using saas.Modules.Billing.Entities;
 using saas.Modules.FeatureFlags.Entities;
+using saas.Modules.Registration.Entities;
 using saas.Modules.SuperAdmin.Entities;
 using Tenancy = saas.Modules.Tenancy.Entities;
 
@@ -21,6 +22,8 @@ public class CoreDbContext : DbContext
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SuperAdmin> SuperAdmins => Set<SuperAdmin>();
     public DbSet<MagicLinkToken> MagicLinkTokens => Set<MagicLinkToken>();
+    public DbSet<UsageRecord> UsageRecords => Set<UsageRecord>();
+    public DbSet<PendingRegistration> PendingRegistrations => Set<PendingRegistration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

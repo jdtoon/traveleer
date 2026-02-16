@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using saas.Data;
 using saas.Data.Core;
 using saas.Data.Tenant;
+using saas.Infrastructure.Services;
+using saas.Modules.TenantAdmin.Entities;
 using saas.Shared;
 
 namespace saas.Modules.TenantAdmin.Services;
@@ -13,20 +15,32 @@ public class TenantAdminService : ITenantAdminService
     private readonly CoreDbContext _coreDb;
     private readonly UserManager<AppUser> _userManager;
     private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _templateService;
     private readonly ITenantContext _tenantContext;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IFeatureService _featureService;
+    private readonly IEnumerable<IModule> _modules;
 
     public TenantAdminService(
         TenantDbContext db,
         CoreDbContext coreDb,
         UserManager<AppUser> userManager,
         IEmailService emailService,
-        ITenantContext tenantContext)
+        IEmailTemplateService templateService,
+        ITenantContext tenantContext,
+        IHttpContextAccessor httpContextAccessor,
+        IFeatureService featureService,
+        IEnumerable<IModule> modules)
     {
         _db = db;
         _coreDb = coreDb;
         _userManager = userManager;
         _emailService = emailService;
+        _templateService = templateService;
         _tenantContext = tenantContext;
+        _httpContextAccessor = httpContextAccessor;
+        _featureService = featureService;
+        _modules = modules;
     }
 
     // ── Users ────────────────────────────────────────────────────────────────
@@ -81,34 +95,56 @@ public class TenantAdminService : ITenantAdminService
         if (existing is not null)
             return new InviteUserResult(false, "A user with this email already exists.");
 
-        // Create AppUser in tenant DB
-        var user = new AppUser
-        {
-            UserName = email,
-            Email = email,
-            EmailConfirmed = true,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
+        // Check for existing pending invitation
+        var existingInvite = await _db.Set<TeamInvitation>()
+            .AnyAsync(i => i.Email == email && i.Status == InvitationStatus.Pending && i.ExpiresAt > DateTime.UtcNow);
+        if (existingInvite)
+            return new InviteUserResult(false, "An invitation is already pending for this email.");
 
-        var result = await _userManager.CreateAsync(user);
-        if (!result.Succeeded)
-            return new InviteUserResult(false, "Failed to create user.");
-
-        // Assign role if specified
+        string? roleName = null;
         if (!string.IsNullOrEmpty(roleId))
         {
             var role = await _db.Roles.FindAsync(roleId);
-            if (role?.Name is not null)
-            {
-                await _userManager.AddToRoleAsync(user, role.Name);
-            }
+            roleName = role?.Name;
         }
 
-        // Send magic link invitation
+        var token = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+
+        var invitation = new TeamInvitation
+        {
+            Id = Guid.NewGuid(),
+            Email = email.Trim(),
+            RoleId = roleId,
+            RoleName = roleName,
+            Token = token,
+            InvitedByUserId = string.Empty,
+            InvitedByEmail = null,
+            Status = InvitationStatus.Pending,
+            ExpiresAt = DateTime.UtcNow.AddDays(7)
+        };
+
+        _db.Set<TeamInvitation>().Add(invitation);
+        await _db.SaveChangesAsync();
+
+        // Send invitation email using TeamInvitation template
         var slug = _tenantContext.Slug;
-        var loginUrl = $"/{slug}/login";
-        await _emailService.SendMagicLinkAsync(email, loginUrl);
+        var request = _httpContextAccessor.HttpContext?.Request;
+        var baseUrl = request is not null ? $"{request.Scheme}://{request.Host}" : "";
+        var acceptUrl = $"{baseUrl}/{slug}/admin/invitation/accept?token={Uri.EscapeDataString(token)}";
+
+        var htmlBody = _templateService.Render("TeamInvitation", new Dictionary<string, string>
+        {
+            ["InviterEmail"] = "A team member",
+            ["TenantName"] = slug,
+            ["RoleName"] = "Member",
+            ["AcceptUrl"] = acceptUrl,
+            ["ExpiresAt"] = invitation.ExpiresAt.ToString("MMMM d, yyyy")
+        });
+
+        await _emailService.SendAsync(new EmailMessage(
+            email,
+            $"You've been invited to join {slug}",
+            htmlBody));
 
         return new InviteUserResult(true);
     }
@@ -155,9 +191,32 @@ public class TenantAdminService : ITenantAdminService
 
     public async Task<List<Permission>> GetPermissionsAsync()
     {
-        return await _db.Permissions
+        var allPermissions = await _db.Permissions
             .OrderBy(p => p.Group).ThenBy(p => p.SortOrder)
             .ToListAsync();
+
+        // Build set of permission groups that belong to modules with disabled features
+        var enabledFeatures = await _featureService.GetEnabledFeaturesAsync();
+        var enabledSet = new HashSet<string>(enabledFeatures, StringComparer.OrdinalIgnoreCase);
+
+        var hiddenGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var module in _modules)
+        {
+            // Modules with no features → always show their permissions
+            if (module.Features.Count == 0) continue;
+
+            // If none of the module's features are enabled, hide its permission groups
+            var hasAnyEnabled = module.Features.Any(f => enabledSet.Contains(f.Key));
+            if (!hasAnyEnabled)
+            {
+                foreach (var perm in module.Permissions)
+                    hiddenGroups.Add(perm.Group);
+            }
+        }
+
+        return allPermissions
+            .Where(p => !hiddenGroups.Contains(p.Group))
+            .ToList();
     }
 
     public async Task<bool> AssignRoleAsync(string userId, string roleId)

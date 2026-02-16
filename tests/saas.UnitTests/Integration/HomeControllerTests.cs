@@ -16,8 +16,8 @@ public class HomeControllerTests : IClassFixture<WebApplicationFactory<Program>>
             {
                 configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Backup:AutoRestoreEnabled"] = "false",
-                    ["Backup:KeyBackupEnabled"] = "false"
+                    ["Litestream:AutoRestoreEnabled"] = "false",
+                    ["Litestream:KeyBackupEnabled"] = "false"
                 });
             });
         });

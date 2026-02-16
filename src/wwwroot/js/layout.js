@@ -132,3 +132,26 @@ function resetLoadingButtons() {
         }
     });
 })();
+
+// ── Auto-dismiss toast alerts ────────────────────────────────────────────
+(function () {
+    var toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) return;
+
+    var observer = new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+            m.addedNodes.forEach(function (node) {
+                if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('alert')) {
+                    // Auto-dismiss after 5 seconds
+                    setTimeout(function () {
+                        node.style.transition = 'opacity 0.3s ease-out';
+                        node.style.opacity = '0';
+                        setTimeout(function () { node.remove(); }, 300);
+                    }, 5000);
+                }
+            });
+        });
+    });
+
+    observer.observe(toastContainer, { childList: true });
+})();

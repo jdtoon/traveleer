@@ -147,7 +147,7 @@ public class LitestreamConfigSyncServiceTests : IDisposable
             })
             .Build();
 
-        var options = Options.Create(new BackupOptions
+        var options = Options.Create(new LitestreamOptions
         {
             LitestreamConfigPath = configPath,
             SentinelPath = sentinelPath,
@@ -187,7 +187,7 @@ public class LitestreamConfigSyncServiceTests : IDisposable
             })
             .Build();
 
-        var options = Options.Create(new BackupOptions
+        var options = Options.Create(new LitestreamOptions
         {
             LitestreamConfigPath = configPath,
             SentinelPath = sentinelPath,

@@ -320,6 +320,48 @@ namespace saas.Data.Core.Migrations
                     b.ToTable("Subscriptions");
                 });
 
+            modelBuilder.Entity("saas.Modules.Billing.Entities.UsageRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Metric")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("PeriodEnd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Quantity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Metric", "PeriodStart");
+
+                    b.ToTable("UsageRecords");
+                });
+
             modelBuilder.Entity("saas.Modules.FeatureFlags.Entities.Feature", b =>
                 {
                     b.Property<Guid>("Id")
@@ -433,6 +475,48 @@ namespace saas.Data.Core.Migrations
                     b.ToTable("TenantFeatureOverrides");
                 });
 
+            modelBuilder.Entity("saas.Modules.Registration.Entities.PendingRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BillingCycle")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VerificationToken")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PendingRegistrations");
+                });
+
             modelBuilder.Entity("saas.Modules.SuperAdmin.Entities.SuperAdmin", b =>
                 {
                     b.Property<Guid>("Id")
@@ -491,9 +575,18 @@ namespace saas.Data.Core.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CustomDomain")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("DatabaseName")
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -501,6 +594,9 @@ namespace saas.Data.Core.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("PlanId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ScheduledDeletionAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Slug")
@@ -511,6 +607,9 @@ namespace saas.Data.Core.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("TrialEndsAt")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("UpdatedAt")

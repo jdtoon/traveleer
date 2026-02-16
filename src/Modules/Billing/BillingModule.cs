@@ -47,5 +47,8 @@ public class BillingModule : IModule
 
         // Invoice generator is used by both providers
         services.AddScoped<InvoiceGenerator>();
+
+        // Usage metering
+        services.AddScoped<IUsageMeteringService, UsageMeteringService>();
     }
 }

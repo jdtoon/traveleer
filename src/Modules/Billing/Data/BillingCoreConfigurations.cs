@@ -63,3 +63,13 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>, ICoreEnti
         builder.Property(e => e.GatewayResponse).HasMaxLength(4000);
     }
 }
+
+public class UsageRecordConfiguration : IEntityTypeConfiguration<UsageRecord>, ICoreEntityConfiguration
+{
+    public void Configure(EntityTypeBuilder<UsageRecord> builder)
+    {
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Metric).IsRequired().HasMaxLength(100);
+        builder.HasIndex(e => new { e.TenantId, e.Metric, e.PeriodStart });
+    }
+}

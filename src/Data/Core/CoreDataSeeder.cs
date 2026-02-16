@@ -16,7 +16,11 @@ public static class CoreDataSeeder
     public static async Task SeedAsync(CoreDbContext db, IConfiguration configuration, IReadOnlyList<IModule> modules)
     {
         if (await db.Plans.AnyAsync())
+        {
+            // Plans exist — run incremental sync for new features/permissions
+            await SyncNewFeaturesAsync(db, modules);
             return;
+        }
 
         // 1. Seed Plans
         var plans = new[]
@@ -114,6 +118,37 @@ public static class CoreDataSeeder
             IsActive = true
         });
 
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Incrementally syncs new features from IModule definitions into the database.
+    /// Runs on every startup after the initial seed to pick up newly added module features.
+    /// </summary>
+    private static async Task SyncNewFeaturesAsync(CoreDbContext db, IReadOnlyList<IModule> modules)
+    {
+        var existingFeatureKeys = await db.Features.Select(f => f.Key).ToListAsync();
+        var existingKeySet = new HashSet<string>(existingFeatureKeys, StringComparer.OrdinalIgnoreCase);
+
+        var moduleFeatures = modules.SelectMany(m => m.Features.Select(mf => new { Module = m, Feature = mf })).ToList();
+        var newModuleFeatures = moduleFeatures.Where(x => !existingKeySet.Contains(x.Feature.Key)).ToList();
+
+        if (newModuleFeatures.Count == 0)
+            return;
+
+        // Add new features
+        var newFeatures = newModuleFeatures.Select(x => new Feature
+        {
+            Id = Guid.NewGuid(),
+            Key = x.Feature.Key,
+            Name = x.Feature.Name,
+            Module = x.Module.Name,
+            Description = x.Feature.Description,
+            IsGlobal = x.Feature.IsGlobal,
+            IsEnabled = true
+        }).ToList();
+
+        db.Features.AddRange(newFeatures);
         await db.SaveChangesAsync();
     }
 }

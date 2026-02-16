@@ -35,7 +35,7 @@
             <button id="cancel-confirm-btn"
                     class="btn btn-error"
                     disabled
-                    hx-post="@Url.Action("Cancel", "TenantBilling")"
+                    hx-post="@Url.Action("Cancel", "TenantBilling", new { slug = ViewContext.RouteData.Values["slug"] })"
                     hx-include="#cancel-confirm-input"
                     hx-target="#modal-container"
                     hx-disabled-elt="this">

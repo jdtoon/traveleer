@@ -8,11 +8,13 @@ namespace saas.Tests.Infrastructure;
 
 public class SmtpEmailServiceTests
 {
+    private static readonly IEmailTemplateService _stubTemplateService = new StubEmailTemplateService();
+
     [Fact]
     public async Task SendAsync_LogsError_WhenFromAddressEmpty()
     {
         var options = Options.Create(new EmailOptions { FromAddress = "" });
-        var service = new SmtpEmailService(options, NullLogger<SmtpEmailService>.Instance);
+        var service = new SmtpEmailService(options, _stubTemplateService, NullLogger<SmtpEmailService>.Instance);
 
         // Should not throw — just logs an error and returns
         await service.SendAsync(new EmailMessage("test@test.com", "Subject", "<p>Hello</p>"));
@@ -23,8 +25,14 @@ public class SmtpEmailServiceTests
     {
         // With an empty FromAddress, SendAsync short-circuits safely
         var options = Options.Create(new EmailOptions { FromAddress = "" });
-        var service = new SmtpEmailService(options, NullLogger<SmtpEmailService>.Instance);
+        var service = new SmtpEmailService(options, _stubTemplateService, NullLogger<SmtpEmailService>.Instance);
 
         await service.SendMagicLinkAsync("user@test.com", "https://example.com/magic");
+    }
+
+    private class StubEmailTemplateService : IEmailTemplateService
+    {
+        public string Render(string templateName, Dictionary<string, string> variables)
+            => $"<html>{templateName}</html>";
     }
 }

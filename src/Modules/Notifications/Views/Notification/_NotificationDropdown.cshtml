@@ -1,0 +1,81 @@
+@model List<saas.Modules.Notifications.Entities.Notification>
+@{
+    var unreadCount = (int)(ViewData["UnreadCount"] ?? 0);
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<div class="dropdown dropdown-end">
+    <div tabindex="0" role="button" class="btn btn-ghost btn-sm relative"
+         hx-get="/@slug/notifications/dropdown"
+         hx-trigger="click"
+         hx-target="#notification-panel"
+         hx-swap="innerHTML">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+        </svg>
+        @if (unreadCount > 0)
+        {
+            <span class="badge badge-primary badge-xs absolute -top-1 -right-1"
+                  hx-get="/@slug/notifications/count"
+                  hx-trigger="every 30s"
+                  hx-swap="innerHTML">@unreadCount</span>
+        }
+    </div>
+    <div id="notification-panel" tabindex="0"
+         class="dropdown-content z-50 card card-compact w-80 bg-base-200 shadow-lg">
+        <div class="card-body">
+            <div class="flex items-center justify-between mb-2">
+                <span class="font-semibold text-sm">Notifications</span>
+                @if (unreadCount > 0)
+                {
+                    <button hx-post="/@slug/notifications/read-all"
+                            hx-target="#notification-panel"
+                            hx-swap="innerHTML"
+                            class="btn btn-ghost btn-xs">Mark all read</button>
+                }
+            </div>
+            @if (Model.Count == 0)
+            {
+                <p class="text-center text-base-content/50 text-sm py-4">No notifications</p>
+            }
+            else
+            {
+                <div class="space-y-1 max-h-64 overflow-y-auto">
+                    @foreach (var n in Model)
+                    {
+                        <div class="p-2 rounded-lg hover:bg-base-300 cursor-pointer @(n.IsRead ? "opacity-60" : "")"
+                             @if (!n.IsRead) {
+                                 <text>hx-post="/@slug/notifications/@n.Id/read" hx-swap="none"</text>
+                             }
+                             @if (!string.IsNullOrEmpty(n.Url)) {
+                                 <text>onclick="window.location='@n.Url'"</text>
+                             }>
+                            <div class="flex items-start gap-2">
+                                @{
+                                    var iconClass = n.Type switch {
+                                        saas.Modules.Notifications.Entities.NotificationType.Success => "text-success",
+                                        saas.Modules.Notifications.Entities.NotificationType.Warning => "text-warning",
+                                        saas.Modules.Notifications.Entities.NotificationType.Error => "text-error",
+                                        _ => "text-info"
+                                    };
+                                }
+                                <span class="@iconClass text-lg mt-0.5">●</span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-medium truncate">@n.Title</p>
+                                    @if (!string.IsNullOrEmpty(n.Message))
+                                    {
+                                        <p class="text-xs text-base-content/60 line-clamp-2">@n.Message</p>
+                                    }
+                                    <p class="text-xs text-base-content/40 mt-0.5">@n.CreatedAt.ToString("MMM d, HH:mm")</p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="mt-2 text-center">
+                    <a href="/@slug/notifications" class="link link-primary text-xs">View all</a>
+                </div>
+            }
+        </div>
+    </div>
+</div>

@@ -1,0 +1,36 @@
+@model saas.Modules.TenantAdmin.Entities.TeamInvitation?
+@{
+    ViewData["Title"] = "Accept Invitation";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Accept Invitation</title>
+    <link rel="stylesheet" href="~/css/app.css" />
+</head>
+<body class="min-h-screen flex items-center justify-center bg-base-100">
+    <div class="card w-full max-w-md bg-base-200 shadow-lg">
+        <div class="card-body text-center">
+            @if (ViewData["Error"] is string error)
+            {
+                <h2 class="card-title justify-center text-error">Invitation Error</h2>
+                <p class="text-base-content/60">@error</p>
+                <div class="mt-4">
+                    <a href="/" class="btn btn-primary">Go Home</a>
+                </div>
+            }
+            else if (Model is not null)
+            {
+                <h2 class="card-title justify-center">Welcome!</h2>
+                <p class="text-base-content/60">
+                    Your account has been created. You can now log in.
+                </p>
+            }
+        </div>
+    </div>
+</body>
+</html>

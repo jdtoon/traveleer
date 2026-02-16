@@ -1,0 +1,61 @@
+/* ============================================================
+   Tailwind CSS v4 + DaisyUI v5 Entry Point
+   Compiled by @tailwindcss/cli at build time
+   ============================================================ */
+
+@import "tailwindcss";
+@import "../../node_modules/daisyui/daisyui.css";
+
+/* ── Custom Utility Styles ─────────────────────────────────── */
+
+/* Swap.Htmx navigation cursor */
+swap-nav {
+    cursor: pointer;
+}
+
+/* Loading state for HTMX requests */
+[data-loading] {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* ── Mobile / Touch Optimizations ──────────────────────────── */
+
+/* Prevent 300ms click delay on touch devices */
+html {
+    touch-action: manipulation;
+}
+
+/* Ensure tap targets are at least 44px */
+@media (max-width: 768px) {
+    .btn-sm {
+        min-height: 2.75rem;
+    }
+    .menu a, .menu button {
+        min-height: 2.75rem;
+    }
+}
+
+/* Safe area insets for mobile notch/bottom bar */
+body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ── Accessibility ─────────────────────────────────────────── */
+
+/* Visible focus rings for keyboard navigation */
+*:focus-visible {
+    outline: 2px solid oklch(var(--p));
+    outline-offset: 2px;
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

@@ -1,5 +1,6 @@
 using System.Globalization;
 using saas.Infrastructure;
+using saas.Infrastructure.Messaging;
 using saas.Data.Core;
 using saas.Data.Audit;
 using saas.Infrastructure.HealthChecks;
@@ -13,13 +14,37 @@ CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 var builder = WebApplication.CreateBuilder(args);
 
 // =============================================================================
+// STRUCTURED LOGGING (Serilog)
+// =============================================================================
+
+builder.AddSerilogConfig();
+
+// =============================================================================
 // INFRASTRUCTURE SERVICES
 // =============================================================================
 
 builder.Services.AddDataProtectionConfig(builder.Environment);
 builder.Services.AddCompressionConfig();
 builder.Services.AddForwardedHeadersConfig();
-builder.Services.AddRateLimitingConfig();
+builder.Services.AddRateLimitingConfig(builder.Configuration);
+
+// =============================================================================
+// MESSAGING (MassTransit)
+// =============================================================================
+
+builder.Services.AddMessagingConfig(builder.Configuration);
+
+// =============================================================================
+// CACHING
+// =============================================================================
+
+builder.Services.AddCachingConfig(builder.Configuration);
+
+// =============================================================================
+// JOB SCHEDULING (Hangfire)
+// =============================================================================
+
+builder.Services.AddSchedulingConfig(builder.Configuration);
 
 // =============================================================================
 // DATABASE & CORE SERVICES
@@ -29,8 +54,9 @@ builder.Services.AddDatabaseConfig(builder.Configuration);
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<CoreDbContext>("core-database")
     .AddCheck<TenantDirectoryHealthCheck>("tenant-directory")
-    .AddCheck<BackupReadinessHealthCheck>("backup-readiness");
+    .AddCheck<LitestreamReadinessHealthCheck>("litestream-readiness");
 builder.Services.AddCoreServices(builder.Configuration);
+builder.Services.AddSingleton<saas.Infrastructure.Services.IEmailTemplateService, saas.Infrastructure.Services.EmailTemplateService>();
 
 // =============================================================================
 // DOMAIN MODULES
@@ -49,7 +75,8 @@ var modules = new IModule[]
     new saas.Modules.Notes.NotesModule(),
     new saas.Modules.Audit.AuditModule(),
     new saas.Modules.TenantAdmin.TenantAdminModule(),
-    new saas.Modules.Backup.BackupModule()
+    new saas.Modules.Litestream.LitestreamModule(),
+    new saas.Modules.Notifications.NotificationsModule()
 };
 
 foreach (var module in modules)
@@ -77,6 +104,10 @@ var publicRoutePrefixes = modules
     .SelectMany(m => m.PublicRoutePrefixes)
     .Distinct(StringComparer.OrdinalIgnoreCase)
     .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+// System-level reserved prefixes — never treated as tenant slugs
+foreach (var reserved in new[] { "api", "swagger", ".well-known", "assets", "static", "webhook", "hangfire", "health", "favicon.svg", "manifest.json", "css", "js", "lib", "errors" })
+    publicRoutePrefixes.Add(reserved);
 
 // =============================================================================
 // MVC & WEB
@@ -110,6 +141,8 @@ foreach (var module in modules)
 
 app.ConfigurePipeline();
 app.MapEndpoints();
+app.UseSchedulingDashboard();
+app.RegisterRecurringJobs();
 
 app.Run();
 

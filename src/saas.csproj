@@ -27,7 +27,28 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.0" />
     <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" Version="4.*" />
+    <PackageReference Include="MassTransit" Version="8.*" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.*" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.*" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.*" />
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.*" />
+    <PackageReference Include="Serilog.Sinks.Seq" Version="8.*" />
+    <PackageReference Include="Hangfire.Core" Version="1.*" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.*" />
+    <PackageReference Include="Hangfire.InMemory" Version="1.*" />
+    <PackageReference Include="Hangfire.Storage.SQLite" Version="0.4.*" />
+    <PackageReference Include="Otp.NET" Version="1.*" />
     <PackageReference Include="Swap.Htmx" Version="*" />
   </ItemGroup>
+
+  <!-- Tailwind CSS build step: npm install + compile CSS before dotnet build -->
+  <Target Name="NpmInstall" BeforeTargets="BeforeBuild" Condition="Exists('package.json') And '$(SkipTailwindBuild)' != 'true'">
+    <Exec Command="npm install --prefer-offline --no-audit" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
+
+  <Target Name="TailwindBuild" AfterTargets="NpmInstall" BeforeTargets="BeforeBuild" Condition="Exists('package.json') And '$(SkipTailwindBuild)' != 'true'">
+    <Exec Command="npm run css:build" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
 
 </Project>

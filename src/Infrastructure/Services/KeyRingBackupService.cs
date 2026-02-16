@@ -7,7 +7,7 @@ namespace saas.Infrastructure.Services;
 public class KeyRingBackupService : BackgroundService
 {
     private readonly IStorageService _storageService;
-    private readonly BackupOptions _options;
+    private readonly LitestreamOptions _options;
     private readonly ILogger<KeyRingBackupService> _logger;
     private readonly string _keysDirectory;
     private readonly TimeSpan _interval;
@@ -15,7 +15,7 @@ public class KeyRingBackupService : BackgroundService
     public KeyRingBackupService(
         IWebHostEnvironment environment,
         IStorageService storageService,
-        IOptions<BackupOptions> options,
+        IOptions<LitestreamOptions> options,
         ILogger<KeyRingBackupService> logger)
     {
         _storageService = storageService;

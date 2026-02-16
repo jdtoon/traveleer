@@ -2,12 +2,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Core;
+using saas.Modules.TenantAdmin.Models;
 using saas.Shared;
 using Swap.Htmx;
 
 namespace saas.Modules.TenantAdmin.Controllers;
 
 [Authorize(Policy = "TenantAdmin")]
+[Route("{slug}/admin/billing")]
 public class TenantBillingController : SwapController
 {
     private readonly CoreDbContext _coreDb;
@@ -24,7 +26,7 @@ public class TenantBillingController : SwapController
         _tenantContext = tenantContext;
     }
 
-    [HttpGet]
+    [HttpGet("")]
     public async Task<IActionResult> Index()
     {
         var model = await GetBillingModelAsync();
@@ -32,7 +34,7 @@ public class TenantBillingController : SwapController
         return SwapView(model);
     }
 
-    [HttpGet]
+    [HttpGet("change-plan-modal")]
     public async Task<IActionResult> ChangePlanModal()
     {
         var plans = await _coreDb.Plans
@@ -53,7 +55,7 @@ public class TenantBillingController : SwapController
         });
     }
 
-    [HttpPost]
+    [HttpPost("preview-plan-change")]
     public async Task<IActionResult> PreviewPlanChange([FromForm] Guid planId)
     {
         var tenantId = _tenantContext.TenantId;
@@ -74,7 +76,7 @@ public class TenantBillingController : SwapController
         });
     }
 
-    [HttpPost]
+    [HttpPost("change-plan")]
     public async Task<IActionResult> ChangePlan([FromForm] Guid planId)
     {
         var tenantId = _tenantContext.TenantId;
@@ -109,7 +111,7 @@ public class TenantBillingController : SwapController
     /// Callback endpoint after Paystack payment for plan change.
     /// Full-page GET request from Paystack redirect.
     /// </summary>
-    [HttpGet]
+    [HttpGet("callback")]
     public async Task<IActionResult> Callback([FromQuery] string? reference, [FromQuery] string? trxref)
     {
         var ref_ = reference ?? trxref;
@@ -139,7 +141,7 @@ public class TenantBillingController : SwapController
             ErrorMessage = (string?)null });
     }
 
-    [HttpGet]
+    [HttpGet("cancel-modal")]
     public IActionResult CancelModal()
     {
         var tenantName = _tenantContext.TenantName ?? "this workspace";
@@ -149,7 +151,7 @@ public class TenantBillingController : SwapController
         });
     }
 
-    [HttpPost]
+    [HttpPost("cancel")]
     public async Task<IActionResult> Cancel([FromForm] string confirmName)
     {
         var tenantId = _tenantContext.TenantId;
@@ -179,7 +181,7 @@ public class TenantBillingController : SwapController
             .Build();
     }
 
-    [HttpPost]
+    [HttpPost("manage-subscription")]
     public async Task<IActionResult> ManageSubscription()
     {
         var tenantId = _tenantContext.TenantId;
@@ -225,39 +227,8 @@ public class TenantBillingController : SwapController
             BillingCycle = tenant.ActiveSubscription?.BillingCycle,
             NextBillingDate = tenant.ActiveSubscription?.NextBillingDate,
             CancelledAt = tenant.ActiveSubscription?.CancelledAt,
-            HasPaystackSubscription = tenant.ActiveSubscription?.PaystackSubscriptionCode?.StartsWith("SUB_") == true,
+            HasPaystackSubscription = !string.IsNullOrEmpty(tenant.ActiveSubscription?.PaystackSubscriptionCode),
             Invoices = invoices
         };
     }
-}
-
-public class BillingViewModel
-{
-    public string PlanName { get; set; } = string.Empty;
-    public Guid PlanId { get; set; }
-    public decimal MonthlyPrice { get; set; }
-    public string Currency { get; set; } = "ZAR";
-    public SubscriptionStatus? SubscriptionStatus { get; set; }
-    public BillingCycle? BillingCycle { get; set; }
-    public DateTime? NextBillingDate { get; set; }
-    public DateTime? CancelledAt { get; set; }
-    public bool HasPaystackSubscription { get; set; }
-    public List<Invoice> Invoices { get; set; } = [];
-}
-
-public class ChangePlanViewModel
-{
-    public List<Plan> Plans { get; set; } = [];
-    public Guid CurrentPlanId { get; set; }
-}
-
-public class PlanChangeConfirmViewModel
-{
-    public PlanChangePreview Preview { get; set; } = null!;
-    public Guid NewPlanId { get; set; }
-}
-
-public class CancelConfirmViewModel
-{
-    public string TenantName { get; set; } = string.Empty;
 }

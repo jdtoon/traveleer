@@ -10,7 +10,14 @@ public class ConsoleEmailServiceTests
     [Fact]
     public async Task SendAsync_DoesNotThrow()
     {
-        var service = new ConsoleEmailService(NullLogger<ConsoleEmailService>.Instance);
+        var templateService = new FakeEmailTemplateService();
+        var service = new ConsoleEmailService(templateService, NullLogger<ConsoleEmailService>.Instance);
         await service.SendAsync(new EmailMessage("test@test.com", "Subject", "<p>Hello</p>"));
+    }
+
+    private class FakeEmailTemplateService : IEmailTemplateService
+    {
+        public string Render(string templateName, Dictionary<string, string> variables)
+            => $"<html>{templateName}</html>";
     }
 }

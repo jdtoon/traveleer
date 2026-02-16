@@ -29,10 +29,12 @@ public class TenantAdminModule : IModule
     public IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>
     {
         ["TenantAdmin"] = "TenantAdmin",
-        ["TenantBilling"] = "TenantAdmin"
+        ["TenantBilling"] = "TenantAdmin",
+        ["TenantSettings"] = "TenantAdmin",
+        ["Invitation"] = "TenantAdmin"
     };
 
-    public IReadOnlyList<string> PartialViewSearchPaths => ["TenantAdmin", "TenantBilling"];
+    public IReadOnlyList<string> PartialViewSearchPaths => ["TenantAdmin", "TenantBilling", "TenantSettings", "Invitation"];
 
     public IReadOnlyList<ModuleFeature> Features =>
     [
@@ -56,5 +58,6 @@ public class TenantAdminModule : IModule
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<ITenantAdminService, TenantAdminService>();
+        services.AddScoped<ITenantLifecycleService, TenantLifecycleService>();
     }
 }

@@ -1,0 +1,106 @@
+using MassTransit;
+using Microsoft.Extensions.Options;
+using saas.Infrastructure.Services;
+using saas.Shared;
+using saas.Shared.Messages;
+
+namespace saas.Infrastructure.Messaging.Consumers;
+
+/// <summary>
+/// Sends a welcome email when a new tenant is created.
+/// </summary>
+public class TenantCreatedConsumer : IConsumer<TenantCreatedEvent>
+{
+    private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _templateService;
+    private readonly SiteSettings _site;
+    private readonly ILogger<TenantCreatedConsumer> _logger;
+
+    public TenantCreatedConsumer(
+        IEmailService emailService,
+        IEmailTemplateService templateService,
+        IOptions<SiteSettings> siteOptions,
+        ILogger<TenantCreatedConsumer> logger)
+    {
+        _emailService = emailService;
+        _templateService = templateService;
+        _site = siteOptions.Value;
+        _logger = logger;
+    }
+
+    public async Task Consume(ConsumeContext<TenantCreatedEvent> context)
+    {
+        var msg = context.Message;
+        _logger.LogInformation(
+            "Tenant created: {TenantName} ({Slug}) on plan {PlanSlug}",
+            msg.TenantName, msg.Slug, msg.PlanSlug);
+
+        var baseUrl = _site.BaseUrl.TrimEnd('/');
+        var loginUrl = $"{baseUrl}/{msg.Slug}/login";
+
+        var htmlBody = _templateService.Render("Welcome", new Dictionary<string, string>
+        {
+            ["TenantSlug"] = msg.Slug,
+            ["LoginUrl"] = loginUrl
+        });
+
+        await _emailService.SendAsync(new EmailMessage(
+            msg.ContactEmail,
+            $"Welcome to {_site.Name}!",
+            htmlBody));
+    }
+}
+
+/// <summary>
+/// Handles plan change events — logs and sends notification email.
+/// </summary>
+public class TenantPlanChangedConsumer : IConsumer<TenantPlanChangedEvent>
+{
+    private readonly ILogger<TenantPlanChangedConsumer> _logger;
+
+    public TenantPlanChangedConsumer(ILogger<TenantPlanChangedConsumer> logger)
+    {
+        _logger = logger;
+    }
+
+    public Task Consume(ConsumeContext<TenantPlanChangedEvent> context)
+    {
+        var msg = context.Message;
+        _logger.LogInformation(
+            "Tenant {Slug} changed plan from {OldPlan} to {NewPlan}",
+            msg.Slug, msg.OldPlanSlug, msg.NewPlanSlug);
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Processes email send commands asynchronously via queue.
+/// </summary>
+public class SendEmailConsumer : IConsumer<SendEmailCommand>
+{
+    private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _templateService;
+    private readonly ILogger<SendEmailConsumer> _logger;
+
+    public SendEmailConsumer(
+        IEmailService emailService,
+        IEmailTemplateService templateService,
+        ILogger<SendEmailConsumer> logger)
+    {
+        _emailService = emailService;
+        _templateService = templateService;
+        _logger = logger;
+    }
+
+    public async Task Consume(ConsumeContext<SendEmailCommand> context)
+    {
+        var msg = context.Message;
+        _logger.LogInformation("Sending email to {To}: {Subject}", msg.ToAddress, msg.Subject);
+
+        var htmlBody = !string.IsNullOrWhiteSpace(msg.TemplateName)
+            ? _templateService.Render(msg.TemplateName, msg.TemplateData)
+            : string.Join("\n", msg.TemplateData.Select(kv => $"{kv.Key}: {kv.Value}"));
+
+        await _emailService.SendAsync(new EmailMessage(msg.ToAddress, msg.Subject, htmlBody));
+    }
+}

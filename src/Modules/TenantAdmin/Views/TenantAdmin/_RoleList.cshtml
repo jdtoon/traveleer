@@ -1,4 +1,8 @@
 @model List<RoleListItem>
+@inject ITenantContext TenantContext
+@{
+    var slug = TenantContext.Slug;
+}
 
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     @foreach (var role in Model)
@@ -20,14 +24,14 @@
                                 <label tabindex="0" class="btn btn-ghost btn-xs">⋯</label>
                                 <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-200 rounded-box shadow-lg z-10 w-36">
                                     <li>
-                                        <button hx-get="@Url.Action("EditRole", "TenantAdmin", new { id = role.Id })"
+                                        <button hx-get="@Url.Action("EditRole", "TenantAdmin", new { slug, id = role.Id })"
                                                 hx-target="#modal-container">
                                             Edit
                                         </button>
                                     </li>
                                     <has-permission name="roles.delete">
                                     <li>
-                                        <button hx-post="@Url.Action("DeleteRole", "TenantAdmin")"
+                                        <button hx-post="@Url.Action("DeleteRole", "TenantAdmin", new { slug })"
                                                 hx-vals='{"id": "@role.Id"}'
                                                 hx-target="#role-list"
                                                 hx-confirm="Delete this role? This cannot be undone."
@@ -63,7 +67,7 @@
                 </div>
                 <div class="card-actions justify-end mt-2">
                     <button class="btn btn-ghost btn-xs"
-                            hx-get="@Url.Action("RoleDetail", "TenantAdmin", new { id = role.Id })"
+                            hx-get="@Url.Action("RoleDetail", "TenantAdmin", new { slug, id = role.Id })"
                             hx-target="#role-list">
                         Manage Permissions →
                     </button>

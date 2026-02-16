@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -5,7 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using saas.Data.Core;
 using saas.Data.Tenant;
+using saas.Infrastructure.Services;
 using saas.Modules.Billing.Entities;
+using saas.Modules.TenantAdmin.Entities;
 using saas.Modules.TenantAdmin.Services;
 using saas.Shared;
 using Xunit;
@@ -68,7 +71,7 @@ public class TenantAdminServiceTests : IAsyncLifetime
         var emailService = mainScope.ServiceProvider.GetRequiredService<IEmailService>();
         var tenantContext = mainScope.ServiceProvider.GetRequiredService<ITenantContext>();
 
-        _service = new TenantAdminService(_db, _coreDb, _userManager, emailService, tenantContext);
+        _service = new TenantAdminService(_db, _coreDb, _userManager, emailService, new FakeEmailTemplateService(), tenantContext, new FakeHttpContextAccessor(), new FakeFeatureService(), Array.Empty<IModule>());
 
         // Seed an admin user
         var admin = new AppUser
@@ -115,14 +118,18 @@ public class TenantAdminServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task InviteUserAsync_CreatesNewUser()
+    public async Task InviteUserAsync_CreatesInvitation()
     {
         var result = await _service.InviteUserAsync("new@testcorp.com");
 
         Assert.True(result.Success);
-        var users = await _service.GetUsersAsync();
-        Assert.Equal(2, users.Items.Count);
-        Assert.Contains(users.Items, u => u.Email == "new@testcorp.com");
+
+        // Should create a TeamInvitation, NOT a user
+        var invitation = await _db.Set<TeamInvitation>()
+            .FirstOrDefaultAsync(i => i.Email == "new@testcorp.com");
+        Assert.NotNull(invitation);
+        Assert.Equal(InvitationStatus.Pending, invitation!.Status);
+        Assert.False(string.IsNullOrEmpty(invitation.Token));
     }
 
     [Fact]
@@ -132,8 +139,8 @@ public class TenantAdminServiceTests : IAsyncLifetime
 
         await _service.InviteUserAsync("invited@testcorp.com");
 
-        Assert.Single(emailService!.SentLinks);
-        Assert.Contains("invited@testcorp.com", emailService.SentLinks[0].to);
+        Assert.Single(emailService!.SentEmails);
+        Assert.Equal("invited@testcorp.com", emailService.SentEmails[0].To);
     }
 
     [Fact]
@@ -225,10 +232,12 @@ public class TenantAdminServiceTests : IAsyncLifetime
 
     private class FakeEmailService : IEmailService
     {
+        public List<EmailMessage> SentEmails { get; } = [];
         public List<(string to, string url)> SentLinks { get; } = [];
 
         public Task SendAsync(EmailMessage message)
         {
+            SentEmails.Add(message);
             return Task.CompletedTask;
         }
 
@@ -237,5 +246,26 @@ public class TenantAdminServiceTests : IAsyncLifetime
             SentLinks.Add((to, magicLinkUrl));
             return Task.CompletedTask;
         }
+    }
+
+    private class FakeFeatureService : IFeatureService
+    {
+        public Task<bool> IsEnabledAsync(string featureKey) => Task.FromResult(true);
+        public Task<IReadOnlyList<string>> GetEnabledFeaturesAsync()
+            => Task.FromResult<IReadOnlyList<string>>(new List<string>());
+    }
+
+    private class FakeEmailTemplateService : IEmailTemplateService
+    {
+        public string Render(string templateName, Dictionary<string, string>? variables = null)
+            => $"<html>{templateName}</html>";
+    }
+
+    private class FakeHttpContextAccessor : IHttpContextAccessor
+    {
+        public HttpContext? HttpContext { get; set; } = new DefaultHttpContext
+        {
+            Request = { Scheme = "https", Host = new HostString("localhost") }
+        };
     }
 }

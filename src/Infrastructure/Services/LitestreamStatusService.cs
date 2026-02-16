@@ -3,18 +3,18 @@ using saas.Shared;
 
 namespace saas.Infrastructure.Services;
 
-public class BackupStatusService : IBackupStatusService
+public class LitestreamStatusService : ILitestreamStatusService
 {
     private readonly IConfiguration _configuration;
-    private readonly BackupOptions _options;
+    private readonly LitestreamOptions _options;
 
-    public BackupStatusService(IConfiguration configuration, IOptions<BackupOptions> options)
+    public LitestreamStatusService(IConfiguration configuration, IOptions<LitestreamOptions> options)
     {
         _configuration = configuration;
         _options = options.Value;
     }
 
-    public Task<BackupStatusModel> GetStatusAsync(CancellationToken ct = default)
+    public Task<LitestreamStatusModel> GetStatusAsync(CancellationToken ct = default)
     {
         var corePath = GetDatabasePath("CoreDatabase", "/app/db/core.db");
         var auditPath = GetDatabasePath("AuditDatabase", "/app/db/audit.db");
@@ -24,7 +24,7 @@ public class BackupStatusService : IBackupStatusService
             ? Directory.GetFiles(tenantPath, "*.db").Length
             : 0;
 
-        var model = new BackupStatusModel
+        var model = new LitestreamStatusModel
         {
             AutoRestoreEnabled = _options.AutoRestoreEnabled,
             LitestreamConfigured = !string.IsNullOrWhiteSpace(_options.R2Bucket)

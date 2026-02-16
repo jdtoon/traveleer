@@ -3,6 +3,15 @@
 # =============================================================================
 FROM litestream/litestream:0.5 AS litestream
 
+FROM node:22-slim AS frontend
+WORKDIR /src
+COPY ["package.json", "package-lock.json*", "./"]
+RUN npm install --prefer-offline --no-audit
+COPY ["wwwroot/css/input.css", "wwwroot/css/input.css"]
+COPY ["Views/", "Views/"]
+COPY ["Modules/", "Modules/"]
+RUN npx @tailwindcss/cli -i wwwroot/css/input.css -o wwwroot/css/app.css --minify
+
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 RUN dotnet tool install -g Microsoft.Web.LibraryManager.Cli
 ENV PATH="$PATH:/root/.dotnet/tools"
@@ -15,7 +24,8 @@ COPY ["libman.json", "./"]
 RUN libman restore
 
 COPY . .
-RUN dotnet publish "saas.csproj" -c Release -o /app/publish /p:UseAppHost=false
+COPY --from=frontend /src/wwwroot/css/app.css wwwroot/css/app.css
+RUN dotnet publish "saas.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:SkipTailwindBuild=true
 
 # =============================================================================
 # Stage 2 — Runtime

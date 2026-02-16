@@ -10,12 +10,14 @@ namespace saas.Tests.Infrastructure;
 
 public class MailerSendEmailServiceTests
 {
+    private static readonly IEmailTemplateService _stubTemplateService = new StubEmailTemplateService();
+
     [Fact]
     public async Task SendAsync_LogsError_WhenFromAddressEmpty()
     {
         var httpClient = new HttpClient();
         var options = Options.Create(new EmailOptions { FromAddress = "" });
-        var service = new MailerSendEmailService(httpClient, options, NullLogger<MailerSendEmailService>.Instance);
+        var service = new MailerSendEmailService(httpClient, options, _stubTemplateService, NullLogger<MailerSendEmailService>.Instance);
 
         // Should not throw — just logs an error and returns
         await service.SendAsync(new EmailMessage("test@test.com", "Subject", "<p>Hello</p>"));
@@ -32,7 +34,7 @@ public class MailerSendEmailServiceTests
             FromAddress = "test@example.com",
             FromName = "Test"
         });
-        var service = new MailerSendEmailService(httpClient, options, NullLogger<MailerSendEmailService>.Instance);
+        var service = new MailerSendEmailService(httpClient, options, _stubTemplateService, NullLogger<MailerSendEmailService>.Instance);
 
         // Should not throw — logs the error
         await service.SendAsync(new EmailMessage("user@test.com", "Test Subject", "<p>Hello</p>"));
@@ -43,9 +45,15 @@ public class MailerSendEmailServiceTests
     {
         var httpClient = new HttpClient();
         var options = Options.Create(new EmailOptions { FromAddress = "" });
-        var service = new MailerSendEmailService(httpClient, options, NullLogger<MailerSendEmailService>.Instance);
+        var service = new MailerSendEmailService(httpClient, options, _stubTemplateService, NullLogger<MailerSendEmailService>.Instance);
 
         await service.SendMagicLinkAsync("user@test.com", "https://example.com/magic");
+    }
+
+    private class StubEmailTemplateService : IEmailTemplateService
+    {
+        public string Render(string templateName, Dictionary<string, string> variables)
+            => $"<html>{templateName}</html>";
     }
 
     private class StubHttpHandler : HttpMessageHandler

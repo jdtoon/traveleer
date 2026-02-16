@@ -1,0 +1,88 @@
+@model List<saas.Modules.Auth.Entities.UserSession>
+@{
+    ViewData["Title"] = "Active Sessions";
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<div class="max-w-3xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">Active Sessions</h1>
+            <p class="text-base-content/60 text-sm mt-1">Manage your active login sessions across devices.</p>
+        </div>
+        <a href="/@slug/profile" class="btn btn-ghost btn-sm">&larr; Back to Profile</a>
+    </div>
+
+    @if (ViewData["Success"] is string success)
+    {
+        <div class="alert alert-success">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <span>@success</span>
+        </div>
+    }
+
+    @if (Model.Count == 0)
+    {
+        <div class="card bg-base-200">
+            <div class="card-body text-center">
+                <p class="text-base-content/60">No active sessions found.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="space-y-3">
+            @foreach (var session in Model)
+            {
+                <div class="card bg-base-200">
+                    <div class="card-body p-4">
+                        <div class="flex items-center justify-between">
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-sm">@(session.DeviceInfo ?? "Unknown Device")</span>
+                                    @if (session.LastActivityAt > DateTime.UtcNow.AddMinutes(-15))
+                                    {
+                                        <span class="badge badge-success badge-xs">Active Now</span>
+                                    }
+                                </div>
+                                <div class="text-xs text-base-content/60 space-y-0.5">
+                                    <div>IP: @session.IpAddress</div>
+                                    <div>Last active: @session.LastActivityAt.ToString("MMM dd, yyyy HH:mm") UTC</div>
+                                    <div>Started: @session.CreatedAt.ToString("MMM dd, yyyy HH:mm") UTC</div>
+                                </div>
+                            </div>
+                            <button hx-post="/@slug/profile/sessions/@session.Id/revoke"
+                                    hx-target="#main-content"
+                                    hx-confirm="Revoke this session?"
+                                    class="btn btn-error btn-sm btn-outline">
+                                Revoke
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (Model.Count > 1)
+        {
+            <div class="card bg-base-200 border border-error/20">
+                <div class="card-body p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-semibold text-sm">Revoke All Sessions</p>
+                            <p class="text-xs text-base-content/60">Sign out from all devices including this one.</p>
+                        </div>
+                        <button hx-post="/@slug/profile/sessions/revoke-all"
+                                hx-target="#main-content"
+                                hx-confirm="Revoke ALL sessions? You will need to log in again."
+                                class="btn btn-error btn-sm">
+                            Revoke All
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

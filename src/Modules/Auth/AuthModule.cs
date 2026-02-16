@@ -16,7 +16,10 @@ public class AuthModule : IModule
     public IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>
     {
         ["TenantAuth"] = "Auth",
-        ["SuperAdminAuth"] = "Auth"
+        ["SuperAdminAuth"] = "Auth",
+        ["Profile"] = "Auth",
+        ["TwoFactor"] = "Auth",
+        ["Session"] = "Auth"
     };
 
     public IReadOnlyList<string> PublicRoutePrefixes =>
@@ -32,6 +35,8 @@ public class AuthModule : IModule
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<MagicLinkService>();
+        services.AddScoped<EmailVerificationService>();
+        services.AddScoped<TwoFactorService>();
         services.TryAddScoped<ICurrentUser, CurrentUser>();
         services.AddHostedService<MagicLinkCleanupService>();
 
@@ -54,9 +59,47 @@ public class AuthModule : IModule
             .AddCookie(AuthSchemes.Tenant, options =>
             {
                 options.Cookie.Name = ".Tenant.Auth";
-                options.LoginPath = "/{slug}/login";
                 options.SlidingExpiration = true;
                 options.ExpireTimeSpan = TimeSpan.FromHours(12);
+
+                // LoginPath is not used directly — we handle redirects dynamically
+                // to inject the actual tenant slug from the request URL.
+                options.LoginPath = "/login-redirect";
+
+                options.Events = new CookieAuthenticationEvents
+                {
+                    OnRedirectToLogin = context =>
+                    {
+                        var tenantSlug = ExtractTenantSlug(context.Request.Path);
+                        if (!string.IsNullOrEmpty(tenantSlug))
+                        {
+                            var returnUrl = Uri.EscapeDataString(context.Request.Path + context.Request.QueryString);
+                            context.RedirectUri = $"/{tenantSlug}/login?returnUrl={returnUrl}";
+                        }
+                        else
+                        {
+                            context.RedirectUri = "/login-redirect";
+                        }
+
+                        if (IsHtmxRequest(context.HttpContext.Request))
+                        {
+                            // HTMX: respond with HX-Redirect header instead of 302
+                            context.HttpContext.Response.StatusCode = 200;
+                            context.HttpContext.Response.Headers["HX-Redirect"] = context.RedirectUri;
+                            return Task.CompletedTask;
+                        }
+
+                        context.HttpContext.Response.Redirect(context.RedirectUri);
+                        context.HttpContext.Response.StatusCode = StatusCodes.Status302Found;
+                        return Task.CompletedTask;
+                    },
+                    OnRedirectToAccessDenied = context =>
+                    {
+                        var tenantSlug = ExtractTenantSlug(context.Request.Path);
+                        context.HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
         services.AddAuthorization(options =>
@@ -89,6 +132,19 @@ public class AuthModule : IModule
     public void RegisterMvc(MvcOptions mvcOptions, IMvcBuilder mvcBuilder)
     {
     }
+
+    /// <summary>
+    /// Extracts the first URL segment as a potential tenant slug.
+    /// Used by cookie event handlers to build correct redirect URLs.
+    /// </summary>
+    private static string? ExtractTenantSlug(PathString path)
+    {
+        var segments = path.Value?.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments is { Length: > 0 } ? segments[0] : null;
+    }
+
+    private static bool IsHtmxRequest(HttpRequest request)
+        => request.Headers.ContainsKey("HX-Request");
 }
 
 public static class AuthSchemes
@@ -102,4 +158,5 @@ public static class AuthClaims
     public const string IsSuperAdmin = "is_super_admin";
     public const string TenantSlug = "tenant_slug";
     public const string Permission = "permission";
+    public const string SessionId = "session_id";
 }

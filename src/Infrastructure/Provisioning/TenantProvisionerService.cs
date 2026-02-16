@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using MassTransit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using saas.Data;
@@ -9,6 +10,7 @@ using saas.Modules.Auth.Entities;
 using saas.Modules.Billing.Entities;
 using saas.Modules.Tenancy.Entities;
 using saas.Shared;
+using saas.Shared.Messages;
 
 namespace saas.Infrastructure.Provisioning;
 
@@ -20,19 +22,29 @@ public partial class TenantProvisionerService : ITenantProvisioner
     private readonly IReadOnlyList<IModule> _modules;
     private readonly HashSet<string> _reservedSlugs;
     private readonly ILitestreamConfigSync? _litestreamSync;
+    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly string _tenantDbBasePath;
 
     public TenantProvisionerService(
         CoreDbContext coreDb,
         IServiceProvider serviceProvider,
         ILogger<TenantProvisionerService> logger,
         IReadOnlyList<IModule> modules,
+        IPublishEndpoint publishEndpoint,
+        IConfiguration configuration,
         ILitestreamConfigSync? litestreamSync = null)
     {
         _coreDb = coreDb;
         _serviceProvider = serviceProvider;
         _logger = logger;
         _modules = modules;
+        _publishEndpoint = publishEndpoint;
         _litestreamSync = litestreamSync;
+
+        var tenantPath = configuration["Tenancy:DatabasePath"] ?? Path.Combine("db", "tenants");
+        _tenantDbBasePath = Path.IsPathRooted(tenantPath)
+            ? tenantPath
+            : Path.Combine(Directory.GetCurrentDirectory(), tenantPath);
 
         // Collect reserved slugs from all modules (explicit + public route prefixes)
         _reservedSlugs = new HashSet<string>(
@@ -133,7 +145,7 @@ public partial class TenantProvisionerService : ITenantProvisioner
             }
 
             // Create tenant database
-            var dbPath = Path.Combine("db", "tenants", $"{tenant.Slug}.db");
+            var dbPath = Path.Combine(_tenantDbBasePath, $"{tenant.Slug}.db");
             var dbDirectory = Path.GetDirectoryName(dbPath);
             if (!string.IsNullOrEmpty(dbDirectory) && !Directory.Exists(dbDirectory))
             {
@@ -299,6 +311,23 @@ public partial class TenantProvisionerService : ITenantProvisioner
             await userManager.AddToRoleAsync(adminUser, "Admin");
 
             _logger.LogInformation("Created admin user {Email} for tenant {TenantId}", adminEmail, tenant.Id);
+
+            // Publish domain event
+            try
+            {
+                var tenantPlan = await _coreDb.Plans.FindAsync(planId);
+                await _publishEndpoint.Publish(new TenantCreatedEvent(
+                    TenantId: tenant.Id,
+                    TenantName: tenant.Name,
+                    Slug: tenant.Slug,
+                    ContactEmail: adminEmail,
+                    PlanSlug: tenantPlan?.Slug ?? "unknown",
+                    CreatedAtUtc: DateTime.UtcNow));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to publish TenantCreatedEvent for {Slug}", slug);
+            }
 
             return new TenantProvisioningResult(true, TenantId: tenant.Id);
         }

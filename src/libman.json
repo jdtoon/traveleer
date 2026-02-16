@@ -9,18 +9,6 @@
       "files": [
         "dist/htmx.min.js"
       ]
-    },
-    {
-      "library": "@tailwindcss/browser@4.1.18",
-      "destination": "wwwroot/lib/tailwindcss",
-      "files": [
-        "dist/index.global.min.js"
-      ]
-    },
-    {
-      "provider": "unpkg",
-      "library": "daisyui@5.5.14",
-      "destination": "wwwroot/lib/daisyui/"
     }
   ]
 }

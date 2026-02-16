@@ -21,8 +21,9 @@ public static class ApplicationBuilderExtensions
     public static async Task RestoreFromBackupIfNeededAsync(this WebApplication app)
     {
         using var scope = app.Services.CreateScope();
-        var restoreService = scope.ServiceProvider.GetRequiredService<ILitestreamRestoreService>();
-        await restoreService.RestoreIfNeededAsync();
+        var restoreService = scope.ServiceProvider.GetService<ILitestreamRestoreService>();
+        if (restoreService is not null)
+            await restoreService.RestoreIfNeededAsync();
     }
 
     public static async Task InitializeDatabaseAsync(this WebApplication app)
@@ -51,6 +52,9 @@ public static class ApplicationBuilderExtensions
             // Seed core data (features collected from modules + plans + super admin)
             var modules = scope.ServiceProvider.GetRequiredService<IReadOnlyList<IModule>>();
             await CoreDataSeeder.SeedAsync(coreDb, app.Configuration, modules);
+
+            // Sync permissions to all existing tenant DBs (idempotent)
+            await SyncPermissionsToTenantsAsync(modules, logger);
 
             // Dev seeding — only when explicitly enabled in config
             var devSeedOptions = app.Configuration.GetSection(DevSeedOptions.SectionName).Get<DevSeedOptions>();
@@ -113,6 +117,64 @@ public static class ApplicationBuilderExtensions
         }
     }
 
+    /// <summary>
+    /// Sync module-defined permissions to all existing tenant databases.
+    /// Adds any new permissions that don't exist yet (idempotent by Key).
+    /// </summary>
+    private static async Task SyncPermissionsToTenantsAsync(IReadOnlyList<IModule> modules, ILogger logger)
+    {
+        var basePath = Path.Combine(Directory.GetCurrentDirectory(), "db", "tenants");
+        if (!Directory.Exists(basePath))
+            return;
+
+        var modulePermissions = modules.SelectMany(m => m.Permissions).ToList();
+        if (modulePermissions.Count == 0)
+            return;
+
+        var dbFiles = Directory.GetFiles(basePath, "*.db");
+        foreach (var dbFile in dbFiles)
+        {
+            try
+            {
+                var options = new DbContextOptionsBuilder<TenantDbContext>()
+                    .UseSqlite($"Data Source={dbFile}")
+                    .Options;
+
+                await using var tenantDb = new TenantDbContext(options);
+                var existingKeys = await tenantDb.Permissions
+                    .Select(p => p.Key)
+                    .ToListAsync();
+
+                var existingSet = new HashSet<string>(existingKeys, StringComparer.OrdinalIgnoreCase);
+                var newPermissions = modulePermissions
+                    .Where(mp => !existingSet.Contains(mp.Key))
+                    .Select(mp => new saas.Modules.Auth.Entities.Permission
+                    {
+                        Id = Guid.NewGuid(),
+                        Key = mp.Key,
+                        Name = mp.Name,
+                        Group = mp.Group,
+                        SortOrder = mp.SortOrder,
+                        Description = mp.Description
+                    })
+                    .ToList();
+
+                if (newPermissions.Count > 0)
+                {
+                    tenantDb.Permissions.AddRange(newPermissions);
+                    await tenantDb.SaveChangesAsync();
+                    logger.LogInformation(
+                        "Synced {Count} new permissions to tenant DB {DbFile}",
+                        newPermissions.Count, Path.GetFileName(dbFile));
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to sync permissions to tenant DB {DbFile}", Path.GetFileName(dbFile));
+            }
+        }
+    }
+
     private static async Task EnsureHistoryTableAndBaselineAsync(DbContext db, ILogger logger, string name)
     {
         var history = db.GetService<IHistoryRepository>();
@@ -166,6 +228,7 @@ public static class ApplicationBuilderExtensions
     {
         app.UseResponseCompression();
         app.UseForwardedHeaders();
+        app.UseSerilogRequestLogging();
         app.UseMiddleware<SecurityHeadersMiddleware>();
 
         if (!app.Environment.IsDevelopment())

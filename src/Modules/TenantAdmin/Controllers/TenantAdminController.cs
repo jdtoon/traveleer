@@ -1,12 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using saas.Modules.Auth.Filters;
+using saas.Modules.TenantAdmin.Models;
 using saas.Modules.TenantAdmin.Services;
 using Swap.Htmx;
 
 namespace saas.Modules.TenantAdmin.Controllers;
 
 [Authorize(Policy = "TenantAdmin")]
+[Route("{slug}/admin")]
 public class TenantAdminController : SwapController
 {
     private readonly ITenantAdminService _service;
@@ -18,7 +20,7 @@ public class TenantAdminController : SwapController
 
     // ── Users ────────────────────────────────────────────────────────────────
 
-    [HttpGet]
+    [HttpGet("users")]
     [HasPermission(TenantAdminPermissions.UsersRead)]
     public async Task<IActionResult> Users(int page = 1)
     {
@@ -26,7 +28,7 @@ public class TenantAdminController : SwapController
         return SwapView(users);
     }
 
-    [HttpGet]
+    [HttpGet("user-list")]
     [HasPermission(TenantAdminPermissions.UsersRead)]
     public async Task<IActionResult> UserList(int page = 1)
     {
@@ -34,7 +36,7 @@ public class TenantAdminController : SwapController
         return SwapView("_UserList", users);
     }
 
-    [HttpGet]
+    [HttpGet("invite-user")]
     [HasPermission(TenantAdminPermissions.UsersCreate)]
     public async Task<IActionResult> InviteUser()
     {
@@ -42,7 +44,7 @@ public class TenantAdminController : SwapController
         return SwapView("_InviteUserModal", new InviteUserViewModel { AvailableRoles = roles });
     }
 
-    [HttpPost]
+    [HttpPost("invite-user")]
     [HasPermission(TenantAdminPermissions.UsersCreate)]
     public async Task<IActionResult> InviteUser([FromForm] string email, [FromForm] string? roleId)
     {
@@ -64,7 +66,7 @@ public class TenantAdminController : SwapController
             .Build();
     }
 
-    [HttpPost]
+    [HttpPost("deactivate-user")]
     [HasPermission(TenantAdminPermissions.UsersEdit)]
     public async Task<IActionResult> DeactivateUser(string id)
     {
@@ -78,7 +80,7 @@ public class TenantAdminController : SwapController
             .Build();
     }
 
-    [HttpPost]
+    [HttpPost("activate-user")]
     [HasPermission(TenantAdminPermissions.UsersEdit)]
     public async Task<IActionResult> ActivateUser(string id)
     {
@@ -94,7 +96,7 @@ public class TenantAdminController : SwapController
 
     // ── Roles ────────────────────────────────────────────────────────────────
 
-    [HttpGet]
+    [HttpGet("roles")]
     [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesRead)]
     public async Task<IActionResult> Roles()
@@ -103,7 +105,7 @@ public class TenantAdminController : SwapController
         return SwapView(roles);
     }
 
-    [HttpGet]
+    [HttpGet("role-list")]
     [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesRead)]
     public async Task<IActionResult> RoleList()
@@ -112,7 +114,7 @@ public class TenantAdminController : SwapController
         return SwapView("_RoleList", roles);
     }
 
-    [HttpGet]
+    [HttpGet("role-detail")]
     [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesRead)]
     public async Task<IActionResult> RoleDetail(string id)
@@ -125,7 +127,7 @@ public class TenantAdminController : SwapController
         return SwapView("_RoleDetail", new RoleDetailViewModel { Role = role, AllPermissions = permissions });
     }
 
-    [HttpGet]
+    [HttpGet("create-role")]
     [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesCreate)]
     public IActionResult CreateRole()
@@ -133,7 +135,7 @@ public class TenantAdminController : SwapController
         return SwapView("_CreateRoleModal");
     }
 
-    [HttpPost]
+    [HttpPost("create-role")]
     [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesCreate)]
     public async Task<IActionResult> CreateRole([FromForm] string name, [FromForm] string? description)
@@ -163,7 +165,7 @@ public class TenantAdminController : SwapController
             .Build();
     }
 
-    [HttpGet]
+    [HttpGet("edit-role")]
     [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesEdit)]
     public async Task<IActionResult> EditRole(string id)
@@ -175,7 +177,7 @@ public class TenantAdminController : SwapController
         return SwapView("_EditRoleModal", role);
     }
 
-    [HttpPost]
+    [HttpPost("edit-role")]
     [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesEdit)]
     public async Task<IActionResult> EditRole([FromForm] string id, [FromForm] string name, [FromForm] string? description)
@@ -203,7 +205,7 @@ public class TenantAdminController : SwapController
             .Build();
     }
 
-    [HttpPost]
+    [HttpPost("delete-role")]
     [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesDelete)]
     public async Task<IActionResult> DeleteRole([FromForm] string id)
@@ -225,7 +227,7 @@ public class TenantAdminController : SwapController
             .Build();
     }
 
-    [HttpPost]
+    [HttpPost("toggle-role-permission")]
     [RequireFeature("custom_roles")]
     [HasPermission(TenantAdminPermissions.RolesEdit)]
     public async Task<IActionResult> ToggleRolePermission([FromForm] string roleId, [FromForm] Guid permissionId)
@@ -240,7 +242,7 @@ public class TenantAdminController : SwapController
         return SwapView("_RoleDetail", new RoleDetailViewModel { Role = role, AllPermissions = permissions });
     }
 
-    [HttpGet]
+    [HttpGet("manage-user-roles")]
     [HasPermission(TenantAdminPermissions.UsersEdit)]
     public async Task<IActionResult> ManageUserRoles(string id)
     {
@@ -259,7 +261,7 @@ public class TenantAdminController : SwapController
         });
     }
 
-    [HttpPost]
+    [HttpPost("save-user-roles")]
     [HasPermission(TenantAdminPermissions.UsersEdit)]
     public async Task<IActionResult> SaveUserRoles([FromForm] string userId, [FromForm] List<string> roleIds)
     {
@@ -274,7 +276,7 @@ public class TenantAdminController : SwapController
             .Build();
     }
 
-    [HttpPost]
+    [HttpPost("assign-role")]
     [HasPermission(TenantAdminPermissions.RolesEdit)]
     public async Task<IActionResult> AssignRole([FromForm] string userId, [FromForm] string roleId)
     {
@@ -293,7 +295,7 @@ public class TenantAdminController : SwapController
             .Build();
     }
 
-    [HttpPost]
+    [HttpPost("remove-role")]
     [HasPermission(TenantAdminPermissions.RolesEdit)]
     public async Task<IActionResult> RemoveRole([FromForm] string userId, [FromForm] string roleId)
     {
@@ -311,23 +313,4 @@ public class TenantAdminController : SwapController
             .WithSuccessToast("Role removed")
             .Build();
     }
-}
-
-public class RoleDetailViewModel
-{
-    public RoleListItem Role { get; set; } = null!;
-    public List<Permission> AllPermissions { get; set; } = [];
-}
-
-public class InviteUserViewModel
-{
-    public List<RoleListItem> AvailableRoles { get; set; } = [];
-}
-
-public class ManageUserRolesViewModel
-{
-    public string UserId { get; set; } = string.Empty;
-    public string UserEmail { get; set; } = string.Empty;
-    public List<RoleListItem> AllRoles { get; set; } = [];
-    public List<string> AssignedRoleIds { get; set; } = [];
 }

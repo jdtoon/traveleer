@@ -4,7 +4,6 @@
     var slug = TenantContext.Slug;
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
     var notesEnabled = await FeatureService.IsEnabledAsync("notes");
-    var auditLogEnabled = await FeatureService.IsEnabledAsync("audit_log");
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -13,13 +12,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - @(TenantContext.TenantName ?? "saas")</title>
 
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#6366f1" />
+
     <!-- DaisyUI + Tailwind CSS -->
     <link rel="stylesheet" href="/css/styles.css" asp-append-version="true" />
 
     <!-- Swap.Htmx CSS -->
     <link rel="stylesheet" href="~/_content/Swap.Htmx/css/swap.css" asp-append-version="true" />
 </head>
-<body data-theme="corporate" class="min-h-screen bg-base-100 text-base-content">
+<body class="min-h-screen bg-base-100 text-base-content">
+    <!-- Skip navigation link -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-primary focus:text-primary-content focus:px-4 focus:py-2 focus:rounded">
+        Skip to main content
+    </a>
     <!-- Drawer for mobile menu -->
     <div class="drawer lg:drawer-open">
         <input id="mobile-drawer" type="checkbox" class="drawer-toggle" />
@@ -27,8 +34,8 @@
             <!-- Navbar (mobile) -->
             <div class="navbar bg-base-100 border-b border-base-300 lg:hidden">
                 <div class="flex-none">
-                    <label for="mobile-drawer" class="btn btn-square btn-ghost drawer-button">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-5 h-5 stroke-current">
+                    <label for="mobile-drawer" class="btn btn-square btn-ghost drawer-button" aria-label="Open navigation menu">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-5 h-5 stroke-current" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </label>
@@ -36,10 +43,12 @@
                 <div class="flex-1">
                     <span class="text-xl font-bold">@(TenantContext.TenantName ?? "saas")</span>
                 </div>
+                <div class="flex-none">
+                </div>
             </div>
 
             <!-- Main Content -->
-            <main class="flex-1 p-4 md:p-6 overflow-auto" id="main-content">
+            <main class="flex-1 p-4 md:p-6 overflow-auto" id="main-content" role="main" aria-label="Main content">
                 @RenderBody()
             </main>
         </div>
@@ -47,7 +56,7 @@
         <!-- Sidebar -->
         <div class="drawer-side z-40">
             <label for="mobile-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-            <aside class="bg-base-200 w-64 min-h-full flex flex-col">
+            <aside class="bg-base-200 w-64 min-h-full flex flex-col" role="navigation" aria-label="Main navigation">
                 <!-- Brand -->
                 <div class="p-4 border-b border-base-300">
                     <span class="text-xl font-bold">@(TenantContext.TenantName ?? "saas")</span>
@@ -57,7 +66,7 @@
                 <nav class="flex-1 p-4">
                     <ul class="menu menu-md gap-1">
                         <li>
-                            <swap-nav to="/@slug" class="@(controller == "Dashboard" ? "active" : "")">
+                            <swap-nav to="/@slug" class="@(controller == "Dashboard" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                                 </svg>
@@ -67,7 +76,7 @@
                         @if (notesEnabled)
                         {
                         <li>
-                            <swap-nav to="/@slug/Notes" class="@(controller == "Notes" ? "active" : "")">
+                            <swap-nav to="/@slug/Notes" class="@(controller == "Notes" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
@@ -75,13 +84,30 @@
                             </swap-nav>
                         </li>
                         }
+                        <li class="menu-title mt-2"><span>Account</span></li>
+                        <li>
+                            <swap-nav to="/@slug/Profile" class="@(controller == "Profile" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                Profile & 2FA
+                            </swap-nav>
+                        </li>
+                        <li>
+                            <swap-nav to="/@slug/profile/sessions" class="@(controller == "Session" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                Sessions
+                            </swap-nav>
+                        </li>
                     </ul>
                 </nav>
 
                 <!-- Admin link -->
                 <has-permission name="users.read">
                 <div class="px-4 pb-2">
-                    <a href="/@slug/TenantAdmin/Users"
+                    <a href="/@slug/admin/users"
                        class="btn btn-sm btn-outline w-full gap-2 @(controller == "TenantAdmin" || controller == "TenantBilling" ? "btn-active" : "")">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -93,7 +119,7 @@
                 </has-permission>
 
                 <!-- Footer -->
-                <div class="p-4 border-t border-base-300">
+                <div class="p-4 border-t border-base-300 space-y-2">
                     <form method="post" action="/@slug/logout">
                         <button type="submit" class="btn btn-ghost btn-sm w-full justify-start gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -107,8 +133,11 @@
         </div>
     </div>
 
+    <!-- Toast container (screen reader announcements) -->
+    <div id="toast-container" class="toast toast-end" aria-live="polite" aria-atomic="true" role="status"></div>
+
     <!-- Modal container -->
-    <div id="modal-container"></div>
+    <div id="modal-container" role="dialog" aria-modal="true" aria-hidden="true"></div>
 
     <!-- Scripts -->
     <script src="~/lib/htmx/dist/htmx.min.js" asp-append-version="true"></script>
