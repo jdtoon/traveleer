@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Threading.RateLimiting;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -28,6 +29,9 @@ public class TenantAuthController : SwapController
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly ITenantContext _tenantContext;
     private readonly TwoFactorService _twoFactorService;
+    private readonly IDataProtector _twoFactorProtector;
+
+    private const string TwoFactorPurpose = "2FA-Challenge";
 
     public TenantAuthController(
         MagicLinkService magicLinks, 
@@ -38,7 +42,8 @@ public class TenantAuthController : SwapController
         INotificationService notifications,
         IPublishEndpoint publishEndpoint,
         ITenantContext tenantContext,
-        TwoFactorService twoFactorService)
+        TwoFactorService twoFactorService,
+        IDataProtectionProvider dataProtection)
     {
         _magicLinks = magicLinks;
         _email = email;
@@ -49,6 +54,7 @@ public class TenantAuthController : SwapController
         _publishEndpoint = publishEndpoint;
         _tenantContext = tenantContext;
         _twoFactorService = twoFactorService;
+        _twoFactorProtector = dataProtection.CreateProtector(TwoFactorPurpose);
     }
 
     [HttpGet("login")]
@@ -130,10 +136,10 @@ public class TenantAuthController : SwapController
         // Check if 2FA is enabled — redirect to 2FA challenge instead of completing login
         if (user.IsTwoFactorEnabled)
         {
-            // Store pending login details in TempData for 2FA verification
-            TempData["Pending2FA_UserId"] = user.Id;
-            TempData["Pending2FA_Slug"] = slug;
-            return Redirect($"/{slug}/two-factor-challenge");
+            // Create a signed, time-limited token containing the user ID and slug
+            var payload = $"{user.Id}|{slug}|{DateTime.UtcNow.AddMinutes(5):O}";
+            var challengeToken = _twoFactorProtector.Protect(payload);
+            return Redirect($"/{slug}/two-factor-challenge?t={Uri.EscapeDataString(challengeToken)}");
         }
 
         // Track session
@@ -191,26 +197,48 @@ public class TenantAuthController : SwapController
 
     // ── Two-Factor Challenge (unauthenticated) ─────────────────────────────
 
-    [HttpGet("two-factor-challenge")]
-    public IActionResult TwoFactorChallenge([FromRoute] string slug)
+    /// <summary>
+    /// Validates the signed 2FA challenge token from the query string.
+    /// Returns (userId, slug) on success, or null on failure.
+    /// </summary>
+    private (string UserId, string Slug)? ValidateChallengeToken(string? token)
     {
-        var userId = TempData.Peek("Pending2FA_UserId") as string;
-        if (string.IsNullOrEmpty(userId))
+        if (string.IsNullOrEmpty(token)) return null;
+        try
+        {
+            var payload = _twoFactorProtector.Unprotect(token);
+            var parts = payload.Split('|', 3);
+            if (parts.Length != 3) return null;
+            if (!DateTime.TryParse(parts[2], null, System.Globalization.DateTimeStyles.RoundtripKind, out var expiry)) return null;
+            if (expiry < DateTime.UtcNow) return null;
+            return (parts[0], parts[1]);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    [HttpGet("two-factor-challenge")]
+    public IActionResult TwoFactorChallenge([FromRoute] string slug, [FromQuery] string? t)
+    {
+        var parsed = ValidateChallengeToken(t);
+        if (parsed is null || !string.Equals(parsed.Value.Slug, slug, StringComparison.OrdinalIgnoreCase))
             return Redirect($"/{slug}/login");
 
         ViewData["TenantSlug"] = slug;
+        ViewData["ChallengeToken"] = t;
         return SwapView("TwoFactorChallenge");
     }
 
     [HttpPost("two-factor-challenge")]
-    public async Task<IActionResult> TwoFactorChallengePost([FromRoute] string slug, [FromForm] string code, [FromForm] string? recoveryCode)
+    public async Task<IActionResult> TwoFactorChallengePost([FromRoute] string slug, [FromForm] string? code, [FromForm] string? recoveryCode, [FromForm] string? challengeToken)
     {
-        var userId = TempData["Pending2FA_UserId"] as string;
-        var pendingSlug = TempData["Pending2FA_Slug"] as string;
-
-        if (string.IsNullOrEmpty(userId) || !string.Equals(pendingSlug, slug, StringComparison.OrdinalIgnoreCase))
+        var parsed = ValidateChallengeToken(challengeToken);
+        if (parsed is null || !string.Equals(parsed.Value.Slug, slug, StringComparison.OrdinalIgnoreCase))
             return Redirect($"/{slug}/login");
 
+        var userId = parsed.Value.UserId;
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null || !user.IsActive)
             return SwapView("MagicLinkError", "Session expired. Please request a new magic link.");
@@ -228,10 +256,8 @@ public class TenantAuthController : SwapController
 
         if (!isValid)
         {
-            // Put TempData back so user can retry
-            TempData["Pending2FA_UserId"] = userId;
-            TempData["Pending2FA_Slug"] = slug;
             ViewData["TenantSlug"] = slug;
+            ViewData["ChallengeToken"] = challengeToken;
             ViewData["Error"] = "Invalid code. Please try again.";
             return SwapView("TwoFactorChallenge");
         }

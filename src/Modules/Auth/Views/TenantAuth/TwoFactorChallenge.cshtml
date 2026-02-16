@@ -3,6 +3,7 @@
     ViewData["Title"] = "Two-Factor Authentication";
     var slug = ViewData["TenantSlug"]?.ToString() ?? "";
     var error = ViewData["Error"]?.ToString();
+    var challengeToken = ViewData["ChallengeToken"]?.ToString() ?? "";
 }
 
 <div class="flex items-center justify-center p-4 py-12">
@@ -17,6 +18,7 @@
             }
 
             <form method="post" action="/@slug/two-factor-challenge" class="space-y-4">
+                <input type="hidden" name="challengeToken" value="@challengeToken" />
                 <div class="form-control w-full">
                     <label class="label" for="code">
                         <span class="label-text">Authentication Code</span>
@@ -37,6 +39,7 @@
             <div class="divider text-xs opacity-50">OR</div>
 
             <form method="post" action="/@slug/two-factor-challenge" class="space-y-4">
+                <input type="hidden" name="challengeToken" value="@challengeToken" />
                 <div class="form-control w-full">
                     <label class="label" for="recoveryCode">
                         <span class="label-text">Recovery Code</span>
