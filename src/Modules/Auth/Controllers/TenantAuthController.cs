@@ -27,6 +27,7 @@ public class TenantAuthController : SwapController
     private readonly INotificationService _notifications;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly ITenantContext _tenantContext;
+    private readonly TwoFactorService _twoFactorService;
 
     public TenantAuthController(
         MagicLinkService magicLinks, 
@@ -36,7 +37,8 @@ public class TenantAuthController : SwapController
         TenantDbContext tenantDb,
         INotificationService notifications,
         IPublishEndpoint publishEndpoint,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        TwoFactorService twoFactorService)
     {
         _magicLinks = magicLinks;
         _email = email;
@@ -46,6 +48,7 @@ public class TenantAuthController : SwapController
         _notifications = notifications;
         _publishEndpoint = publishEndpoint;
         _tenantContext = tenantContext;
+        _twoFactorService = twoFactorService;
     }
 
     [HttpGet("login")]
@@ -130,7 +133,7 @@ public class TenantAuthController : SwapController
             // Store pending login details in TempData for 2FA verification
             TempData["Pending2FA_UserId"] = user.Id;
             TempData["Pending2FA_Slug"] = slug;
-            return Redirect($"/{slug}/profile/two-factor");
+            return Redirect($"/{slug}/two-factor-challenge");
         }
 
         // Track session
@@ -167,6 +170,126 @@ public class TenantAuthController : SwapController
             var device = ParseDeviceInfo(Request.Headers.UserAgent.ToString());
             await _notifications.SendAsync(user.Id, "Sign-in detected",
                 $"You signed in from {device}",
+                $"/{slug}/Session");
+        }
+        catch { /* Don't block login if notification fails */ }
+
+        // Publish domain event
+        try
+        {
+            await _publishEndpoint.Publish(new UserLoggedInEvent(
+                UserId: user.Id,
+                Email: user.Email ?? string.Empty,
+                TenantId: _tenantContext.TenantId ?? Guid.Empty,
+                Slug: slug,
+                LoggedInAtUtc: DateTime.UtcNow));
+        }
+        catch { /* Don't block login if event publish fails */ }
+
+        return Redirect($"/{slug}");
+    }
+
+    // ── Two-Factor Challenge (unauthenticated) ─────────────────────────────
+
+    [HttpGet("two-factor-challenge")]
+    public IActionResult TwoFactorChallenge([FromRoute] string slug)
+    {
+        var userId = TempData.Peek("Pending2FA_UserId") as string;
+        if (string.IsNullOrEmpty(userId))
+            return Redirect($"/{slug}/login");
+
+        ViewData["TenantSlug"] = slug;
+        return SwapView("TwoFactorChallenge");
+    }
+
+    [HttpPost("two-factor-challenge")]
+    public async Task<IActionResult> TwoFactorChallengePost([FromRoute] string slug, [FromForm] string code, [FromForm] string? recoveryCode)
+    {
+        var userId = TempData["Pending2FA_UserId"] as string;
+        var pendingSlug = TempData["Pending2FA_Slug"] as string;
+
+        if (string.IsNullOrEmpty(userId) || !string.Equals(pendingSlug, slug, StringComparison.OrdinalIgnoreCase))
+            return Redirect($"/{slug}/login");
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null || !user.IsActive)
+            return SwapView("MagicLinkError", "Session expired. Please request a new magic link.");
+
+        // Try TOTP code first, then recovery code
+        bool isValid = false;
+        if (!string.IsNullOrWhiteSpace(code))
+        {
+            isValid = _twoFactorService.ValidateCode(user.TwoFactorSecret!, code);
+        }
+        else if (!string.IsNullOrWhiteSpace(recoveryCode))
+        {
+            isValid = await _twoFactorService.ValidateRecoveryCodeAsync(user, recoveryCode);
+        }
+
+        if (!isValid)
+        {
+            // Put TempData back so user can retry
+            TempData["Pending2FA_UserId"] = userId;
+            TempData["Pending2FA_Slug"] = slug;
+            ViewData["TenantSlug"] = slug;
+            ViewData["Error"] = "Invalid code. Please try again.";
+            return SwapView("TwoFactorChallenge");
+        }
+
+        // 2FA passed — complete the sign-in flow
+        var roles = await _userManager.GetRolesAsync(user);
+        var roleIds = await _tenantDb.Roles
+            .Where(r => roles.Contains(r.Name!))
+            .Select(r => r.Id)
+            .ToListAsync();
+
+        var permissionKeys = await _tenantDb.RolePermissions
+            .Where(rp => roleIds.Contains(rp.RoleId))
+            .Select(rp => rp.Permission.Key)
+            .Distinct()
+            .ToListAsync();
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.Id),
+            new(ClaimTypes.Email, user.Email ?? string.Empty),
+            new(AuthClaims.TenantSlug, slug)
+        };
+        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+        claims.AddRange(permissionKeys.Select(p => new Claim(AuthClaims.Permission, p)));
+
+        // Track session
+        Guid sessionId = Guid.NewGuid();
+        try
+        {
+            var session = new UserSession
+            {
+                Id = sessionId,
+                UserId = user.Id,
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                UserAgent = Request.Headers.UserAgent.ToString(),
+                DeviceInfo = ParseDeviceInfo(Request.Headers.UserAgent.ToString()),
+                CreatedAt = DateTime.UtcNow,
+                LastActivityAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddHours(12)
+            };
+            _tenantDb.Set<UserSession>().Add(session);
+            await _tenantDb.SaveChangesAsync();
+        }
+        catch { /* Don't block login if session tracking fails */ }
+
+        claims.Add(new Claim(AuthClaims.SessionId, sessionId.ToString()));
+
+        var identity = new ClaimsIdentity(claims, AuthSchemes.Tenant);
+        var principal = new ClaimsPrincipal(identity);
+        await HttpContext.SignInAsync(AuthSchemes.Tenant, principal);
+
+        // Send login notification
+        try
+        {
+            var device = ParseDeviceInfo(Request.Headers.UserAgent.ToString());
+            await _notifications.SendAsync(user.Id, "Sign-in detected",
+                $"You signed in from {device} (2FA verified)",
                 $"/{slug}/Session");
         }
         catch { /* Don't block login if notification fails */ }

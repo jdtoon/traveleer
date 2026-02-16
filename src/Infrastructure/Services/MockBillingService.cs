@@ -121,6 +121,12 @@ public class MockBillingService : IBillingService
             .OrderByDescending(s => s.StartDate)
             .FirstOrDefaultAsync();
 
+        // Fallback: find cancelled/suspended subscription to reactivate (avoids UNIQUE constraint on TenantId)
+        existingSub ??= await _db.Subscriptions
+            .Where(s => s.TenantId == tenantId)
+            .OrderByDescending(s => s.StartDate)
+            .FirstOrDefaultAsync();
+
         if (existingSub is not null)
         {
             existingSub.PlanId = newPlanId;
