@@ -1,0 +1,23 @@
+@model dynamic
+@{
+    var email = (string)Model.Email;
+}
+
+<div class="alert alert-info">
+    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+    <div>
+        <h3 class="font-bold">Check your email</h3>
+        <div class="text-sm mt-2">
+            <p>We've sent a verification email to <span class="font-semibold">@email</span>.</p>
+            <p class="mt-1">Click the link in the email to verify your address and complete your registration.</p>
+            <p class="mt-2 text-xs opacity-70">The link expires in 24 hours. Check your spam folder if you don't see it.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Disable form after submission
+    document.getElementById('registration-form').style.display = 'none';
+</script>

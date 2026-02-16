@@ -5,7 +5,6 @@
     var action = ViewContext.RouteData.Values["action"]?.ToString();
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
     var customRolesEnabled = await FeatureService.IsEnabledAsync("custom_roles");
-    var auditLogEnabled = await FeatureService.IsEnabledAsync("audit_log");
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -25,7 +24,6 @@
     <link rel="stylesheet" href="~/_content/Swap.Htmx/css/swap.css" asp-append-version="true" />
 </head>
 <body class="min-h-screen bg-base-100 text-base-content">
-    <script src="/js/theme.js"></script>
     <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-primary focus:text-primary-content focus:px-4 focus:py-2 focus:rounded">
         Skip to main content
     </a>
@@ -46,7 +44,6 @@
                     <span class="text-xl font-bold">Administration</span>
                 </div>
                 <div class="flex-none">
-                    @await Html.PartialAsync("~/Modules/Notifications/Views/Notification/_NotificationBell.cshtml")
                 </div>
             </div>
 
@@ -55,7 +52,7 @@
                 <div class="text-sm breadcrumbs">
                     <ul>
                         <li><a href="/@slug">@(TenantContext.TenantName ?? "App")</a></li>
-                        <li><a href="/@slug/TenantAdmin/Users">Admin</a></li>
+                        <li><a href="/@slug/admin/users">Admin</a></li>
                         @if (ViewData["Breadcrumb"] is not null)
                         {
                             <li>@ViewData["Breadcrumb"]</li>
@@ -85,7 +82,7 @@
                     <ul class="menu menu-md gap-1">
                         <li class="menu-title"><span>Management</span></li>
                         <li>
-                            <swap-nav to="/@slug/TenantAdmin/Users" class="@(action is "Users" or "UserList" or "InviteUser" or "ManageUserRoles" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
+                            <swap-nav to="/@slug/admin/users" class="@(action is "Users" or "UserList" or "InviteUser" or "ManageUserRoles" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                 </svg>
@@ -93,7 +90,7 @@
                             </swap-nav>
                         </li>
                         <li>
-                            <swap-nav to="/@slug/Invitation" class="@(controller == "Invitation" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
+                            <swap-nav to="/@slug/admin/invitation" class="@(controller == "Invitation" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
@@ -103,7 +100,7 @@
                         @if (customRolesEnabled)
                         {
                         <li>
-                            <swap-nav to="/@slug/TenantAdmin/Roles" class="@(action is "Roles" or "RoleList" or "RoleDetail" or "CreateRole" or "EditRole" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
+                            <swap-nav to="/@slug/admin/roles" class="@(action is "Roles" or "RoleList" or "RoleDetail" or "CreateRole" or "EditRole" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                 </svg>
@@ -113,28 +110,16 @@
                         }
                         <li class="menu-title mt-2"><span>Billing</span></li>
                         <li>
-                            <swap-nav to="/@slug/TenantBilling" class="@(controller == "TenantBilling" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
+                            <swap-nav to="/@slug/admin/billing" class="@(controller == "TenantBilling" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                 </svg>
                                 Subscription & Billing
                             </swap-nav>
                         </li>
-                        @if (auditLogEnabled)
-                        {
-                        <li class="menu-title mt-2"><span>Monitoring</span></li>
-                        <li>
-                            <swap-nav to="/@slug/AuditLog" class="@(controller == "AuditLog" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                </svg>
-                                Audit Log
-                            </swap-nav>
-                        </li>
-                        }
                         <li class="menu-title mt-2"><span>Configuration</span></li>
                         <li>
-                            <swap-nav to="/@slug/TenantSettings" class="@(controller == "TenantSettings" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
+                            <swap-nav to="/@slug/admin/settings" class="@(controller == "TenantSettings" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

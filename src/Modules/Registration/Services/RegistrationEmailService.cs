@@ -22,6 +22,53 @@ public class RegistrationEmailService : IRegistrationEmailService
         _logger = logger;
     }
 
+    public async Task SendVerificationEmailAsync(string email, string slug, string verificationToken)
+    {
+        var baseUrl = _site.BaseUrl.TrimEnd('/');
+        var verifyUrl = $"{baseUrl}/register/verify?token={verificationToken}";
+        var siteName = _site.Name;
+
+        var htmlBody = $"""
+            <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h1 style="color: #333;">Verify your email address</h1>
+                <p>You're registering for <strong>{slug}</strong> on {siteName}.</p>
+                <p>Please click the button below to verify your email and complete your registration.</p>
+                <p style="text-align: center; margin: 32px 0;">
+                    <a href="{verifyUrl}" style="display: inline-block; padding: 0.75rem 1.5rem; background: #6366f1; color: #fff; text-decoration: none; border-radius: 0.5rem; font-weight: bold;">
+                        Verify Email &amp; Create Workspace
+                    </a>
+                </p>
+                <p style="font-size: 13px; color: #666;">This link expires in 24 hours. If you didn't request this, you can safely ignore this email.</p>
+            </div>
+            """;
+
+        var plainBody = $"""
+            Verify your email address
+
+            You're registering for {slug} on {siteName}.
+            Please visit the following URL to verify your email and complete registration:
+
+            {verifyUrl}
+
+            This link expires in 24 hours.
+            If you didn't request this, you can safely ignore this email.
+            """;
+
+        try
+        {
+            await _email.SendAsync(new EmailMessage(
+                To: email,
+                Subject: $"Verify your email — {siteName}",
+                HtmlBody: htmlBody,
+                PlainTextBody: plainBody
+            ));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send verification email to {Email} for slug {Slug}", email, slug);
+        }
+    }
+
     public async Task SendWelcomeEmailAsync(string adminEmail, string tenantSlug)
     {
         var baseUrl = _site.BaseUrl.TrimEnd('/');

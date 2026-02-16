@@ -1,8 +1,9 @@
 @model dynamic
 @{
-    ViewData["Title"] = "Plan Change";
+    ViewData["Title"] = "Email Verification";
     var success = (bool)Model.Success;
     var slug = (string?)Model.Slug;
+    var email = (string?)Model.Email;
     var errorMessage = (string?)Model.ErrorMessage;
 }
 
@@ -16,12 +17,13 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                        <h3 class="font-bold">Plan Changed Successfully!</h3>
+                        <h3 class="font-bold">Email Verified — Workspace Created!</h3>
                         <div class="text-sm mt-2">
-                            <p>Your plan has been updated and payment confirmed.</p>
+                            <p>Your email has been verified and workspace <span class="font-semibold">@slug</span> is ready.</p>
+                            <p class="mt-1">We've sent a welcome email to <span class="font-semibold">@email</span></p>
                             <p class="mt-2">
-                                <a href="/@slug/admin/billing" class="btn btn-sm btn-primary mt-2">
-                                    Go to Billing →
+                                <a href="/@slug/login" class="btn btn-sm btn-primary mt-2">
+                                    Go to Login →
                                 </a>
                             </p>
                         </div>
@@ -35,11 +37,11 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                        <h3 class="font-bold">Payment Issue</h3>
+                        <h3 class="font-bold">Verification Failed</h3>
                         <p class="text-sm mt-1">@errorMessage</p>
                         <p class="mt-2">
-                            <a href="/@slug/admin/billing" class="btn btn-sm btn-outline mt-2">
-                                ← Back to Billing
+                            <a href="/register" class="btn btn-sm btn-outline mt-2">
+                                ← Register Again
                             </a>
                         </p>
                     </div>

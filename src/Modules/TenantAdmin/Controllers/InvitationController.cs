@@ -15,6 +15,7 @@ using Swap.Htmx;
 namespace saas.Modules.TenantAdmin.Controllers;
 
 [Authorize(Policy = "TenantAdmin")]
+[Route("{slug}/admin/invitation")]
 public class InvitationController : SwapController
 {
     private readonly TenantDbContext _db;
@@ -40,7 +41,7 @@ public class InvitationController : SwapController
         _notifications = notifications;
     }
 
-    [HttpGet]
+    [HttpGet("")]
     [HasPermission(TenantAdminPermissions.UsersRead)]
     public async Task<IActionResult> Index()
     {
@@ -52,7 +53,7 @@ public class InvitationController : SwapController
         return SwapView("PendingInvitations", invitations);
     }
 
-    [HttpPost]
+    [HttpPost("send")]
     [HasPermission(TenantAdminPermissions.UsersCreate)]
     public async Task<IActionResult> Send([FromForm] string email, [FromForm] string? roleId)
     {
@@ -98,7 +99,7 @@ public class InvitationController : SwapController
 
         // Send invitation email
         var slug = _tenantContext.Slug;
-        var acceptUrl = $"/{slug}/invitation/accept?token={Uri.EscapeDataString(token)}";
+        var acceptUrl = Url.Action("Accept", "Invitation", new { slug, token }, Request.Scheme) ?? $"/{slug}/admin/invitation/accept?token={Uri.EscapeDataString(token)}";
         await _emailService.SendMagicLinkAsync(email, acceptUrl);
 
         return SwapResponse()
@@ -107,7 +108,7 @@ public class InvitationController : SwapController
             .Build();
     }
 
-    [HttpPost]
+    [HttpPost("revoke/{id}")]
     [HasPermission(TenantAdminPermissions.UsersCreate)]
     public async Task<IActionResult> Revoke(Guid id)
     {
@@ -122,7 +123,7 @@ public class InvitationController : SwapController
             .Build();
     }
 
-    [HttpPost]
+    [HttpPost("resend/{id}")]
     [HasPermission(TenantAdminPermissions.UsersCreate)]
     public async Task<IActionResult> Resend(Guid id)
     {
@@ -135,7 +136,7 @@ public class InvitationController : SwapController
         await _db.SaveChangesAsync();
 
         var slug = _tenantContext.Slug;
-        var acceptUrl = $"/{slug}/invitation/accept?token={Uri.EscapeDataString(invitation.Token)}";
+        var acceptUrl = Url.Action("Accept", "Invitation", new { slug, token = invitation.Token }, Request.Scheme) ?? $"/{slug}/admin/invitation/accept?token={Uri.EscapeDataString(invitation.Token)}";
         await _emailService.SendMagicLinkAsync(invitation.Email, acceptUrl);
 
         return SwapResponse()
@@ -146,7 +147,7 @@ public class InvitationController : SwapController
     /// <summary>
     /// Accept invitation — public endpoint (no auth required). Creates user and signs in.
     /// </summary>
-    [HttpGet]
+    [HttpGet("accept")]
     [AllowAnonymous]
     public async Task<IActionResult> Accept([FromRoute] string slug, [FromQuery] string token)
     {
@@ -208,7 +209,7 @@ public class InvitationController : SwapController
                 await _notifications.SendAsync(invitation.InvitedByUserId,
                     "Invitation accepted",
                     $"{invitation.Email} accepted your team invitation",
-                    $"/{slug}/Invitation",
+                    $"/{slug}/admin/invitation",
                     Notifications.Entities.NotificationType.Success);
             }
             catch { /* Don't block accept if notification fails */ }

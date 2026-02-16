@@ -15,19 +15,22 @@ public class TenantAdminService : ITenantAdminService
     private readonly UserManager<AppUser> _userManager;
     private readonly IEmailService _emailService;
     private readonly ITenantContext _tenantContext;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public TenantAdminService(
         TenantDbContext db,
         CoreDbContext coreDb,
         UserManager<AppUser> userManager,
         IEmailService emailService,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        IHttpContextAccessor httpContextAccessor)
     {
         _db = db;
         _coreDb = coreDb;
         _userManager = userManager;
         _emailService = emailService;
         _tenantContext = tenantContext;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     // ── Users ────────────────────────────────────────────────────────────────
@@ -115,7 +118,9 @@ public class TenantAdminService : ITenantAdminService
 
         // Send invitation link (not login page, but acceptance URL)
         var slug = _tenantContext.Slug;
-        var acceptUrl = $"/{slug}/Invitation/Accept?token={Uri.EscapeDataString(token)}";
+        var request = _httpContextAccessor.HttpContext?.Request;
+        var baseUrl = request is not null ? $"{request.Scheme}://{request.Host}" : "";
+        var acceptUrl = $"{baseUrl}/{slug}/admin/invitation/accept?token={Uri.EscapeDataString(token)}";
         await _emailService.SendMagicLinkAsync(email, acceptUrl);
 
         return new InviteUserResult(true);

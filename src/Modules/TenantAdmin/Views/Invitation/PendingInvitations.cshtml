@@ -53,15 +53,11 @@
                             <td class="text-sm text-base-content/60">@inv.InvitedByEmail</td>
                             <td class="text-sm">@inv.ExpiresAt.ToString("MMM dd, yyyy")</td>
                             <td class="space-x-1">
-                                <form method="post" action="/@slug/admin/invitation/resend/@inv.Id" class="inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-xs btn-ghost">Resend</button>
-                                </form>
-                                <form method="post" action="/@slug/admin/invitation/revoke/@inv.Id" class="inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-xs btn-error btn-outline"
-                                            onclick="return confirm('Revoke this invitation?')">Revoke</button>
-                                </form>
+                                <button hx-post="/@slug/admin/invitation/resend/@inv.Id"
+                                        class="btn btn-xs btn-ghost">Resend</button>
+                                <button hx-post="/@slug/admin/invitation/revoke/@inv.Id"
+                                        hx-confirm="Revoke this invitation?"
+                                        class="btn btn-xs btn-error btn-outline">Revoke</button>
                             </td>
                         </tr>
                     }

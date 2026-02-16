@@ -22,10 +22,14 @@ public class LitestreamReadinessHealthCheck : IHealthCheck
     {
         var status = await _statusService.GetStatusAsync(cancellationToken);
 
-        if (status.AutoRestoreEnabled && !status.LitestreamBinaryAvailable)
+        // When auto-restore is disabled (e.g. local development), skip all Litestream checks
+        if (!status.AutoRestoreEnabled)
+            return HealthCheckResult.Healthy("Litestream auto-restore is disabled; skipping readiness checks");
+
+        if (!status.LitestreamBinaryAvailable)
             return HealthCheckResult.Unhealthy("Auto-restore is enabled but Litestream binary is missing in app container");
 
-        if (status.AutoRestoreEnabled && !status.LitestreamConfigured)
+        if (!status.LitestreamConfigured)
             return HealthCheckResult.Degraded("Auto-restore enabled but R2 backup configuration is incomplete");
 
         if (status.KeyBackupEnabled)

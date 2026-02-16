@@ -1,8 +1,4 @@
-@inject saas.Shared.ITenantContext TenantContext
 @model saas.Modules.Audit.Controllers.AuditLogViewModel
-@{
-    var slug = TenantContext.Slug;
-}
 
 <div class="overflow-x-auto">
     <table class="table table-sm">
@@ -13,6 +9,7 @@
                 <th>Entity</th>
                 <th>Entity ID</th>
                 <th>User</th>
+                <th>Tenant</th>
                 <th></th>
             </tr>
         </thead>
@@ -20,7 +17,7 @@
             @if (Model.Entries.Items.Count == 0)
             {
                 <tr>
-                    <td colspan="6" class="text-center py-8 opacity-60">No audit entries found</td>
+                    <td colspan="7" class="text-center py-8 opacity-60">No audit entries found</td>
                 </tr>
             }
             @foreach (var entry in Model.Entries.Items)
@@ -42,10 +39,11 @@
                     <td class="font-mono text-sm">@entry.EntityType</td>
                     <td class="font-mono text-xs max-w-[120px] truncate">@entry.EntityId</td>
                     <td class="text-sm">@entry.UserEmail</td>
+                    <td class="text-sm font-mono">@entry.TenantSlug</td>
                     <td>
                         @if (entry.HasChanges)
                         {
-                            <a hx-get="/@slug/AuditLog/Detail/@entry.Id"
+                            <a hx-get="/super-admin/audit-log/detail/@entry.Id"
                                hx-target="#modal-container"
                                class="btn btn-ghost btn-xs">Detail</a>
                         }
@@ -65,8 +63,9 @@
                 var qs = $"page={i}";
                 if (!string.IsNullOrEmpty(Model.FilterEntity)) qs += $"&entity={Model.FilterEntity}";
                 if (!string.IsNullOrEmpty(Model.FilterAction)) qs += $"&action={Model.FilterAction}";
+                if (!string.IsNullOrEmpty(Model.FilterSlug)) qs += $"&slug={Model.FilterSlug}";
 
-                <a hx-get="/@slug/AuditLog/List?@qs"
+                <a hx-get="/super-admin/audit-log/list?@qs"
                    hx-target="#audit-log-list"
                    class="join-item btn btn-sm @(i == Model.Entries.PageIndex ? "btn-active" : "")">@i</a>
             }

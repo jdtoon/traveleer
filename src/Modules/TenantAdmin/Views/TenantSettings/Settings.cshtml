@@ -41,25 +41,6 @@
         </div>
     </div>
 
-    <!-- Custom Domain -->
-    <div class="card bg-base-200">
-        <div class="card-body">
-            <h2 class="card-title">Custom Domain</h2>
-            <p class="text-sm text-base-content/60 mb-4">
-                Configure a custom domain to access your workspace. Point your DNS CNAME record to this application's domain first.
-            </p>
-            <form method="post" action="/@slug/admin/settings/update-domain">
-                @Html.AntiForgeryToken()
-                <div class="form-control w-full mb-4">
-                    <label class="label"><span class="label-text">Custom Domain</span></label>
-                    <input type="text" name="customDomain" value="@Model.CustomDomain" placeholder="app.yourdomain.com" class="input input-bordered w-full" />
-                    <label class="label"><span class="label-text-alt">Leave blank to use the default subdomain</span></label>
-                </div>
-                <button type="submit" class="btn btn-primary">Update Domain</button>
-            </form>
-        </div>
-    </div>
-
     <!-- Organization Info (Read-only) -->
     <div class="card bg-base-200">
         <div class="card-body">
@@ -91,19 +72,6 @@
                     <p class="font-medium">@Model.CreatedAt.ToString("MMMM d, yyyy")</p>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Data Export -->
-    <div class="card bg-base-200">
-        <div class="card-body">
-            <h2 class="card-title">Data Export</h2>
-            <p class="text-sm text-base-content/60 mb-4">
-                Download a JSON export of your organization's data including users and settings.
-            </p>
-            <a href="/@slug/admin/settings/export-data" class="btn btn-outline btn-sm">
-                Download Export
-            </a>
         </div>
     </div>
 

@@ -4,32 +4,31 @@ using Microsoft.EntityFrameworkCore;
 using saas.Data;
 using saas.Data.Audit;
 using saas.Modules.Auth.Filters;
-using saas.Shared;
 using Swap.Htmx;
 
 namespace saas.Modules.Audit.Controllers;
 
-[Authorize(Policy = "TenantUser")]
+[Authorize(Policy = "SuperAdmin")]
 [RequireFeature(AuditFeatures.AuditLog)]
+[Route("super-admin/audit-log")]
 public class AuditLogController : SwapController
 {
     private readonly AuditDbContext _auditDb;
-    private readonly ITenantContext _tenantContext;
 
-    public AuditLogController(AuditDbContext auditDb, ITenantContext tenantContext)
+    public AuditLogController(AuditDbContext auditDb)
     {
         _auditDb = auditDb;
-        _tenantContext = tenantContext;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> Index(string? entity, string? action, int page = 1)
+    [HttpGet("")]
+    public async Task<IActionResult> Index(string? slug, string? entity, string? action, int page = 1)
     {
         ViewData["Breadcrumb"] = "Audit Log";
 
-        var query = _auditDb.AuditEntries
-            .Where(a => a.TenantSlug == _tenantContext.Slug)
-            .AsNoTracking();
+        var query = _auditDb.AuditEntries.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(slug))
+            query = query.Where(a => a.TenantSlug == slug);
 
         if (!string.IsNullOrWhiteSpace(entity))
             query = query.Where(a => a.EntityType.Contains(entity));
@@ -46,6 +45,7 @@ public class AuditLogController : SwapController
                      EntityId = a.EntityId,
                      Action = a.Action,
                      UserEmail = a.UserEmail ?? "system",
+                     TenantSlug = a.TenantSlug,
                      Timestamp = a.Timestamp,
                      HasChanges = a.OldValues != null || a.NewValues != null
                  }),
@@ -55,18 +55,20 @@ public class AuditLogController : SwapController
         {
             Entries = entries,
             FilterEntity = entity,
-            FilterAction = action
+            FilterAction = action,
+            FilterSlug = slug
         };
 
         return SwapView(vm);
     }
 
-    [HttpGet]
-    public async Task<IActionResult> List(string? entity, string? action, int page = 1)
+    [HttpGet("list")]
+    public async Task<IActionResult> List(string? slug, string? entity, string? action, int page = 1)
     {
-        var query = _auditDb.AuditEntries
-            .Where(a => a.TenantSlug == _tenantContext.Slug)
-            .AsNoTracking();
+        var query = _auditDb.AuditEntries.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(slug))
+            query = query.Where(a => a.TenantSlug == slug);
 
         if (!string.IsNullOrWhiteSpace(entity))
             query = query.Where(a => a.EntityType.Contains(entity));
@@ -83,6 +85,7 @@ public class AuditLogController : SwapController
                      EntityId = a.EntityId,
                      Action = a.Action,
                      UserEmail = a.UserEmail ?? "system",
+                     TenantSlug = a.TenantSlug,
                      Timestamp = a.Timestamp,
                      HasChanges = a.OldValues != null || a.NewValues != null
                  }),
@@ -92,18 +95,19 @@ public class AuditLogController : SwapController
         {
             Entries = entries,
             FilterEntity = entity,
-            FilterAction = action
+            FilterAction = action,
+            FilterSlug = slug
         };
 
         return SwapView("_AuditLogList", vm);
     }
 
-    [HttpGet]
+    [HttpGet("detail/{id}")]
     public async Task<IActionResult> Detail(long id)
     {
         var entry = await _auditDb.AuditEntries
             .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == id && a.TenantSlug == _tenantContext.Slug);
+            .FirstOrDefaultAsync(a => a.Id == id);
 
         if (entry is null) return NotFound();
 
@@ -118,6 +122,7 @@ public class AuditLogItem
     public string EntityId { get; set; } = string.Empty;
     public string Action { get; set; } = string.Empty;
     public string UserEmail { get; set; } = string.Empty;
+    public string TenantSlug { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
     public bool HasChanges { get; set; }
 }
@@ -127,4 +132,5 @@ public class AuditLogViewModel
     public PaginatedList<AuditLogItem> Entries { get; set; } = null!;
     public string? FilterEntity { get; set; }
     public string? FilterAction { get; set; }
+    public string? FilterSlug { get; set; }
 }

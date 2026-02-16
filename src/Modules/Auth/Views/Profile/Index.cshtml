@@ -56,49 +56,6 @@
         </div>
     </div>
 
-    <!-- Password Section -->
-    <div class="card bg-base-200">
-        <div class="card-body">
-            <h2 class="card-title">Password</h2>
-            <p class="text-sm text-base-content/60 mb-4">
-                Set or change your password. You can still use magic links to sign in.
-            </p>
-            @if (ViewData["PasswordSuccess"] is string pwSuccess)
-            {
-                <div class="alert alert-success mb-4">
-                    <span>@pwSuccess</span>
-                </div>
-            }
-            @if (ViewData["PasswordError"] is string pwError)
-            {
-                <div class="alert alert-error mb-4">
-                    <span>@pwError</span>
-                </div>
-            }
-            <form method="post" action="/@slug/profile/change-password">
-                <div class="form-control w-full mb-4">
-                    <label class="label"><span class="label-text">Current Password</span></label>
-                    <input type="password" name="currentPassword" class="input input-bordered w-full" 
-                           placeholder="Leave empty if you haven't set one" />
-                </div>
-
-                <div class="form-control w-full mb-4">
-                    <label class="label"><span class="label-text">New Password</span></label>
-                    <input type="password" name="newPassword" class="input input-bordered w-full" required minlength="8" />
-                </div>
-
-                <div class="form-control w-full mb-4">
-                    <label class="label"><span class="label-text">Confirm New Password</span></label>
-                    <input type="password" name="confirmPassword" class="input input-bordered w-full" required minlength="8" />
-                </div>
-
-                <div class="card-actions justify-end">
-                    <button type="submit" class="btn btn-outline">Update Password</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- Account Info -->
     <div class="card bg-base-200">
         <div class="card-body">

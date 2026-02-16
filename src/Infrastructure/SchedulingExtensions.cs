@@ -2,6 +2,7 @@ using Hangfire;
 using Hangfire.Dashboard;
 using Hangfire.InMemory;
 using Hangfire.Storage.SQLite;
+using Microsoft.AspNetCore.Authentication;
 
 namespace saas.Infrastructure;
 
@@ -62,7 +63,7 @@ public static class SchedulingExtensions
         RecurringJob.AddOrUpdate<Jobs.StaleSessionCleanupJob>(
             "stale-session-cleanup",
             job => job.ExecuteAsync(CancellationToken.None),
-            Cron.Hourly,
+            Cron.Daily(3, 30), // 3:30 AM daily
             new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
         RecurringJob.AddOrUpdate<Jobs.ExpiredTrialJob>(
@@ -88,10 +89,9 @@ public class SuperAdminDashboardAuthFilter : Hangfire.Dashboard.IDashboardAuthor
 {
     public bool Authorize(Hangfire.Dashboard.DashboardContext context)
     {
-        // In Hangfire, DashboardContext provides GetHttpContext() as an extension
-        // but it's in the Hangfire.AspNetCore package. Use reflection-safe cast.
         var httpContext = context.GetHttpContext();
-        return httpContext.User.Identity?.IsAuthenticated == true
-            && httpContext.User.HasClaim("SuperAdmin", "true");
+        // Must explicitly authenticate with the SuperAdmin scheme since no default scheme is set
+        var result = httpContext.AuthenticateAsync(saas.Modules.Auth.AuthSchemes.SuperAdmin).GetAwaiter().GetResult();
+        return result.Succeeded && result.Principal?.HasClaim("SuperAdmin", "true") == true;
     }
 }

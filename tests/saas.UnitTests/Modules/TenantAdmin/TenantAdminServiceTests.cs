@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -69,7 +70,7 @@ public class TenantAdminServiceTests : IAsyncLifetime
         var emailService = mainScope.ServiceProvider.GetRequiredService<IEmailService>();
         var tenantContext = mainScope.ServiceProvider.GetRequiredService<ITenantContext>();
 
-        _service = new TenantAdminService(_db, _coreDb, _userManager, emailService, tenantContext);
+        _service = new TenantAdminService(_db, _coreDb, _userManager, emailService, tenantContext, new FakeHttpContextAccessor());
 
         // Seed an admin user
         var admin = new AppUser
@@ -244,5 +245,13 @@ public class TenantAdminServiceTests : IAsyncLifetime
             SentLinks.Add((to, magicLinkUrl));
             return Task.CompletedTask;
         }
+    }
+
+    private class FakeHttpContextAccessor : IHttpContextAccessor
+    {
+        public HttpContext? HttpContext { get; set; } = new DefaultHttpContext
+        {
+            Request = { Scheme = "https", Host = new HostString("localhost") }
+        };
     }
 }

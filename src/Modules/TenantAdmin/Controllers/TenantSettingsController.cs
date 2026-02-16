@@ -12,6 +12,7 @@ using Swap.Htmx;
 namespace saas.Modules.TenantAdmin.Controllers;
 
 [Authorize(Policy = "TenantAdmin")]
+[Route("{slug}/admin/settings")]
 public class TenantSettingsController : SwapController
 {
     private readonly CoreDbContext _coreDb;
@@ -27,7 +28,7 @@ public class TenantSettingsController : SwapController
         _lifecycle = lifecycle;
     }
 
-    [HttpGet]
+    [HttpGet("")]
     [HasPermission(TenantAdminPermissions.SettingsRead)]
     public async Task<IActionResult> Index()
     {
@@ -50,7 +51,7 @@ public class TenantSettingsController : SwapController
         });
     }
 
-    [HttpPost]
+    [HttpPost("update-general")]
     [HasPermission(TenantAdminPermissions.SettingsEdit)]
     public async Task<IActionResult> UpdateGeneral([FromForm] TenantSettingsUpdateModel model)
     {
@@ -73,7 +74,7 @@ public class TenantSettingsController : SwapController
         return await Index();
     }
 
-    [HttpPost]
+    [HttpPost("update-domain")]
     [HasPermission(TenantAdminPermissions.SettingsEdit)]
     public async Task<IActionResult> UpdateDomain([FromForm] string? customDomain)
     {
@@ -94,7 +95,7 @@ public class TenantSettingsController : SwapController
         return await Index();
     }
 
-    [HttpGet]
+    [HttpGet("export-data")]
     [HasPermission(TenantAdminPermissions.SettingsRead)]
     public async Task<IActionResult> ExportData()
     {
@@ -103,7 +104,7 @@ public class TenantSettingsController : SwapController
         return File(data, "application/json", $"{slug}-export-{DateTime.UtcNow:yyyyMMdd}.json");
     }
 
-    [HttpPost]
+    [HttpPost("request-deletion")]
     [HasPermission(TenantAdminPermissions.SettingsEdit)]
     public async Task<IActionResult> RequestDeletion()
     {
@@ -112,7 +113,7 @@ public class TenantSettingsController : SwapController
         return await Index();
     }
 
-    [HttpPost]
+    [HttpPost("cancel-deletion")]
     [HasPermission(TenantAdminPermissions.SettingsEdit)]
     public async Task<IActionResult> CancelDeletion()
     {

@@ -16,7 +16,11 @@ public static class CoreDataSeeder
     public static async Task SeedAsync(CoreDbContext db, IConfiguration configuration, IReadOnlyList<IModule> modules)
     {
         if (await db.Plans.AnyAsync())
+        {
+            // Plans exist — run incremental sync for new features/permissions
+            await SyncNewFeaturesAsync(db, modules);
             return;
+        }
 
         // 1. Seed Plans
         var plans = new[]
@@ -113,6 +117,67 @@ public static class CoreDataSeeder
             DisplayName = "Super Admin",
             IsActive = true
         });
+
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Incrementally syncs new features from IModule definitions into the database.
+    /// Runs on every startup after the initial seed to pick up newly added module features.
+    /// </summary>
+    private static async Task SyncNewFeaturesAsync(CoreDbContext db, IReadOnlyList<IModule> modules)
+    {
+        var existingFeatureKeys = await db.Features.Select(f => f.Key).ToListAsync();
+        var existingKeySet = new HashSet<string>(existingFeatureKeys, StringComparer.OrdinalIgnoreCase);
+
+        var moduleFeatures = modules.SelectMany(m => m.Features.Select(mf => new { Module = m, Feature = mf })).ToList();
+        var newModuleFeatures = moduleFeatures.Where(x => !existingKeySet.Contains(x.Feature.Key)).ToList();
+
+        if (newModuleFeatures.Count == 0)
+            return;
+
+        // Add new features
+        var newFeatures = newModuleFeatures.Select(x => new Feature
+        {
+            Id = Guid.NewGuid(),
+            Key = x.Feature.Key,
+            Name = x.Feature.Name,
+            Module = x.Module.Name,
+            Description = x.Feature.Description,
+            IsGlobal = x.Feature.IsGlobal,
+            IsEnabled = true
+        }).ToList();
+
+        db.Features.AddRange(newFeatures);
+        await db.SaveChangesAsync();
+
+        // Create plan-feature mappings for new features
+        var plans = await db.Plans.OrderBy(p => p.SortOrder).ToListAsync();
+        var planSortOrder = plans.ToDictionary(p => p.Slug, p => p.SortOrder, StringComparer.OrdinalIgnoreCase);
+        var featureMinPlan = newModuleFeatures.ToDictionary(
+            x => x.Feature.Key,
+            x => x.Feature.MinPlanSlug,
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var plan in plans)
+        {
+            foreach (var feature in newFeatures)
+            {
+                if (!featureMinPlan.TryGetValue(feature.Key, out var minSlug))
+                    continue;
+
+                if (minSlug is null)
+                {
+                    db.PlanFeatures.Add(new PlanFeature { PlanId = plan.Id, FeatureId = feature.Id });
+                    continue;
+                }
+
+                if (planSortOrder.TryGetValue(minSlug, out var minSortOrder) && plan.SortOrder >= minSortOrder)
+                {
+                    db.PlanFeatures.Add(new PlanFeature { PlanId = plan.Id, FeatureId = feature.Id });
+                }
+            }
+        }
 
         await db.SaveChangesAsync();
     }
