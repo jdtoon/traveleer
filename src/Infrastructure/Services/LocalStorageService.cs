@@ -12,14 +12,26 @@ public class LocalStorageService : IStorageService
 
     public LocalStorageService(IWebHostEnvironment env, ILogger<LocalStorageService> logger)
     {
-        _basePath = Path.Combine(env.ContentRootPath, "db", "uploads");
+        _basePath = Path.GetFullPath(Path.Combine(env.ContentRootPath, "db", "uploads"));
         Directory.CreateDirectory(_basePath);
         _logger = logger;
     }
 
+    /// <summary>
+    /// Resolves a relative path to a full path within the base directory.
+    /// Throws if the resolved path escapes the base directory (path traversal protection).
+    /// </summary>
+    private string SafePath(string path)
+    {
+        var fullPath = Path.GetFullPath(Path.Combine(_basePath, path));
+        if (!fullPath.StartsWith(_basePath, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Invalid storage path: path escapes base directory");
+        return fullPath;
+    }
+
     public async Task<string> UploadAsync(Stream stream, string path, string contentType, CancellationToken ct = default)
     {
-        var fullPath = Path.Combine(_basePath, path);
+        var fullPath = SafePath(path);
         var dir = Path.GetDirectoryName(fullPath);
         if (!string.IsNullOrEmpty(dir))
             Directory.CreateDirectory(dir);
@@ -33,7 +45,7 @@ public class LocalStorageService : IStorageService
 
     public Task<Stream?> DownloadAsync(string path, CancellationToken ct = default)
     {
-        var fullPath = Path.Combine(_basePath, path);
+        var fullPath = SafePath(path);
         if (!File.Exists(fullPath))
             return Task.FromResult<Stream?>(null);
 
@@ -43,7 +55,7 @@ public class LocalStorageService : IStorageService
 
     public Task<bool> DeleteAsync(string path, CancellationToken ct = default)
     {
-        var fullPath = Path.Combine(_basePath, path);
+        var fullPath = SafePath(path);
         if (!File.Exists(fullPath))
             return Task.FromResult(false);
 
@@ -54,7 +66,7 @@ public class LocalStorageService : IStorageService
 
     public Task<bool> ExistsAsync(string path, CancellationToken ct = default)
     {
-        var fullPath = Path.Combine(_basePath, path);
+        var fullPath = SafePath(path);
         return Task.FromResult(File.Exists(fullPath));
     }
 

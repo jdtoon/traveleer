@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.Extensions.Options;
 using saas.Shared;
 
@@ -32,14 +33,14 @@ public class EmailTemplateService : IEmailTemplateService
         var layout = LoadTemplate("_Layout");
         template = layout.Replace("{{Content}}", template);
 
-        // Auto-inject layout-level variables
+        // Auto-inject layout-level variables (system-controlled, safe — no encoding)
         template = template.Replace("{{AppName}}", _appName);
         template = template.Replace("{{Year}}", DateTime.UtcNow.Year.ToString());
 
-        // Replace caller-provided variables
+        // Replace caller-provided variables with HTML encoding to prevent injection
         foreach (var kvp in variables)
         {
-            template = template.Replace($"{{{{{kvp.Key}}}}}", kvp.Value);
+            template = template.Replace($"{{{{{kvp.Key}}}}}", WebUtility.HtmlEncode(kvp.Value));
         }
 
         return template;
