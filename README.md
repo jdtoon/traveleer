@@ -45,7 +45,6 @@ saas/
 │   │       └── Views/
 │   ├── Views/                 # Shared views & layout
 │   └── wwwroot/               # Static assets
-│       ├── css/theme.css      # Custom theme overrides
 │       └── lib/               # LibMan packages (DaisyUI, Tailwind, HTMX)
 ├── tests/                     # Integration tests
 └── docker-compose.yml

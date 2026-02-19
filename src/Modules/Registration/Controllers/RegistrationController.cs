@@ -60,12 +60,12 @@ public class RegistrationController : SwapController
     {
         if (string.IsNullOrWhiteSpace(slug))
         {
-            return PartialView("_SlugValidation", new { IsValid = false, Message = "" });
+            return PartialView(SwapViews.Registration._SlugValidation, new { IsValid = false, Message = "" });
         }
 
         var result = await _provisioner.ValidateSlugAsync(slug);
 
-        return PartialView("_SlugValidation", new
+        return PartialView(SwapViews.Registration._SlugValidation, new
         {
             IsValid = result.IsValid,
             Message = result.ErrorMessage ?? "✓ Available"
@@ -83,28 +83,28 @@ public class RegistrationController : SwapController
                 .SelectMany(v => v.Errors)
                 .Select(e => e.ErrorMessage)
                 .First();
-            return PartialView("_RegistrationError", new { Message = errors });
+            return PartialView(SwapViews.Registration._RegistrationError, new { Message = errors });
         }
 
         var botCheck = await _botProtection.ValidateAsync(request.CaptchaToken ?? string.Empty);
         if (!botCheck)
         {
             _logger.LogWarning("Bot protection failed for registration attempt: {Slug}", request.Slug);
-            return PartialView("_RegistrationError", new { Message = "Bot protection verification failed" });
+            return PartialView(SwapViews.Registration._RegistrationError, new { Message = "Bot protection verification failed" });
         }
 
         // Look up the selected plan
         var plan = await _coreDb.Plans.FindAsync(request.PlanId);
         if (plan is null)
         {
-            return PartialView("_RegistrationError", new { Message = "Invalid plan selected" });
+            return PartialView(SwapViews.Registration._RegistrationError, new { Message = "Invalid plan selected" });
         }
 
         // Validate slug uniqueness
         var slugValidation = await _provisioner.ValidateSlugAsync(request.Slug);
         if (!slugValidation.IsValid)
         {
-            return PartialView("_RegistrationError", new { Message = slugValidation.ErrorMessage });
+            return PartialView(SwapViews.Registration._RegistrationError, new { Message = slugValidation.ErrorMessage });
         }
 
         // Check if there's already a pending (unexpired) registration for this slug
@@ -116,7 +116,7 @@ public class RegistrationController : SwapController
             // Resend verification email for existing pending registration
             await _registrationEmail.SendVerificationEmailAsync(existingPending.Email, existingPending.Slug, existingPending.VerificationToken);
             _logger.LogInformation("Resent verification email for pending slug {Slug}", request.Slug);
-            return PartialView("_VerifyEmailSent", new { Email = request.Email });
+            return PartialView(SwapViews.Registration._VerifyEmailSent, new { Email = request.Email });
         }
 
         // Clean up any expired pending registrations for this slug
@@ -149,7 +149,7 @@ public class RegistrationController : SwapController
 
         _logger.LogInformation("Pending registration created for {Slug}, verification email sent to {Email}", request.Slug, request.Email);
 
-        return PartialView("_VerifyEmailSent", new { Email = request.Email });
+        return PartialView(SwapViews.Registration._VerifyEmailSent, new { Email = request.Email });
     }
 
     /// <summary>
@@ -161,7 +161,7 @@ public class RegistrationController : SwapController
     {
         if (string.IsNullOrEmpty(token))
         {
-            return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+            return SwapView(SwapViews.Registration.VerifyResult, new { Success = false, Slug = (string?)null, Email = (string?)null,
                 ErrorMessage = "Invalid verification link." });
         }
 
@@ -170,13 +170,13 @@ public class RegistrationController : SwapController
 
         if (pending is null)
         {
-            return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+            return SwapView(SwapViews.Registration.VerifyResult, new { Success = false, Slug = (string?)null, Email = (string?)null,
                 ErrorMessage = "This verification link is invalid or has already been used." });
         }
 
         if (pending.ExpiresAt < DateTime.UtcNow)
         {
-            return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+            return SwapView(SwapViews.Registration.VerifyResult, new { Success = false, Slug = (string?)null, Email = (string?)null,
                 ErrorMessage = "This verification link has expired. Please register again." });
         }
 
@@ -188,7 +188,7 @@ public class RegistrationController : SwapController
         var plan = await _coreDb.Plans.FindAsync(pending.PlanId);
         if (plan is null)
         {
-            return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+            return SwapView(SwapViews.Registration.VerifyResult, new { Success = false, Slug = (string?)null, Email = (string?)null,
                 ErrorMessage = "The selected plan is no longer available." });
         }
 
@@ -224,7 +224,7 @@ public class RegistrationController : SwapController
                 _coreDb.Tenants.Remove(tenant);
                 await _coreDb.SaveChangesAsync();
 
-                return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                return SwapView(SwapViews.Registration.VerifyResult, new { Success = false, Slug = (string?)null, Email = (string?)null,
                     ErrorMessage = billingResult.Error ?? "Payment initialization failed. Please try again." });
             }
 
@@ -234,12 +234,12 @@ public class RegistrationController : SwapController
                 var provisionResult = await _provisioner.ProvisionTenantAsync(pending.Slug, pending.Email, pending.PlanId);
                 if (!provisionResult.Success)
                 {
-                    return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                    return SwapView(SwapViews.Registration.VerifyResult, new { Success = false, Slug = (string?)null, Email = (string?)null,
                         ErrorMessage = provisionResult.ErrorMessage });
                 }
                 await _registrationEmail.SendWelcomeEmailAsync(pending.Email, pending.Slug);
                 _logger.LogInformation("Verified and provisioned paid tenant {Slug} (mock billing)", pending.Slug);
-                return SwapView("VerifyResult", new { Success = true, Slug = pending.Slug, Email = pending.Email,
+                return SwapView(SwapViews.Registration.VerifyResult, new { Success = true, Slug = pending.Slug, Email = pending.Email,
                     ErrorMessage = (string?)null });
             }
 
@@ -248,7 +248,7 @@ public class RegistrationController : SwapController
             {
                 _coreDb.Tenants.Remove(tenant);
                 await _coreDb.SaveChangesAsync();
-                return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                return SwapView(SwapViews.Registration.VerifyResult, new { Success = false, Slug = (string?)null, Email = (string?)null,
                     ErrorMessage = "Payment initialization failed. Please try again." });
             }
 
@@ -262,7 +262,7 @@ public class RegistrationController : SwapController
         if (!result.Success)
         {
             _logger.LogWarning("Post-verification provisioning failed for {Slug}: {Error}", pending.Slug, result.ErrorMessage);
-            return SwapView("VerifyResult", new { Success = false, Slug = (string?)null, Email = (string?)null,
+            return SwapView(SwapViews.Registration.VerifyResult, new { Success = false, Slug = (string?)null, Email = (string?)null,
                 ErrorMessage = result.ErrorMessage });
         }
 
@@ -278,7 +278,7 @@ public class RegistrationController : SwapController
 
         _logger.LogInformation("Email verified and tenant {Slug} provisioned successfully", pending.Slug);
 
-        return SwapView("VerifyResult", new { Success = true, Slug = pending.Slug, Email = pending.Email,
+        return SwapView(SwapViews.Registration.VerifyResult, new { Success = true, Slug = pending.Slug, Email = pending.Email,
             ErrorMessage = (string?)null });
     }
 
@@ -295,7 +295,7 @@ public class RegistrationController : SwapController
         if (string.IsNullOrEmpty(ref_))
         {
             _logger.LogWarning("Registration callback received without reference parameter");
-            return SwapView("Callback", new { Success = false, Slug = (string?)null, Email = (string?)null,
+            return SwapView(SwapViews.Registration.Callback, new { Success = false, Slug = (string?)null, Email = (string?)null,
                 ErrorMessage = "Invalid payment reference. Please contact support." });
         }
 
@@ -307,7 +307,7 @@ public class RegistrationController : SwapController
         if (subscription is null)
         {
             _logger.LogWarning("Registration callback: no subscription found for reference {Reference}", ref_);
-            return SwapView("Callback", new { Success = false, Slug = (string?)null, Email = (string?)null,
+            return SwapView(SwapViews.Registration.Callback, new { Success = false, Slug = (string?)null, Email = (string?)null,
                 ErrorMessage = "Could not find your registration. Please contact support." });
         }
 
@@ -327,7 +327,7 @@ public class RegistrationController : SwapController
             {
                 _logger.LogError("Post-payment provisioning failed for {Slug}: {Error}",
                     tenant.Slug, provisionResult.ErrorMessage);
-                return SwapView("Callback", new { Success = false, Slug = (string?)null, Email = (string?)null,
+                return SwapView(SwapViews.Registration.Callback, new { Success = false, Slug = (string?)null, Email = (string?)null,
                     ErrorMessage = "Account setup is in progress. You'll receive an email shortly." });
             }
         }
@@ -337,7 +337,7 @@ public class RegistrationController : SwapController
 
         _logger.LogInformation("Payment callback successful for tenant {Slug}", tenant.Slug);
 
-        return SwapView("Callback", new { Success = true, Slug = tenant.Slug, Email = tenant.ContactEmail,
+        return SwapView(SwapViews.Registration.Callback, new { Success = true, Slug = tenant.Slug, Email = tenant.ContactEmail,
             ErrorMessage = (string?)null });
     }
 

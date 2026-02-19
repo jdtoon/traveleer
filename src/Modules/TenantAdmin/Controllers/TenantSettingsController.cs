@@ -34,7 +34,7 @@ public class TenantSettingsController : SwapController
 
         if (tenant is null) return NotFound();
 
-        return SwapView("Settings", new TenantSettingsViewModel
+        return SwapView(SwapViews.TenantSettings.Settings, new TenantSettingsViewModel
         {
             Name = tenant.Name,
             ContactEmail = tenant.ContactEmail,

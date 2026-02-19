@@ -100,7 +100,7 @@ public class AuditLogController : SwapController
             FilterSlug = slug
         };
 
-        return SwapView("_AuditLogList", vm);
+        return SwapView(SwapViews.AuditLog._AuditLogList, vm);
     }
 
     [HttpGet("detail/{id}")]
@@ -112,6 +112,6 @@ public class AuditLogController : SwapController
 
         if (entry is null) return NotFound();
 
-        return SwapView("_AuditDetailModal", entry);
+        return SwapView(SwapViews.AuditLog._AuditDetailModal, entry);
     }
 }

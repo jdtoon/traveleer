@@ -55,7 +55,7 @@ public class MarketingController : SwapController
     public async Task<IActionResult> PricingContent([FromQuery] string? mode)
     {
         var model = await BuildPricingModelAsync(mode);
-        return PartialView("_PricingContent", model);
+        return PartialView(SwapViews.Marketing._PricingContent, model);
     }
 
     [HttpGet]
@@ -83,20 +83,20 @@ public class MarketingController : SwapController
                 .SelectMany(v => v.Errors)
                 .Select(e => e.ErrorMessage)
                 .FirstOrDefault() ?? "Please complete all fields.";
-            return PartialView("_ContactResult", new { Success = false, Message = error });
+            return PartialView(SwapViews.Marketing._ContactResult, new { Success = false, Message = error });
         }
 
         var botCheck = await _botProtection.ValidateAsync(request.CaptchaToken ?? string.Empty);
         if (!botCheck)
         {
             _logger.LogWarning("Bot protection failed for contact submission: {Email}", request.Email);
-            return PartialView("_ContactResult", new { Success = false, Message = "Bot protection verification failed." });
+            return PartialView(SwapViews.Marketing._ContactResult, new { Success = false, Message = "Bot protection verification failed." });
         }
 
         if (string.IsNullOrWhiteSpace(_site.SupportEmail))
         {
             _logger.LogWarning("Support email missing, cannot send contact message.");
-            return PartialView("_ContactResult", new { Success = false, Message = "Contact service is unavailable." });
+            return PartialView(SwapViews.Marketing._ContactResult, new { Success = false, Message = "Contact service is unavailable." });
         }
 
         var safeName = WebUtility.HtmlEncode(request.Name);
@@ -118,7 +118,7 @@ public class MarketingController : SwapController
 
         _logger.LogInformation("Contact message sent from {Email}", request.Email);
 
-        return PartialView("_ContactResult", new { Success = true, Message = "Thanks for reaching out. We will reply soon." });
+        return PartialView(SwapViews.Marketing._ContactResult, new { Success = true, Message = "Thanks for reaching out. We will reply soon." });
     }
 
     [HttpGet]
@@ -158,7 +158,7 @@ public class MarketingController : SwapController
     [HttpGet]
     public IActionResult LoginModal()
     {
-        return SwapView("_LoginModal", new LoginRedirectModel());
+        return SwapView(SwapViews.Marketing._LoginModal, new LoginRedirectModel());
     }
 
     [HttpGet]

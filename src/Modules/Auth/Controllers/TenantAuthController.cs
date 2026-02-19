@@ -61,7 +61,7 @@ public class TenantAuthController : SwapController
     public IActionResult Login([FromRoute] string slug)
     {
         ViewData["TenantSlug"] = slug;
-        return SwapView("TenantLogin");
+        return SwapView(SwapViews.TenantAuth.TenantLogin);
     }
 
     [HttpPost("login")]
@@ -71,27 +71,27 @@ public class TenantAuthController : SwapController
         if (!await _botProtection.ValidateAsync(captchaToken))
         {
             ViewData["TenantSlug"] = slug;
-            return SwapView("TenantLogin", model: "Bot verification failed. Please try again.");
+            return SwapView(SwapViews.TenantAuth.TenantLogin, model: "Bot verification failed. Please try again.");
         }
 
         if (string.IsNullOrWhiteSpace(email))
         {
             ViewData["TenantSlug"] = slug;
-            return SwapView("TenantLogin", model: "Email is required.");
+            return SwapView(SwapViews.TenantAuth.TenantLogin, model: "Email is required.");
         }
 
         var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
         if (user is null || !user.IsActive)
         {
             // Always show the same message to prevent email enumeration
-            return SwapView("MagicLinkSent");
+            return SwapView(SwapViews.Shared.MagicLinkSent);
         }
 
         var token = await _magicLinks.GenerateTokenAsync(email, slug);
         var callbackUrl = Url.Action("Verify", "TenantAuth", new { slug, token = token.Token }, Request.Scheme) ?? "/";
         await _email.SendMagicLinkAsync(email, callbackUrl);
 
-        return SwapView("MagicLinkSent");
+        return SwapView(SwapViews.Shared.MagicLinkSent);
     }
 
     [HttpGet("verify")]
@@ -99,14 +99,14 @@ public class TenantAuthController : SwapController
     {
         var result = await _magicLinks.VerifyTokenAsync(token);
         if (!result.Success || result.Email is null || !string.Equals(result.TenantSlug, slug, StringComparison.OrdinalIgnoreCase))
-            return SwapView("MagicLinkError", result.Error ?? "Invalid token");
+            return SwapView(SwapViews.Shared.MagicLinkError, result.Error ?? "Invalid token");
 
         var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == result.Email);
         if (user is null)
-            return SwapView("MagicLinkError", "User not found");
+            return SwapView(SwapViews.Shared.MagicLinkError, "User not found");
 
         if (!user.IsActive)
-            return SwapView("MagicLinkError", "This account has been deactivated. Please contact your administrator.");
+            return SwapView(SwapViews.Shared.MagicLinkError, "This account has been deactivated. Please contact your administrator.");
 
         var roles = await _userManager.GetRolesAsync(user);
 
@@ -228,7 +228,7 @@ public class TenantAuthController : SwapController
 
         ViewData["TenantSlug"] = slug;
         ViewData["ChallengeToken"] = t;
-        return SwapView("TwoFactorChallenge");
+        return SwapView(SwapViews.TenantAuth.TwoFactorChallenge);
     }
 
     [HttpPost("two-factor-challenge")]
@@ -241,7 +241,7 @@ public class TenantAuthController : SwapController
         var userId = parsed.Value.UserId;
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null || !user.IsActive)
-            return SwapView("MagicLinkError", "Session expired. Please request a new magic link.");
+            return SwapView(SwapViews.Shared.MagicLinkError, "Session expired. Please request a new magic link.");
 
         // Try TOTP code first, then recovery code
         bool isValid = false;
@@ -259,7 +259,7 @@ public class TenantAuthController : SwapController
             ViewData["TenantSlug"] = slug;
             ViewData["ChallengeToken"] = challengeToken;
             ViewData["Error"] = "Invalid code. Please try again.";
-            return SwapView("TwoFactorChallenge");
+            return SwapView(SwapViews.TenantAuth.TwoFactorChallenge);
         }
 
         // 2FA passed — complete the sign-in flow

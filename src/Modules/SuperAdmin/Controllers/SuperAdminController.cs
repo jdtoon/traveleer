@@ -46,7 +46,7 @@ public class SuperAdminController : SwapController
     {
         var tenants = await _service.GetTenantsAsync(search, page);
         ViewData["Search"] = search;
-        return SwapView("_TenantList", tenants);
+        return SwapView(SwapViews.SuperAdmin._TenantList, tenants);
     }
 
     [HttpGet("/super-admin/tenants/{id}")]
@@ -69,7 +69,7 @@ public class SuperAdminController : SwapController
             TenantResolutionMiddleware.InvalidateCache(_cache, model.Slug);
 
         return SwapResponse()
-            .WithView("TenantDetail", model)
+            .WithView(SwapViews.SuperAdmin.TenantDetail, model)
             .WithWarningToast("Tenant suspended")
             .Build();
     }
@@ -85,7 +85,7 @@ public class SuperAdminController : SwapController
             TenantResolutionMiddleware.InvalidateCache(_cache, model.Slug);
 
         return SwapResponse()
-            .WithView("TenantDetail", model)
+            .WithView(SwapViews.SuperAdmin.TenantDetail, model)
             .WithSuccessToast("Tenant activated")
             .Build();
     }
@@ -126,21 +126,21 @@ public class SuperAdminController : SwapController
             model = new PlanEditModel();
         }
 
-        return SwapView("_PlanEditModal", model);
+        return SwapView(SwapViews.SuperAdmin._PlanEditModal, model);
     }
 
     [HttpPost("/super-admin/plans")]
     public async Task<IActionResult> SavePlan(PlanEditModel model)
     {
         if (!ModelState.IsValid)
-            return SwapView("_PlanEditModal", model);
+            return SwapView(SwapViews.SuperAdmin._PlanEditModal, model);
 
         // Check for duplicate slug
         var duplicateSlug = await _service.IsSlugTakenAsync(model.Slug, model.Id);
         if (duplicateSlug)
         {
             ModelState.AddModelError("Slug", "A plan with this slug already exists.");
-            return SwapView("_PlanEditModal", model);
+            return SwapView(SwapViews.SuperAdmin._PlanEditModal, model);
         }
 
         // Fetch old slug before save (in case it was renamed) to invalidate stale cache
@@ -162,8 +162,8 @@ public class SuperAdminController : SwapController
         var plans = await _service.GetPlansAsync();
 
         return SwapResponse()
-            .WithView("_ModalClose")
-            .AlsoUpdate("plan-list", "_PlanList", plans)
+            .WithView(SwapViews.SuperAdmin._ModalClose)
+            .AlsoUpdate(SwapElements.PlanList, SwapViews.SuperAdmin._PlanList, plans)
             .WithSavedToast("Plan")
             .Build();
     }
@@ -192,7 +192,7 @@ public class SuperAdminController : SwapController
 
         var model = await _service.GetFeatureMatrixAsync();
         return SwapResponse()
-            .WithView("_FeatureMatrix", model)
+            .WithView(SwapViews.SuperAdmin._FeatureMatrix, model)
             .WithSuccessToast("Feature toggled")
             .Build();
     }
@@ -207,7 +207,7 @@ public class SuperAdminController : SwapController
             FeatureId = featureId,
             IsEnabled = true
         };
-        return SwapView("_FeatureOverrideModal", model);
+        return SwapView(SwapViews.SuperAdmin._FeatureOverrideModal, model);
     }
 
     [HttpPost("/super-admin/features/override")]
@@ -219,8 +219,8 @@ public class SuperAdminController : SwapController
         var tenant = await _service.GetTenantDetailAsync(model.TenantId);
 
         return SwapResponse()
-            .WithView("_ModalClose")
-            .AlsoUpdate("feature-access-table", "_FeatureAccessTable", tenant)
+            .WithView(SwapViews.SuperAdmin._ModalClose)
+            .AlsoUpdate(SwapElements.FeatureAccessTable, SwapViews.SuperAdmin._FeatureAccessTable, tenant)
             .WithSuccessToast("Override saved")
             .Build();
     }

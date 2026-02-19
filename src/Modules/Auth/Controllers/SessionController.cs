@@ -30,7 +30,7 @@ public class SessionController : SwapController
             .ToListAsync();
 
         ViewData["Title"] = "Active Sessions";
-        return SwapView("Sessions", sessions);
+        return SwapView(SwapViews.Session.Sessions, sessions);
     }
 
     [HttpPost("{id}/revoke")]

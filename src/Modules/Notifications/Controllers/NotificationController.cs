@@ -24,7 +24,7 @@ public class NotificationController : SwapController
     {
         var userId = _currentUser.UserId ?? string.Empty;
         var notifications = await _notifications.GetRecentAsync(userId, 20);
-        return SwapView("NotificationList", notifications);
+        return SwapView(SwapViews.Notification.NotificationList, notifications);
     }
 
     [HttpGet("dropdown")]
@@ -34,7 +34,7 @@ public class NotificationController : SwapController
         var notifications = await _notifications.GetRecentAsync(userId, 5);
         var unreadCount = await _notifications.GetUnreadCountAsync(userId);
         ViewData["UnreadCount"] = unreadCount;
-        return PartialView("_NotificationDropdown", notifications);
+        return PartialView(SwapViews.Notification._NotificationDropdown, notifications);
     }
 
     [HttpGet("count")]

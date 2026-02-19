@@ -54,7 +54,7 @@ public class InvitationController : SwapController
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync();
 
-        return SwapView("PendingInvitations", invitations);
+        return SwapView(SwapViews.Invitation.PendingInvitations, invitations);
     }
 
     [HttpPost("send")]
@@ -108,7 +108,7 @@ public class InvitationController : SwapController
 
         return SwapResponse()
             .WithSuccessToast("Invitation sent!")
-            .WithView("_ModalClose")
+            .WithView(SwapViews.TenantAdmin._ModalClose)
             .Build();
     }
 
@@ -161,7 +161,7 @@ public class InvitationController : SwapController
         if (invitation is null || invitation.ExpiresAt < DateTime.UtcNow)
         {
             ViewData["Error"] = "This invitation is invalid or has expired.";
-            return SwapView("AcceptInvitation", (TeamInvitation?)null);
+            return SwapView(SwapViews.Invitation.AcceptInvitation, (TeamInvitation?)null);
         }
 
         // Check if user already exists
@@ -192,7 +192,7 @@ public class InvitationController : SwapController
         if (!result.Succeeded)
         {
             ViewData["Error"] = "Failed to create account. Please contact your administrator.";
-            return SwapView("AcceptInvitation", (TeamInvitation?)null);
+            return SwapView(SwapViews.Invitation.AcceptInvitation, (TeamInvitation?)null);
         }
 
         // Assign role if specified

@@ -48,7 +48,7 @@ public class TenantBillingController : SwapController
             .Select(t => t.PlanId)
             .FirstOrDefaultAsync();
 
-        return SwapView("_ChangePlanModal", new ChangePlanViewModel
+        return SwapView(SwapViews.TenantBilling._ChangePlanModal, new ChangePlanViewModel
         {
             Plans = plans,
             CurrentPlanId = currentPlanId
@@ -69,7 +69,7 @@ public class TenantBillingController : SwapController
                 .Build();
         }
 
-        return SwapView("_PlanChangeConfirmModal", new PlanChangeConfirmViewModel
+        return SwapView(SwapViews.TenantBilling._PlanChangeConfirmModal, new PlanChangeConfirmViewModel
         {
             Preview = preview,
             NewPlanId = planId
@@ -87,7 +87,7 @@ public class TenantBillingController : SwapController
         {
             return SwapResponse()
                 .WithErrorToast(result.Error ?? "Failed to change plan")
-                .WithView("_ModalClose")
+                .WithView(SwapViews.TenantBilling._ModalClose)
                 .Build();
         }
 
@@ -101,8 +101,8 @@ public class TenantBillingController : SwapController
         // Free plan change — refresh the billing page
         var model = await GetBillingModelAsync();
         return SwapResponse()
-            .WithView("_ModalClose")
-            .AlsoUpdate("billing-content", "_BillingContent", model)
+            .WithView(SwapViews.TenantBilling._ModalClose)
+            .AlsoUpdate(SwapElements.BillingContent, SwapViews.TenantBilling._BillingContent, model)
             .WithSuccessToast("Plan changed successfully")
             .Build();
     }
@@ -119,7 +119,7 @@ public class TenantBillingController : SwapController
 
         if (string.IsNullOrEmpty(ref_))
         {
-            return SwapView("Callback", new { Success = false, Slug = slug,
+            return SwapView(SwapViews.TenantBilling.Callback, new { Success = false, Slug = slug,
                 ErrorMessage = "Invalid payment reference. Please contact support." });
         }
 
@@ -133,11 +133,11 @@ public class TenantBillingController : SwapController
 
         if (subscription is null)
         {
-            return SwapView("Callback", new { Success = false, Slug = slug,
+            return SwapView(SwapViews.TenantBilling.Callback, new { Success = false, Slug = slug,
                 ErrorMessage = "Could not verify your payment. Please contact support." });
         }
 
-        return SwapView("Callback", new { Success = true, Slug = slug,
+        return SwapView(SwapViews.TenantBilling.Callback, new { Success = true, Slug = slug,
             ErrorMessage = (string?)null });
     }
 
@@ -145,7 +145,7 @@ public class TenantBillingController : SwapController
     public IActionResult CancelModal()
     {
         var tenantName = _tenantContext.TenantName ?? "this workspace";
-        return SwapView("_CancelConfirmModal", new CancelConfirmViewModel
+        return SwapView(SwapViews.TenantBilling._CancelConfirmModal, new CancelConfirmViewModel
         {
             TenantName = tenantName
         });
@@ -175,8 +175,8 @@ public class TenantBillingController : SwapController
 
         var model = await GetBillingModelAsync();
         return SwapResponse()
-            .WithView("_ModalClose")
-            .AlsoUpdate("billing-content", "_BillingContent", model)
+            .WithView(SwapViews.TenantBilling._ModalClose)
+            .AlsoUpdate(SwapElements.BillingContent, SwapViews.TenantBilling._BillingContent, model)
             .WithWarningToast("Subscription cancelled")
             .Build();
     }

@@ -39,7 +39,7 @@ public class TwoFactorController : SwapController
         if (user.IsTwoFactorEnabled)
         {
             ViewData["Title"] = "Two-Factor Authentication";
-            return SwapView("TwoFactorManage", user);
+            return SwapView(SwapViews.TwoFactor.TwoFactorManage, user);
         }
 
         var issuer = _siteSettings.Value.Name;
@@ -48,7 +48,7 @@ public class TwoFactorController : SwapController
         ViewData["Title"] = "Set Up Two-Factor Authentication";
         ViewData["Secret"] = result.Secret;
         ViewData["OtpUri"] = result.OtpUri;
-        return SwapView("TwoFactorSetup", user);
+        return SwapView(SwapViews.TwoFactor.TwoFactorSetup, user);
     }
 
     [HttpPost("verify")]
@@ -64,11 +64,11 @@ public class TwoFactorController : SwapController
             ViewData["Error"] = result.Error;
             ViewData["Secret"] = user.TwoFactorSecret;
             ViewData["OtpUri"] = $"otpauth://totp/{Uri.EscapeDataString(_siteSettings.Value.Name)}:{Uri.EscapeDataString(user.Email!)}?secret={user.TwoFactorSecret}&issuer={Uri.EscapeDataString(_siteSettings.Value.Name)}&digits=6&period=30";
-            return SwapView("TwoFactorSetup", user);
+            return SwapView(SwapViews.TwoFactor.TwoFactorSetup, user);
         }
 
         ViewData["RecoveryCodes"] = result.RecoveryCodes;
-        return SwapView("TwoFactorRecoveryCodes", user);
+        return SwapView(SwapViews.TwoFactor.TwoFactorRecoveryCodes, user);
     }
 
     [HttpPost("disable")]

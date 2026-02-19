@@ -28,27 +28,27 @@ public class SuperAdminAuthController : SwapController
     [HttpGet("login")]
     public IActionResult Login()
     {
-        return SwapView("SuperAdminLogin");
+        return SwapView(SwapViews.SuperAdminAuth.SuperAdminLogin);
     }
 
     [HttpPost("login")]
     public async Task<IActionResult> LoginPost([FromForm] string email, [FromForm] string? captchaToken)
     {
         if (!await _botProtection.ValidateAsync(captchaToken))
-            return SwapView("SuperAdminLogin", model: "Bot verification failed. Please try again.");
+            return SwapView(SwapViews.SuperAdminAuth.SuperAdminLogin, model: "Bot verification failed. Please try again.");
 
         if (string.IsNullOrWhiteSpace(email))
-            return SwapView("SuperAdminLogin", model: "Email is required.");
+            return SwapView(SwapViews.SuperAdminAuth.SuperAdminLogin, model: "Email is required.");
 
         var admin = await _coreDb.SuperAdmins.FirstOrDefaultAsync(a => a.Email == email && a.IsActive);
         if (admin is null)
-            return SwapView("SuperAdminLogin", model: "Email not found.");
+            return SwapView(SwapViews.SuperAdminAuth.SuperAdminLogin, model: "Email not found.");
 
         var token = await _magicLinks.GenerateTokenAsync(email);
         var callbackUrl = Url.Action("Verify", "SuperAdminAuth", new { token = token.Token }, Request.Scheme) ?? "/";
         await _email.SendMagicLinkAsync(email, callbackUrl);
 
-        return SwapView("MagicLinkSent");
+        return SwapView(SwapViews.Shared.MagicLinkSent);
     }
 
     [HttpGet("verify")]
@@ -56,11 +56,11 @@ public class SuperAdminAuthController : SwapController
     {
         var result = await _magicLinks.VerifyTokenAsync(token);
         if (!result.Success || result.Email is null)
-            return SwapView("MagicLinkError", result.Error ?? "Invalid token");
+            return SwapView(SwapViews.Shared.MagicLinkError, result.Error ?? "Invalid token");
 
         var admin = await _coreDb.SuperAdmins.FirstOrDefaultAsync(a => a.Email == result.Email && a.IsActive);
         if (admin is null)
-            return SwapView("MagicLinkError", "Admin account not found");
+            return SwapView(SwapViews.Shared.MagicLinkError, "Admin account not found");
 
         admin.LastLoginAt = DateTime.UtcNow;
         await _coreDb.SaveChangesAsync();

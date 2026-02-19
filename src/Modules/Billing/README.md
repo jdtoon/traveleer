@@ -2,6 +2,19 @@
 
 Paystack payment integration for subscription billing.
 
+## Architecture Note
+
+The Billing module contains only **services and data logic** — it has no controllers or views of its own.
+
+Billing **UI** lives in the **TenantAdmin** module:
+
+| Controller | Location |
+|---|---|
+| `TenantBillingController` | `Modules/TenantAdmin/Controllers/TenantBillingController.cs` |
+| Billing views | `Modules/TenantAdmin/Views/TenantBilling/` |
+
+This design keeps all tenant-facing admin pages under a single layout and authorization policy while the Billing module stays focused on payment orchestration.
+
 ## Structure
 
 ```

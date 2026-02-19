@@ -31,14 +31,14 @@ public class NotesController : SwapController
     public async Task<IActionResult> List(int page = 1)
     {
         var notes = await _service.GetAllAsync(page);
-        return SwapView("_NotesList", notes);
+        return SwapView(SwapViews.Notes._NotesList, notes);
     }
 
     [HttpGet]
     [HasPermission(NotesPermissions.Create)]
     public IActionResult Create()
     {
-        return SwapView("_CreateModal");
+        return SwapView(SwapViews.Notes._CreateModal);
     }
 
     [HttpPost]
@@ -47,7 +47,7 @@ public class NotesController : SwapController
     {
         if (!ModelState.IsValid)
         {
-            return SwapView("_CreateModal", note);
+            return SwapView(SwapViews.Notes._CreateModal, note);
         }
 
         await _service.CreateAsync(note);
@@ -55,7 +55,7 @@ public class NotesController : SwapController
         return SwapResponse()
             .WithSuccessToast("Note created!")
             .WithTrigger(NotesEvents.Notes.ListChanged)
-            .WithView("_ModalClose")
+            .WithView(SwapViews.Notes._ModalClose)
             .Build();
     }
 
@@ -66,7 +66,7 @@ public class NotesController : SwapController
         var note = await _service.GetByIdAsync(id);
         if (note == null) return NotFound();
 
-        return SwapView("_EditModal", note);
+        return SwapView(SwapViews.Notes._EditModal, note);
     }
 
     [HttpPost]
@@ -75,7 +75,7 @@ public class NotesController : SwapController
     {
         if (!ModelState.IsValid)
         {
-            return SwapView("_EditModal", note);
+            return SwapView(SwapViews.Notes._EditModal, note);
         }
 
         try
@@ -84,7 +84,7 @@ public class NotesController : SwapController
             return SwapResponse()
                 .WithSuccessToast("Note updated!")
                 .WithTrigger(NotesEvents.Notes.ListChanged)
-                .WithView("_ModalClose")
+                .WithView(SwapViews.Notes._ModalClose)
                 .Build();
         }
         catch (InvalidOperationException)
@@ -100,7 +100,7 @@ public class NotesController : SwapController
         var note = await _service.GetByIdAsync(id);
         if (note == null) return NotFound();
 
-        return SwapView("_DeleteConfirmModal", note);
+        return SwapView(SwapViews.Notes._DeleteConfirmModal, note);
     }
 
     [HttpPost]

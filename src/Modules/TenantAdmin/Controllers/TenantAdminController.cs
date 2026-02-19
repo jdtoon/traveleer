@@ -33,7 +33,7 @@ public class TenantAdminController : SwapController
     public async Task<IActionResult> UserList(int page = 1)
     {
         var users = await _service.GetUsersAsync(page);
-        return SwapView("_UserList", users);
+        return SwapView(SwapViews.TenantAdmin._UserList, users);
     }
 
     [HttpGet("invite-user")]
@@ -41,7 +41,7 @@ public class TenantAdminController : SwapController
     public async Task<IActionResult> InviteUser()
     {
         var roles = await _service.GetRolesAsync();
-        return SwapView("_InviteUserModal", new InviteUserViewModel { AvailableRoles = roles });
+        return SwapView(SwapViews.TenantAdmin._InviteUserModal, new InviteUserViewModel { AvailableRoles = roles });
     }
 
     [HttpPost("invite-user")]
@@ -54,14 +54,14 @@ public class TenantAdminController : SwapController
             var roles = await _service.GetRolesAsync();
             return SwapResponse()
                 .WithErrorToast(result.Error ?? "Failed to invite user")
-                .WithView("_InviteUserModal", new InviteUserViewModel { AvailableRoles = roles })
+                .WithView(SwapViews.TenantAdmin._InviteUserModal, new InviteUserViewModel { AvailableRoles = roles })
                 .Build();
         }
 
         var users = await _service.GetUsersAsync();
         return SwapResponse()
-            .WithView("_ModalClose")
-            .AlsoUpdate("user-list", "_UserList", users)
+            .WithView(SwapViews.TenantAdmin._ModalClose)
+            .AlsoUpdate(SwapElements.UserList, SwapViews.TenantAdmin._UserList, users)
             .WithSuccessToast("Invitation sent!")
             .Build();
     }
@@ -75,7 +75,7 @@ public class TenantAdminController : SwapController
 
         var users = await _service.GetUsersAsync();
         return SwapResponse()
-            .WithView("_UserList", users)
+            .WithView(SwapViews.TenantAdmin._UserList, users)
             .WithWarningToast("User deactivated")
             .Build();
     }
@@ -89,7 +89,7 @@ public class TenantAdminController : SwapController
 
         var users = await _service.GetUsersAsync();
         return SwapResponse()
-            .WithView("_UserList", users)
+            .WithView(SwapViews.TenantAdmin._UserList, users)
             .WithSuccessToast("User activated")
             .Build();
     }
@@ -111,7 +111,7 @@ public class TenantAdminController : SwapController
     public async Task<IActionResult> RoleList()
     {
         var roles = await _service.GetRolesAsync();
-        return SwapView("_RoleList", roles);
+        return SwapView(SwapViews.TenantAdmin._RoleList, roles);
     }
 
     [HttpGet("role-detail")]
@@ -124,7 +124,7 @@ public class TenantAdminController : SwapController
         if (role is null) return NotFound();
 
         var permissions = await _service.GetPermissionsAsync();
-        return SwapView("_RoleDetail", new RoleDetailViewModel { Role = role, AllPermissions = permissions });
+        return SwapView(SwapViews.TenantAdmin._RoleDetail, new RoleDetailViewModel { Role = role, AllPermissions = permissions });
     }
 
     [HttpGet("create-role")]
@@ -132,7 +132,7 @@ public class TenantAdminController : SwapController
     [HasPermission(TenantAdminPermissions.RolesCreate)]
     public IActionResult CreateRole()
     {
-        return SwapView("_CreateRoleModal");
+        return SwapView(SwapViews.TenantAdmin._CreateRoleModal);
     }
 
     [HttpPost("create-role")]
@@ -144,7 +144,7 @@ public class TenantAdminController : SwapController
         {
             return SwapResponse()
                 .WithErrorToast("Role name is required")
-                .WithView("_CreateRoleModal")
+                .WithView(SwapViews.TenantAdmin._CreateRoleModal)
                 .Build();
         }
 
@@ -153,14 +153,14 @@ public class TenantAdminController : SwapController
         {
             return SwapResponse()
                 .WithErrorToast("Failed to create role")
-                .WithView("_CreateRoleModal")
+                .WithView(SwapViews.TenantAdmin._CreateRoleModal)
                 .Build();
         }
 
         var roles = await _service.GetRolesAsync();
         return SwapResponse()
-            .WithView("_ModalClose")
-            .AlsoUpdate("role-list", "_RoleList", roles)
+            .WithView(SwapViews.TenantAdmin._ModalClose)
+            .AlsoUpdate(SwapElements.RoleList, SwapViews.TenantAdmin._RoleList, roles)
             .WithSuccessToast("Role created")
             .Build();
     }
@@ -174,7 +174,7 @@ public class TenantAdminController : SwapController
         var role = roles.FirstOrDefault(r => r.Id == id);
         if (role is null) return NotFound();
 
-        return SwapView("_EditRoleModal", role);
+        return SwapView(SwapViews.TenantAdmin._EditRoleModal, role);
     }
 
     [HttpPost("edit-role")]
@@ -199,8 +199,8 @@ public class TenantAdminController : SwapController
 
         var roles = await _service.GetRolesAsync();
         return SwapResponse()
-            .WithView("_ModalClose")
-            .AlsoUpdate("role-list", "_RoleList", roles)
+            .WithView(SwapViews.TenantAdmin._ModalClose)
+            .AlsoUpdate(SwapElements.RoleList, SwapViews.TenantAdmin._RoleList, roles)
             .WithSuccessToast("Role updated")
             .Build();
     }
@@ -217,12 +217,12 @@ public class TenantAdminController : SwapController
         {
             return SwapResponse()
                 .WithErrorToast("Cannot delete system roles or roles with assigned users")
-                .WithView("_RoleList", roles)
+                .WithView(SwapViews.TenantAdmin._RoleList, roles)
                 .Build();
         }
 
         return SwapResponse()
-            .WithView("_RoleList", roles)
+            .WithView(SwapViews.TenantAdmin._RoleList, roles)
             .WithSuccessToast("Role deleted")
             .Build();
     }
@@ -239,7 +239,7 @@ public class TenantAdminController : SwapController
         if (role is null) return NotFound();
 
         var permissions = await _service.GetPermissionsAsync();
-        return SwapView("_RoleDetail", new RoleDetailViewModel { Role = role, AllPermissions = permissions });
+        return SwapView(SwapViews.TenantAdmin._RoleDetail, new RoleDetailViewModel { Role = role, AllPermissions = permissions });
     }
 
     [HttpGet("manage-user-roles")]
@@ -252,7 +252,7 @@ public class TenantAdminController : SwapController
         var user = users.Items.FirstOrDefault(u => u.Id == id);
         if (user is null) return NotFound();
 
-        return SwapView("_ManageUserRolesModal", new ManageUserRolesViewModel
+        return SwapView(SwapViews.TenantAdmin._ManageUserRolesModal, new ManageUserRolesViewModel
         {
             UserId = id,
             UserEmail = user.Email,
@@ -270,8 +270,8 @@ public class TenantAdminController : SwapController
 
         var users = await _service.GetUsersAsync();
         return SwapResponse()
-            .WithView("_ModalClose")
-            .AlsoUpdate("user-list", "_UserList", users)
+            .WithView(SwapViews.TenantAdmin._ModalClose)
+            .AlsoUpdate(SwapElements.UserList, SwapViews.TenantAdmin._UserList, users)
             .WithSuccessToast("Roles updated")
             .Build();
     }
@@ -290,7 +290,7 @@ public class TenantAdminController : SwapController
 
         var users = await _service.GetUsersAsync();
         return SwapResponse()
-            .WithView("_UserList", users)
+            .WithView(SwapViews.TenantAdmin._UserList, users)
             .WithSuccessToast("Role assigned")
             .Build();
     }
@@ -309,7 +309,7 @@ public class TenantAdminController : SwapController
 
         var users = await _service.GetUsersAsync();
         return SwapResponse()
-            .WithView("_UserList", users)
+            .WithView(SwapViews.TenantAdmin._UserList, users)
             .WithSuccessToast("Role removed")
             .Build();
     }
