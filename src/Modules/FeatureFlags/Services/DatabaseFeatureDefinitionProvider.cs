@@ -10,16 +10,21 @@ public class DatabaseFeatureDefinitionProvider : IFeatureDefinitionProvider
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMemoryCache _cache;
     private readonly ILogger<DatabaseFeatureDefinitionProvider> _logger;
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+    private readonly TimeSpan _cacheDuration;
+    private readonly bool _hasSizeLimit;
 
     public DatabaseFeatureDefinitionProvider(
         IServiceScopeFactory scopeFactory,
         IMemoryCache cache,
-        ILogger<DatabaseFeatureDefinitionProvider> logger)
+        ILogger<DatabaseFeatureDefinitionProvider> logger,
+        IConfiguration configuration)
     {
         _scopeFactory = scopeFactory;
         _cache = cache;
         _logger = logger;
+        _cacheDuration = TimeSpan.FromMinutes(
+            configuration.GetValue<int?>("Caching:TTL:FeatureDefinitionsMinutes") ?? 5);
+        _hasSizeLimit = configuration.GetValue<long?>("Caching:MemoryCacheSizeLimit").HasValue;
     }
 
     public async IAsyncEnumerable<FeatureDefinition> GetAllFeatureDefinitionsAsync()
@@ -83,7 +88,8 @@ public class DatabaseFeatureDefinitionProvider : IFeatureDefinitionProvider
     {
         return await _cache.GetOrCreateAsync("feature-definitions", async entry =>
         {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            entry.AbsoluteExpirationRelativeToNow = _cacheDuration;
+            if (_hasSizeLimit) entry.Size = 1;
 
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<CoreDbContext>();

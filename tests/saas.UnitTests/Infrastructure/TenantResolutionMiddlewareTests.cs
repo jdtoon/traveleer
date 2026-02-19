@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using saas.Data.Core;
 using saas.Infrastructure.Middleware;
 using saas.Shared;
@@ -44,7 +45,7 @@ public class TenantResolutionMiddlewareTests
         var middleware = new TenantResolutionMiddleware(_ => Task.CompletedTask, new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "", "health", "pricing", "register", "super-admin", "login", "login-redirect", "login-modal", "about", "contact", "legal", "sitemap.xml", "robots.txt", "favicon.ico", "api", "static", "assets"
-        });
+        }, new ConfigurationBuilder().Build());
         var cache = new MemoryCache(new MemoryCacheOptions());
 
         await middleware.InvokeAsync(context, tenantContext, db, cache);
@@ -80,7 +81,7 @@ public class TenantResolutionMiddlewareTests
         }, new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "", "health", "pricing", "register", "super-admin", "login", "login-redirect", "login-modal", "about", "contact", "legal", "sitemap.xml", "robots.txt", "favicon.ico", "api", "static", "assets"
-        });
+        }, new ConfigurationBuilder().Build());
         var cache = new MemoryCache(new MemoryCacheOptions());
 
         await middleware.InvokeAsync(context, tenantContext, db, cache);

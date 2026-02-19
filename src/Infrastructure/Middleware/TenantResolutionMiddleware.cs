@@ -10,13 +10,16 @@ public class TenantResolutionMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly HashSet<string> _nonTenantPrefixes;
+    private readonly TimeSpan _cacheDuration;
+    private readonly bool _hasSizeLimit;
 
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(3);
-
-    public TenantResolutionMiddleware(RequestDelegate next, HashSet<string> publicRoutePrefixes)
+    public TenantResolutionMiddleware(RequestDelegate next, HashSet<string> publicRoutePrefixes, IConfiguration configuration)
     {
         _next = next;
         _nonTenantPrefixes = publicRoutePrefixes;
+        _cacheDuration = TimeSpan.FromMinutes(
+            configuration.GetValue<int?>("Caching:TTL:TenantResolutionMinutes") ?? 3);
+        _hasSizeLimit = configuration.GetValue<long?>("Caching:MemoryCacheSizeLimit").HasValue;
     }
 
     public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext, CoreDbContext coreDb, IMemoryCache cache)
@@ -39,7 +42,8 @@ public class TenantResolutionMiddleware
         var cacheKey = $"tenant-resolution-{firstSegment}";
         var resolved = await cache.GetOrCreateAsync(cacheKey, async entry =>
         {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            entry.AbsoluteExpirationRelativeToNow = _cacheDuration;
+            if (_hasSizeLimit) entry.Size = 1;
 
             var tenant = await coreDb.Tenants
                 .Include(t => t.Plan)

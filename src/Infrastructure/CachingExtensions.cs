@@ -27,7 +27,12 @@ public static class CachingExtensions
         }
 
         // Always register IMemoryCache for in-process caching (rate limiter, etc.)
-        services.AddMemoryCache();
+        var sizeLimit = configuration.GetValue<long?>("Caching:MemoryCacheSizeLimit");
+        services.AddMemoryCache(options =>
+        {
+            if (sizeLimit.HasValue)
+                options.SizeLimit = sizeLimit.Value;
+        });
 
         // Register the cache service abstraction
         services.AddSingleton<ICacheService, DistributedCacheService>();

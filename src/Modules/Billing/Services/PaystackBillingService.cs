@@ -669,6 +669,14 @@ public class PaystackBillingService : IBillingService
     {
         var data = webhookEvent.Data;
 
+        // Idempotency guard — skip if an invoice with this reference already exists
+        if (!string.IsNullOrEmpty(data.Reference)
+            && await _coreDb.Invoices.AnyAsync(i => i.PaystackReference == data.Reference))
+        {
+            _logger.LogInformation("Duplicate invoice.create webhook ignored for reference {Reference}", data.Reference);
+            return new WebhookResult(true);
+        }
+
         // Invoice events may not carry the original transaction metadata.
         // Look up subscription by subscription_code first, then fall back to metadata.
         Subscription? subscription = null;

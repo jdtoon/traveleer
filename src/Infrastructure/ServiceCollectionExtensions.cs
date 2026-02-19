@@ -262,19 +262,27 @@ public static class ServiceCollectionExtensions
                 {
                     // Resolve max requests from cached plan data
                     var cache = httpContext.RequestServices.GetService<IMemoryCache>();
+                    var config = httpContext.RequestServices.GetService<IConfiguration>();
                     var maxRequests = 60; // default
                     if (cache is not null)
                     {
                         var cacheKey = $"plan-rate-limit-{tenantContext.PlanSlug}";
                         if (!cache.TryGetValue(cacheKey, out int cachedLimit))
                         {
-                            // Look up the plan's limit from DB, cache for 5 minutes
+                            // Look up the plan's limit from DB, cache it
                             using var scope = httpContext.RequestServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
                             var coreDb = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
                             var plan = coreDb.Plans.AsNoTracking()
                                 .FirstOrDefault(p => p.Slug == tenantContext.PlanSlug);
                             cachedLimit = plan?.MaxRequestsPerMinute ?? 60;
-                            cache.Set(cacheKey, cachedLimit, TimeSpan.FromMinutes(5));
+                            var ttlMinutes = config?.GetValue<int?>("Caching:TTL:RateLimitPlanMinutes") ?? 5;
+                            var hasSizeLimit = config?.GetValue<long?>("Caching:MemoryCacheSizeLimit").HasValue == true;
+                            var entryOptions = new MemoryCacheEntryOptions
+                            {
+                                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(ttlMinutes)
+                            };
+                            if (hasSizeLimit) entryOptions.Size = 1;
+                            cache.Set(cacheKey, cachedLimit, entryOptions);
                         }
                         maxRequests = cachedLimit;
                     }

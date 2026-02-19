@@ -12,15 +12,24 @@ public class TenantPlanFeatureFilter : IFeatureFilter
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMemoryCache _cache;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly TimeSpan _overridesTtl;
+    private readonly TimeSpan _planTtl;
+    private readonly bool _hasSizeLimit;
 
     public TenantPlanFeatureFilter(
         IServiceScopeFactory scopeFactory,
         IMemoryCache cache,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        IConfiguration configuration)
     {
         _scopeFactory = scopeFactory;
         _cache = cache;
         _httpContextAccessor = httpContextAccessor;
+        _overridesTtl = TimeSpan.FromMinutes(
+            configuration.GetValue<int?>("Caching:TTL:TenantOverridesMinutes") ?? 5);
+        _planTtl = TimeSpan.FromMinutes(
+            configuration.GetValue<int?>("Caching:TTL:TenantPlanMinutes") ?? 10);
+        _hasSizeLimit = configuration.GetValue<long?>("Caching:MemoryCacheSizeLimit").HasValue;
     }
 
     public async Task<bool> EvaluateAsync(FeatureFilterEvaluationContext context)
@@ -73,7 +82,8 @@ public class TenantPlanFeatureFilter : IFeatureFilter
 
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+            entry.AbsoluteExpirationRelativeToNow = _overridesTtl;
+            if (_hasSizeLimit) entry.Size = 1;
 
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
@@ -98,7 +108,8 @@ public class TenantPlanFeatureFilter : IFeatureFilter
 
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+            entry.AbsoluteExpirationRelativeToNow = _planTtl;
+            if (_hasSizeLimit) entry.Size = 1;
 
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
