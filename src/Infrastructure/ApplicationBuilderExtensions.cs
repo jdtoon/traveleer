@@ -95,26 +95,40 @@ public static class ApplicationBuilderExtensions
             return;
 
         var dbFiles = Directory.GetFiles(basePath, "*.db");
+        var failedTenants = new List<string>();
+
         foreach (var dbFile in dbFiles)
         {
-            var options = new DbContextOptionsBuilder<TenantDbContext>()
-                .UseSqlite($"Data Source={dbFile}")
-                .Options;
-
-            await using var tenantDb = new TenantDbContext(options);
-            await EnsureHistoryTableAndBaselineAsync(tenantDb, logger, $"tenant:{Path.GetFileName(dbFile)}");
-            var pending = await tenantDb.Database.GetPendingMigrationsAsync();
-            var pendingList = pending.ToList();
-
-            if (pendingList.Count == 0)
+            try
             {
-                logger.LogInformation("Tenant DB {DbFile} up to date (no pending migrations)", Path.GetFileName(dbFile));
-                continue;
-            }
+                var options = new DbContextOptionsBuilder<TenantDbContext>()
+                    .UseSqlite($"Data Source={dbFile}")
+                    .Options;
 
-            logger.LogInformation("Applying {Count} pending migrations to tenant DB {DbFile}", pendingList.Count, Path.GetFileName(dbFile));
-            await tenantDb.Database.MigrateAsync();
+                await using var tenantDb = new TenantDbContext(options);
+                await EnsureHistoryTableAndBaselineAsync(tenantDb, logger, $"tenant:{Path.GetFileName(dbFile)}");
+                var pending = await tenantDb.Database.GetPendingMigrationsAsync();
+                var pendingList = pending.ToList();
+
+                if (pendingList.Count == 0)
+                {
+                    logger.LogInformation("Tenant DB {DbFile} up to date (no pending migrations)", Path.GetFileName(dbFile));
+                    continue;
+                }
+
+                logger.LogInformation("Applying {Count} pending migrations to tenant DB {DbFile}", pendingList.Count, Path.GetFileName(dbFile));
+                await tenantDb.Database.MigrateAsync();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to migrate tenant database: {DbFile}", Path.GetFileName(dbFile));
+                failedTenants.Add(Path.GetFileName(dbFile));
+            }
         }
+
+        if (failedTenants.Count > 0)
+            logger.LogWarning("Tenant migration completed with {Count} failure(s): {Failed}",
+                failedTenants.Count, string.Join(", ", failedTenants));
     }
 
     /// <summary>

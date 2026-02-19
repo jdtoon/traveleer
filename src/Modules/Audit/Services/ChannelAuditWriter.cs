@@ -23,10 +23,11 @@ public sealed class ChannelAuditWriter : BackgroundService, IAuditWriter
         _scopeFactory = scopeFactory;
         _logger = logger;
 
-        // Unbounded channel — audit writes should never block the request pipeline.
-        // Backpressure is not needed because audit entries are small and flush quickly.
-        _channel = Channel.CreateUnbounded<AuditEntry>(new UnboundedChannelOptions
+        // Bounded channel — prevents unbounded memory growth under sustained DB failures.
+        // DropOldest ensures the request pipeline is never blocked; a warning is logged on drop.
+        _channel = Channel.CreateBounded<AuditEntry>(new BoundedChannelOptions(10_000)
         {
+            FullMode = BoundedChannelFullMode.DropOldest,
             SingleReader = true,
             SingleWriter = false
         });
