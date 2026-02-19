@@ -20,12 +20,21 @@ public class TenantLifecycleService : ITenantLifecycleService
     private readonly CoreDbContext _coreDb;
     private readonly TenantDbContext _tenantDb;
     private readonly ITenantContext _tenantContext;
+    private readonly IBillingService _billingService;
+    private readonly ILogger<TenantLifecycleService> _logger;
 
-    public TenantLifecycleService(CoreDbContext coreDb, TenantDbContext tenantDb, ITenantContext tenantContext)
+    public TenantLifecycleService(
+        CoreDbContext coreDb,
+        TenantDbContext tenantDb,
+        ITenantContext tenantContext,
+        IBillingService billingService,
+        ILogger<TenantLifecycleService> logger)
     {
         _coreDb = coreDb;
         _tenantDb = tenantDb;
         _tenantContext = tenantContext;
+        _billingService = billingService;
+        _logger = logger;
     }
 
     public async Task<byte[]> ExportTenantDataAsync()
@@ -134,15 +143,43 @@ public class TenantLifecycleService : ITenantLifecycleService
     public async Task<bool> RequestDeletionAsync(int gracePeriodDays = 30)
     {
         var tenant = await _coreDb.Tenants
+            .Include(t => t.Plan)
             .FirstOrDefaultAsync(t => t.Id == _tenantContext.TenantId);
 
         if (tenant is null) return false;
+
+        // Cancel the subscription at the payment gateway if this is a paid plan
+        // with an active subscription. This cancels at end of current billing period
+        // so the tenant retains access for time already paid.
+        var subscription = await _coreDb.Subscriptions
+            .Where(s => s.TenantId == tenant.Id)
+            .OrderByDescending(s => s.StartDate)
+            .FirstOrDefaultAsync();
+
+        if (subscription is not null
+            && subscription.Status is SubscriptionStatus.Active or SubscriptionStatus.Trialing or SubscriptionStatus.PastDue
+            && tenant.Plan.MonthlyPrice > 0)
+        {
+            try
+            {
+                var cancelled = await _billingService.CancelSubscriptionAsync(tenant.Id);
+                if (cancelled)
+                    _logger.LogInformation("Cancelled subscription for tenant {Slug} as part of deletion request", tenant.Slug);
+                else
+                    _logger.LogWarning("Failed to cancel subscription for tenant {Slug} during deletion request", tenant.Slug);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cancelling subscription for tenant {Slug} during deletion request — proceeding with deletion anyway", tenant.Slug);
+            }
+        }
 
         tenant.IsDeleted = true;
         tenant.DeletedAt = DateTime.UtcNow;
         tenant.ScheduledDeletionAt = DateTime.UtcNow.AddDays(gracePeriodDays);
         await _coreDb.SaveChangesAsync();
 
+        _logger.LogInformation("Tenant {Slug} requested deletion — scheduled for {Date}", tenant.Slug, tenant.ScheduledDeletionAt);
         return true;
     }
 
@@ -158,6 +195,12 @@ public class TenantLifecycleService : ITenantLifecycleService
         tenant.ScheduledDeletionAt = null;
         await _coreDb.SaveChangesAsync();
 
+        // Note: The subscription was cancelled at the gateway during deletion request.
+        // The tenant will need to re-subscribe from the billing page if their plan
+        // requires payment. The billing page should detect the Cancelled status and
+        // prompt accordingly.
+        _logger.LogInformation("Tenant {Slug} cancelled deletion request — subscription may need reactivation", tenant.Slug);
+
         return true;
     }
 
@@ -167,6 +210,26 @@ public class TenantLifecycleService : ITenantLifecycleService
             .FirstOrDefaultAsync(t => t.Id == tenantId);
 
         if (tenant is null) return false;
+
+        // Ensure no active subscription remains at the payment gateway
+        var activeSubscription = await _coreDb.Subscriptions
+            .Where(s => s.TenantId == tenantId
+                && s.Status != SubscriptionStatus.Cancelled
+                && s.Status != SubscriptionStatus.Expired)
+            .FirstOrDefaultAsync();
+
+        if (activeSubscription is not null)
+        {
+            try
+            {
+                await _billingService.CancelSubscriptionAsync(tenantId);
+                _logger.LogInformation("Cancelled remaining gateway subscription before permanent deletion of tenant {Slug}", tenant.Slug);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to cancel gateway subscription for tenant {Slug} during permanent deletion — proceeding anyway", tenant.Slug);
+            }
+        }
 
         // Delete subscriptions, invoices, payments
         var subscriptions = await _coreDb.Subscriptions

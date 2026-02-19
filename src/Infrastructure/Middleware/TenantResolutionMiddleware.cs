@@ -67,7 +67,7 @@ public class TenantResolutionMiddleware
             var tenant = await coreDb.Tenants
                 .Include(t => t.Plan)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.Slug == firstSegment);
+                .FirstOrDefaultAsync(t => t.Slug == firstSegment && !t.IsDeleted);
 
             if (tenant is null) return null;
 

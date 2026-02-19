@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using saas.Data.Core;
 using saas.Data.Tenant;
 using saas.Modules.TenantAdmin.Services;
@@ -71,7 +72,7 @@ public class TenantLifecycleServiceTests : IAsyncLifetime
         await _coreDb.SaveChangesAsync();
 
         var tenantContext = new FakeTenantContext("testcorp", _tenantId);
-        _service = new TenantLifecycleService(_coreDb, _tenantDb, tenantContext);
+        _service = new TenantLifecycleService(_coreDb, _tenantDb, tenantContext, new FakeBillingService(), NullLogger<TenantLifecycleService>.Instance);
     }
 
     public async Task DisposeAsync()
@@ -123,7 +124,7 @@ public class TenantLifecycleServiceTests : IAsyncLifetime
     public async Task RequestDeletionAsync_ReturnsFalseForUnknownTenant()
     {
         var tenantContext = new FakeTenantContext("nonexistent", Guid.NewGuid());
-        var service = new TenantLifecycleService(_coreDb, _tenantDb, tenantContext);
+        var service = new TenantLifecycleService(_coreDb, _tenantDb, tenantContext, new FakeBillingService(), NullLogger<TenantLifecycleService>.Instance);
 
         var result = await service.RequestDeletionAsync();
         Assert.False(result);
@@ -164,5 +165,20 @@ public class TenantLifecycleServiceTests : IAsyncLifetime
         public string? PlanSlug => "test";
         public string? TenantName => "Test Tenant";
         public bool IsTenantRequest => true;
+    }
+
+    private class FakeBillingService : IBillingService
+    {
+        public Task<bool> CancelSubscriptionAsync(Guid tenantId) => Task.FromResult(true);
+        public Task<SubscriptionInitResult> InitializeSubscriptionAsync(SubscriptionInitRequest request) => Task.FromResult(new SubscriptionInitResult(true));
+        public Task<SubscriptionStatus?> GetSubscriptionStatusAsync(Guid tenantId) => Task.FromResult<SubscriptionStatus?>(SubscriptionStatus.Active);
+        public Task<PlanChangeResult> ChangePlanAsync(Guid tenantId, Guid newPlanId) => Task.FromResult(new PlanChangeResult(true));
+        public Task<PlanChangePreview> PreviewPlanChangeAsync(Guid tenantId, Guid newPlanId) => Task.FromResult(new PlanChangePreview(true));
+        public Task SyncPlansAsync() => Task.CompletedTask;
+        public Task<WebhookResult> ProcessWebhookAsync(string payload, string signature) => Task.FromResult(new WebhookResult(true));
+        public Task VerifyAndLinkSubscriptionAsync(string reference) => Task.CompletedTask;
+        public Task<bool> UpdatePlanInGatewayAsync(Guid planId) => Task.FromResult(true);
+        public Task<string?> GetManageLinkAsync(Guid tenantId) => Task.FromResult<string?>(null);
+        public Task ReconcileSubscriptionsAsync() => Task.CompletedTask;
     }
 }
