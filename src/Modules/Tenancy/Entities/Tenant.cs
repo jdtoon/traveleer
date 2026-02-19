@@ -20,9 +20,6 @@ public class Tenant : IAuditableEntity
     // Trial support
     public DateTime? TrialEndsAt { get; set; }
 
-    // Custom domain support
-    public string? CustomDomain { get; set; }
-
     // Soft delete support
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }

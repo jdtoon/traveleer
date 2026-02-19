@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using saas.Data.Core;
-using saas.Infrastructure.Middleware;
 using saas.Modules.Auth.Filters;
 using saas.Modules.TenantAdmin.Models;
 using saas.Modules.TenantAdmin.Services;
@@ -18,14 +16,12 @@ public class TenantSettingsController : SwapController
 {
     private readonly CoreDbContext _coreDb;
     private readonly ITenantContext _tenantContext;
-    private readonly IMemoryCache _cache;
     private readonly ITenantLifecycleService _lifecycle;
 
-    public TenantSettingsController(CoreDbContext coreDb, ITenantContext tenantContext, IMemoryCache cache, ITenantLifecycleService lifecycle)
+    public TenantSettingsController(CoreDbContext coreDb, ITenantContext tenantContext, ITenantLifecycleService lifecycle)
     {
         _coreDb = coreDb;
         _tenantContext = tenantContext;
-        _cache = cache;
         _lifecycle = lifecycle;
     }
 
@@ -42,7 +38,6 @@ public class TenantSettingsController : SwapController
         {
             Name = tenant.Name,
             ContactEmail = tenant.ContactEmail,
-            CustomDomain = tenant.CustomDomain,
             Slug = tenant.Slug,
             Status = tenant.Status.ToString(),
             CreatedAt = tenant.CreatedAt,
@@ -72,27 +67,6 @@ public class TenantSettingsController : SwapController
         await _coreDb.SaveChangesAsync();
 
         ViewData["Success"] = "Settings updated successfully.";
-        return await Index();
-    }
-
-    [HttpPost("update-domain")]
-    [HasPermission(TenantAdminPermissions.SettingsEdit)]
-    public async Task<IActionResult> UpdateDomain([FromForm] string? customDomain)
-    {
-        var tenant = await _coreDb.Tenants
-            .FirstOrDefaultAsync(t => t.Id == _tenantContext.TenantId);
-
-        if (tenant is null) return NotFound();
-
-        tenant.CustomDomain = string.IsNullOrWhiteSpace(customDomain) ? null : customDomain.Trim().ToLowerInvariant();
-        await _coreDb.SaveChangesAsync();
-
-        // Invalidate old and new domain caches
-        if (!string.IsNullOrEmpty(customDomain))
-            TenantResolutionMiddleware.InvalidateDomainCache(_cache, customDomain);
-        TenantResolutionMiddleware.InvalidateCache(_cache, tenant.Slug);
-
-        ViewData["Success"] = "Custom domain updated.";
         return await Index();
     }
 
