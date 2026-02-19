@@ -19,10 +19,12 @@ namespace saas.Infrastructure.Middleware;
 public class CurrentUserMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly ILogger<CurrentUserMiddleware> _logger;
 
-    public CurrentUserMiddleware(RequestDelegate next)
+    public CurrentUserMiddleware(RequestDelegate next, ILogger<CurrentUserMiddleware> logger)
     {
         _next = next;
+        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context, ICurrentUser currentUser, ITenantContext tenantContext)
@@ -71,7 +73,10 @@ public class CurrentUserMiddleware
                             await tenantDb.SaveChangesAsync();
                         }
                     }
-                    catch { /* Don't break auth if session check fails */ }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Session validation failed for tenant {Slug}", tenantContext.Slug);
+                    }
                 }
             }
 
