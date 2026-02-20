@@ -184,12 +184,9 @@ public class PaystackBillingService : IBillingService
         if (tenant is null)
             return new PlanChangeResult(false, Error: "Tenant not found");
 
-        // Find existing subscription (Active, NonRenewing, or PastDue — all valid for plan change)
+        // Find existing subscription (any status — TenantId has a unique index)
         var existingSub = await _coreDb.Subscriptions
-            .Where(s => s.TenantId == tenantId
-                && (s.Status == SubscriptionStatus.Active
-                    || s.Status == SubscriptionStatus.NonRenewing
-                    || s.Status == SubscriptionStatus.PastDue))
+            .Where(s => s.TenantId == tenantId)
             .OrderByDescending(s => s.StartDate)
             .FirstOrDefaultAsync();
 
