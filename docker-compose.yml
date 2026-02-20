@@ -145,13 +145,14 @@ services:
 
   # ── Seq (structured log viewer) ─────────────────────────────
   seq:
-    image: datalust/seq:latest
+    image: datalust/seq:2025.2
     container_name: saas-seq
     ports:
       - "${SEQ_PORT:-5341}:5341"    # ingestion API
       - "${SEQ_UI_PORT:-8081}:80"   # web UI
     environment:
       ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
     volumes:
       - seq-data:/data
     restart: unless-stopped

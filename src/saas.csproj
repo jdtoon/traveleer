@@ -14,6 +14,11 @@
     <Compile Remove="obj\Generated\**\*.cs" />
   </ItemGroup>
 
+  <!-- Include email templates in publish output -->
+  <ItemGroup>
+    <Content Include="EmailTemplates\**\*.html" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" Version="3.7.307.1" />
     <PackageReference Include="LigerShark.WebOptimizer.Core" Version="3.0.477" />

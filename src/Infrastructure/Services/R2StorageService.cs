@@ -45,7 +45,8 @@ public class R2StorageService : IStorageService
             BucketName = _options.R2Bucket,
             Key = path,
             InputStream = stream,
-            ContentType = contentType
+            ContentType = contentType,
+            DisablePayloadSigning = true
         };
 
         await _s3.PutObjectAsync(request, ct);
