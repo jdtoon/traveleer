@@ -104,7 +104,7 @@ public class InvitationController : SwapController
         // Send invitation email using TeamInvitation template
         var slug = _tenantContext.Slug;
         var acceptUrl = Url.Action("Accept", "Invitation", new { slug, token }, Request.Scheme) ?? $"/{slug}/admin/invitation/accept?token={Uri.EscapeDataString(token)}";
-        await SendInvitationEmailAsync(email, acceptUrl, roleName, invitation.ExpiresAt);
+        await SendInvitationEmailAsync(email, acceptUrl, roleName ?? "Member", invitation.ExpiresAt);
 
         return SwapResponse()
             .WithSuccessToast("Invitation sent!")
@@ -228,7 +228,7 @@ public class InvitationController : SwapController
         var htmlBody = _templateService.Render("TeamInvitation", new Dictionary<string, string>
         {
             ["InviterEmail"] = _currentUser.Email ?? "A team member",
-            ["TenantName"] = _tenantContext.Slug,
+            ["TenantName"] = _tenantContext.Slug ?? "unknown",
             ["RoleName"] = roleName,
             ["AcceptUrl"] = acceptUrl,
             ["ExpiresAt"] = expiresAt.ToString("MMMM d, yyyy")

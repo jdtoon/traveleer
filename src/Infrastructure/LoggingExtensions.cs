@@ -54,7 +54,7 @@ public static class LoggingExtensions
                 if (tenantContext?.IsTenantRequest == true)
                 {
                     diagnosticContext.Set("TenantSlug", tenantContext.Slug ?? "unknown");
-                    diagnosticContext.Set("TenantId", tenantContext.TenantId);
+                    diagnosticContext.Set("TenantId", (object?)tenantContext.TenantId ?? "unknown");
                 }
 
                 diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value ?? "unknown");

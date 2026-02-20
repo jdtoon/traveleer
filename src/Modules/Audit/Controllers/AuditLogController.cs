@@ -46,7 +46,7 @@ public class AuditLogController : SwapController
                      EntityId = a.EntityId,
                      Action = a.Action,
                      UserEmail = a.UserEmail ?? "system",
-                     TenantSlug = a.TenantSlug,
+                     TenantSlug = a.TenantSlug ?? string.Empty,
                      Timestamp = a.Timestamp,
                      HasChanges = a.OldValues != null || a.NewValues != null
                  }),
@@ -86,7 +86,7 @@ public class AuditLogController : SwapController
                      EntityId = a.EntityId,
                      Action = a.Action,
                      UserEmail = a.UserEmail ?? "system",
-                     TenantSlug = a.TenantSlug,
+                     TenantSlug = a.TenantSlug ?? string.Empty,
                      Timestamp = a.Timestamp,
                      HasChanges = a.OldValues != null || a.NewValues != null
                  }),

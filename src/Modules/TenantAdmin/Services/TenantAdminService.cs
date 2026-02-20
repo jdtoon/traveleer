@@ -135,7 +135,7 @@ public class TenantAdminService : ITenantAdminService
         var htmlBody = _templateService.Render("TeamInvitation", new Dictionary<string, string>
         {
             ["InviterEmail"] = "A team member",
-            ["TenantName"] = slug,
+            ["TenantName"] = slug ?? "unknown",
             ["RoleName"] = "Member",
             ["AcceptUrl"] = acceptUrl,
             ["ExpiresAt"] = invitation.ExpiresAt.ToString("MMMM d, yyyy")

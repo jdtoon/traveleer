@@ -200,12 +200,12 @@ public class PaystackBillingService : IBillingService
             try
             {
                 var subDetail = await _paystack.FetchSubscriptionAsync(
-                    existingSub.PaystackSubscriptionCode);
+                    existingSub.PaystackSubscriptionCode!);
 
                 if (subDetail is not null && !string.IsNullOrEmpty(subDetail.EmailToken))
                 {
                     await _paystack.DisableSubscriptionAsync(
-                        existingSub.PaystackSubscriptionCode,
+                        existingSub.PaystackSubscriptionCode!,
                         subDetail.EmailToken);
 
                     _logger.LogInformation(
