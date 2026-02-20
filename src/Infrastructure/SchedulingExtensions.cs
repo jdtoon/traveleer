@@ -84,6 +84,7 @@ public static class SchedulingExtensions
 
 /// <summary>
 /// Limits Hangfire dashboard access to authenticated SuperAdmin users.
+/// Unauthenticated requests are redirected to the Super Admin login page.
 /// </summary>
 public class SuperAdminDashboardAuthFilter : Hangfire.Dashboard.IDashboardAuthorizationFilter
 {
@@ -92,6 +93,12 @@ public class SuperAdminDashboardAuthFilter : Hangfire.Dashboard.IDashboardAuthor
         var httpContext = context.GetHttpContext();
         // Must explicitly authenticate with the SuperAdmin scheme since no default scheme is set
         var result = httpContext.AuthenticateAsync(saas.Modules.Auth.AuthSchemes.SuperAdmin).GetAwaiter().GetResult();
-        return result.Succeeded && result.Principal?.HasClaim("SuperAdmin", "true") == true;
+
+        if (result.Succeeded && result.Principal?.HasClaim(saas.Modules.Auth.AuthClaims.IsSuperAdmin, "true") == true)
+            return true;
+
+        // Redirect unauthenticated users to login instead of showing a blank 401
+        httpContext.Response.Redirect("/super-admin/login");
+        return false;
     }
 }
