@@ -114,7 +114,7 @@ services:
     image: redis:7-alpine
     container_name: saas-redis
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
@@ -129,8 +129,8 @@ services:
     image: rabbitmq:4-management-alpine
     container_name: saas-rabbitmq
     ports:
-      - "${RABBITMQ_PORT:-5672}:5672"
-      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_MGMT_PORT:-15672}:15672"
     environment:
       RABBITMQ_DEFAULT_USER: ${Messaging__RabbitMQ__Username:-guest}
       RABBITMQ_DEFAULT_PASS: ${Messaging__RabbitMQ__Password:-guest}
@@ -148,8 +148,8 @@ services:
     image: datalust/seq:2025.2
     container_name: saas-seq
     ports:
-      - "${SEQ_PORT:-5341}:5341"    # ingestion API
-      - "${SEQ_UI_PORT:-8081}:80"   # web UI
+      - "127.0.0.1:${SEQ_PORT:-5341}:5341"    # ingestion API
+      - "127.0.0.1:${SEQ_UI_PORT:-8081}:80"   # web UI
     environment:
       ACCEPT_EULA: "Y"
       SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
@@ -162,7 +162,7 @@ services:
     image: louislam/uptime-kuma:1
     container_name: saas-uptime-kuma
     ports:
-      - "${KUMA_PORT:-3001}:3001"
+      - "127.0.0.1:${KUMA_PORT:-3001}:3001"
     volumes:
       - kuma-data:/app/data
     restart: unless-stopped
