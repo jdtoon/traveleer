@@ -14,8 +14,7 @@
     var storageKey = $"dismiss-announcement-{a.Id}";
     <div class="announcement-banner @alertClass alert rounded-none text-sm py-2 px-4" 
          id="announcement-@a.Id"
-         data-announcement-id="@a.Id"
-         style="display:none;">
+         data-announcement-id="@a.Id">
         <div class="flex items-center justify-between w-full">
             <div class="flex items-center gap-2">
                 @if (a.Type == saas.Modules.SuperAdmin.Entities.AnnouncementType.Critical)
@@ -44,8 +43,8 @@
         (function() {
             document.querySelectorAll('.announcement-banner').forEach(function(el) {
                 var id = el.dataset.announcementId;
-                if (!localStorage.getItem('dismiss-announcement-' + id)) {
-                    el.style.display = '';
+                if (localStorage.getItem('dismiss-announcement-' + id)) {
+                    el.style.display = 'none';
                 }
             });
         })();

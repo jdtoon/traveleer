@@ -11,7 +11,7 @@ namespace saas.Modules.Audit.Controllers;
 
 [Authorize(Policy = "SuperAdmin")]
 [RequireFeature(AuditFeatures.AuditLog)]
-[Route("super-admin/audit-log")]
+[Route("super-admin/audit-log-legacy")]
 public class AuditLogController : SwapController
 {
     private readonly AuditDbContext _auditDb;

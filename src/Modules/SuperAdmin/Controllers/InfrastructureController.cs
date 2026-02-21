@@ -182,16 +182,23 @@ public class InfrastructureController : SwapController
                 Response.Headers[key] = values.ToArray();
             }
 
-            // For HTML responses, inject a <base> tag so asset paths resolve through the proxy
+            // For HTML responses, rewrite absolute asset paths to go through the proxy
             var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
             if (contentType.Contains("text/html", StringComparison.OrdinalIgnoreCase))
             {
                 var html = await response.Content.ReadAsStringAsync();
-                // Insert <base href> right after <head> (or <head ...>)
+                var prefix = proxyPrefix.TrimEnd('/');
+                // Rewrite absolute paths: src="/assets/..." and href="/assets/..." → src="{prefix}/assets/..."
                 html = System.Text.RegularExpressions.Regex.Replace(
                     html,
-                    @"(<head[^>]*>)",
-                    $"$1<base href=\"{proxyPrefix}\">",
+                    @"((?:src|href|action)\s*=\s*[""'])(/(?!/))",
+                    $"$1{prefix}$2",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                // Also handle bare url() references in inline styles/scripts
+                html = System.Text.RegularExpressions.Regex.Replace(
+                    html,
+                    @"(url\([""']?)(/(?!/))",
+                    $"$1{prefix}$2",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                 Response.ContentType = response.Content.Headers.ContentType?.ToString() ?? "text/html";
                 Response.Headers.Remove("Content-Length"); // Length changed after rewrite
