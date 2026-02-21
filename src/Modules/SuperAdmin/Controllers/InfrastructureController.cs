@@ -106,6 +106,22 @@ public class InfrastructureController : SwapController
         return SwapView();
     }
 
+    // ── Jobs Dashboard (Item 12) ─────────────────────────────────────────────
+
+    [HttpGet("/super-admin/jobs")]
+    public async Task<IActionResult> Jobs()
+    {
+        var hangfire = await _infra.GetHangfireStatusAsync();
+        return SwapView(hangfire);
+    }
+
+    [HttpGet("/super-admin/jobs/refresh")]
+    public async Task<IActionResult> JobsRefresh()
+    {
+        var hangfire = await _infra.GetHangfireStatusAsync();
+        return PartialView("_JobsContent", hangfire);
+    }
+
     // ── Reverse Proxy (Seq & Uptime Kuma) ───────────────────────────────────────
     // These services set X-Frame-Options headers that block iframe embedding.
     // Proxying through our app keeps them same-origin and strips those headers.

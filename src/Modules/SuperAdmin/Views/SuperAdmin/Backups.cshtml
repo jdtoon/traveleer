@@ -1,28 +1,41 @@
 @model saas.Shared.LitestreamStatusModel
 @{
     ViewData["Title"] = "Backups";
+    var databases = ViewBag.Databases as List<saas.Modules.SuperAdmin.Services.DatabaseReplicationInfo> ?? new();
 }
 
 <div class="space-y-6">
-    <div>
-        <h1 class="text-2xl font-bold">Backup & Restore Status</h1>
-        <p class="text-base-content/70 mt-1">Read-only operational view for Litestream replication, bootstrap restore readiness, and key durability.</p>
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">Backup & Replication</h1>
+            <p class="text-base-content/70 mt-1">Litestream replication status, database inventory, and manual sync controls.</p>
+        </div>
+        <button class="btn btn-primary btn-sm"
+                hx-post="/super-admin/backups/sync"
+                hx-target="#main-content"
+                hx-confirm="Trigger immediate Litestream config sync?">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Sync Config Now
+        </button>
     </div>
 
+    <!-- Status Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <div class="card bg-base-200">
             <div class="card-body">
                 <h2 class="card-title text-base">Auto Restore Gate</h2>
-                <div class="text-sm">Enabled: <span class="font-semibold">@(Model.AutoRestoreEnabled ? "Yes" : "No")</span></div>
-                <div class="text-sm">Litestream Binary: <span class="font-semibold">@(Model.LitestreamBinaryAvailable ? "Available" : "Missing")</span></div>
-                <div class="text-sm">R2 Config: <span class="font-semibold">@(Model.LitestreamConfigured ? "Configured" : "Missing")</span></div>
+                <div class="text-sm">Enabled: <span class="font-semibold @(Model.AutoRestoreEnabled ? "text-success" : "text-error")">@(Model.AutoRestoreEnabled ? "Yes" : "No")</span></div>
+                <div class="text-sm">Litestream Binary: <span class="font-semibold @(Model.LitestreamBinaryAvailable ? "text-success" : "text-error")">@(Model.LitestreamBinaryAvailable ? "Available" : "Missing")</span></div>
+                <div class="text-sm">R2 Config: <span class="font-semibold @(Model.LitestreamConfigured ? "text-success" : "text-error")">@(Model.LitestreamConfigured ? "Configured" : "Missing")</span></div>
             </div>
         </div>
 
         <div class="card bg-base-200">
             <div class="card-body">
                 <h2 class="card-title text-base">Litestream Config</h2>
-                <div class="text-sm">Config File Present: <span class="font-semibold">@(Model.LitestreamConfigExists ? "Yes" : "No")</span></div>
+                <div class="text-sm">Config File: <span class="font-semibold @(Model.LitestreamConfigExists ? "text-success" : "text-error")">@(Model.LitestreamConfigExists ? "Present" : "Missing")</span></div>
                 <div class="text-sm">Last Config Write: <span class="font-semibold">@(Model.LitestreamConfigUpdatedUtc?.ToString("u") ?? "N/A")</span></div>
                 <div class="text-sm">Last Reload Signal: <span class="font-semibold">@(Model.LitestreamReloadSignalUtc?.ToString("u") ?? "N/A")</span></div>
             </div>
@@ -30,34 +43,78 @@
 
         <div class="card bg-base-200">
             <div class="card-body">
-                <h2 class="card-title text-base">Database Files</h2>
-                <div class="text-sm">Core DB: <span class="font-semibold">@(Model.CoreDatabaseExists ? "Present" : "Missing")</span></div>
-                <div class="text-sm">Audit DB: <span class="font-semibold">@(Model.AuditDatabaseExists ? "Present" : "Missing")</span></div>
-                <div class="text-sm">Tenant DB Count: <span class="font-semibold">@Model.TenantDatabaseCount</span></div>
-            </div>
-        </div>
-
-        <div class="card bg-base-200 md:col-span-2 xl:col-span-3">
-            <div class="card-body">
-                <h2 class="card-title text-base">DataProtection Key Backup</h2>
-                <div class="text-sm">Enabled: <span class="font-semibold">@(Model.KeyBackupEnabled ? "Yes" : "No")</span></div>
-                <div class="text-sm">Destination Path: <span class="font-semibold">@Model.KeyBackupPath</span></div>
-                <div class="text-sm">Last Successful Backup: <span class="font-semibold">@(Model.LastKeyBackupUtc?.ToString("u") ?? "N/A")</span></div>
+                <h2 class="card-title text-base">Database Overview</h2>
+                <div class="text-sm">Core DB: <span class="font-semibold @(Model.CoreDatabaseExists ? "text-success" : "text-error")">@(Model.CoreDatabaseExists ? "Present" : "Missing")</span></div>
+                <div class="text-sm">Audit DB: <span class="font-semibold @(Model.AuditDatabaseExists ? "text-success" : "text-error")">@(Model.AuditDatabaseExists ? "Present" : "Missing")</span></div>
+                <div class="text-sm">Tenant DBs: <span class="font-semibold">@Model.TenantDatabaseCount</span></div>
+                <div class="text-sm">Total Tracked: <span class="font-semibold">@databases.Count</span></div>
             </div>
         </div>
     </div>
 
-    <div class="card bg-base-200">
+    <!-- Database Replication Table -->
+    <div class="card bg-base-100 shadow-sm border border-base-300">
         <div class="card-body">
-            <h2 class="card-title text-base">Disaster Recovery Order</h2>
-            <ol class="list-decimal list-inside text-sm space-y-1">
-                <li>Restore <span class="font-semibold">core.db</span> and <span class="font-semibold">audit.db</span> (auto-restore gate runs this on startup when files are missing).</li>
-                <li>Discover tenant slugs from <span class="font-semibold">core.db</span> and restore <span class="font-semibold">tenants/{slug}.db</span> files.</li>
-                <li>Restore DataProtection keys from <span class="font-semibold">@Model.KeyBackupPath</span>.</li>
-                <li>Run migrations and start normal app + Litestream replication.</li>
-            </ol>
-            <div class="alert alert-warning mt-3">
-                <span class="text-sm">Deployment model is <span class="font-semibold">single-writer</span>. Do not run multiple write-enabled app nodes against the same SQLite volume behind a load balancer.</span>
+            <h2 class="card-title text-lg mb-4">Replicated Databases</h2>
+            @if (databases.Count == 0)
+            {
+                <p class="text-base-content/60">No database files found.</p>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Database</th>
+                                <th>Category</th>
+                                <th>Size</th>
+                                <th>Last Modified</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var db in databases)
+                            {
+                                var freshness = db.LastModifiedUtc.HasValue
+                                    ? (DateTime.UtcNow - db.LastModifiedUtc.Value).TotalMinutes
+                                    : double.MaxValue;
+                                var freshnessClass = freshness < 10 ? "text-success" : freshness < 60 ? "text-warning" : "text-error";
+                                <tr>
+                                    <td class="font-mono text-sm">@db.FileName</td>
+                                    <td><span class="badge badge-sm badge-outline">@db.Category</span></td>
+                                    <td>@db.SizeFormatted</td>
+                                    <td class="@freshnessClass">
+                                        @(db.LastModifiedUtc?.ToString("u") ?? "Unknown")
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Key Backup & Disaster Recovery -->
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div class="card bg-base-200">
+            <div class="card-body">
+                <h2 class="card-title text-base">DataProtection Key Backup</h2>
+                <div class="text-sm">Enabled: <span class="font-semibold">@(Model.KeyBackupEnabled ? "Yes" : "No")</span></div>
+                <div class="text-sm">Destination: <span class="font-semibold">@Model.KeyBackupPath</span></div>
+                <div class="text-sm">Last Backup: <span class="font-semibold">@(Model.LastKeyBackupUtc?.ToString("u") ?? "N/A")</span></div>
+            </div>
+        </div>
+
+        <div class="card bg-base-200">
+            <div class="card-body">
+                <h2 class="card-title text-base">Disaster Recovery Order</h2>
+                <ol class="list-decimal list-inside text-sm space-y-1">
+                    <li>Restore <span class="font-semibold">core.db</span> and <span class="font-semibold">audit.db</span></li>
+                    <li>Discover tenants, restore <span class="font-semibold">tenants/{slug}.db</span> files</li>
+                    <li>Restore DataProtection keys</li>
+                    <li>Run migrations and start app + Litestream</li>
+                </ol>
             </div>
         </div>
     </div>

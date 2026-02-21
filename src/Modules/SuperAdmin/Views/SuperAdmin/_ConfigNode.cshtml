@@ -1,0 +1,27 @@
+@model saas.Modules.SuperAdmin.Controllers.ConfigSection
+@{
+    var depth = (int)(ViewData["Depth"] ?? 0);
+    var paddingClass = $"pl-{depth * 4}";
+}
+
+<div class="@(depth > 0 ? "ml-4 border-l border-base-300 pl-3" : "") mb-1">
+    @if (Model.HasChildren)
+    {
+        <details class="collapse collapse-arrow bg-base-200 rounded-md mb-1" @(depth == 0 ? "open" : "")>
+            <summary class="collapse-title text-sm font-semibold py-2 min-h-0">@Model.Key</summary>
+            <div class="collapse-content px-2">
+                @foreach (var child in Model.Children)
+                {
+                    @await Html.PartialAsync("_ConfigNode", child, new ViewDataDictionary(ViewData) { { "Depth", depth + 1 } })
+                }
+            </div>
+        </details>
+    }
+    else
+    {
+        <div class="flex items-center justify-between py-1 px-2 hover:bg-base-200 rounded text-sm">
+            <span class="font-mono text-base-content/80">@Model.Key</span>
+            <span class="font-mono text-sm @(Model.Value == "••••••••" ? "text-warning" : "text-base-content/60")">@(Model.Value ?? "<null>")</span>
+        </div>
+    }
+</div>

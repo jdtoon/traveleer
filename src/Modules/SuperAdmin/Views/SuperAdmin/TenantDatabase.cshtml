@@ -1,0 +1,221 @@
+@model saas.Modules.SuperAdmin.Services.TenantDatabaseInfoModel
+@{
+    var tenant = ViewBag.Tenant as saas.Modules.SuperAdmin.Services.TenantDetailModel;
+    var users = ViewBag.Users as List<saas.Modules.SuperAdmin.Services.TenantUserInfo> ?? new();
+    var counts = ViewBag.Counts as saas.Modules.SuperAdmin.Services.TenantDataCountsModel;
+    var sessions = ViewBag.Sessions as List<saas.Modules.SuperAdmin.Services.TenantSessionInfo> ?? new();
+    var invitations = ViewBag.Invitations as List<saas.Modules.SuperAdmin.Services.TenantInvitationInfo> ?? new();
+    ViewData["Title"] = $"Database: {tenant?.Name}";
+}
+
+<div class="flex flex-col gap-6">
+    <!-- Header -->
+    <div class="flex items-center gap-2 mb-1">
+        <swap-nav to="/super-admin/tenants/@(tenant?.Id)" class="btn btn-ghost btn-sm btn-circle">←</swap-nav>
+        <h1 class="text-2xl font-bold">Database Inspector — @(tenant?.Name)</h1>
+    </div>
+
+    @if (Model is null)
+    {
+        <div class="alert alert-warning">Database file not found for this tenant.</div>
+    }
+    else
+    {
+        <!-- DB Stats -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="stat bg-base-200 rounded-box p-3">
+                <div class="stat-title text-xs">DB Size</div>
+                <div class="stat-value text-lg">@Model.SizeFormatted</div>
+            </div>
+            <div class="stat bg-base-200 rounded-box p-3">
+                <div class="stat-title text-xs">WAL Size</div>
+                <div class="stat-value text-lg">@Model.WalSizeFormatted</div>
+            </div>
+            <div class="stat bg-base-200 rounded-box p-3">
+                <div class="stat-title text-xs">Tables</div>
+                <div class="stat-value text-lg">@Model.Tables.Count</div>
+            </div>
+            <div class="stat bg-base-200 rounded-box p-3">
+                <div class="stat-title text-xs">Last Modified</div>
+                <div class="stat-value text-sm">@(Model.LastModifiedUtc?.ToString("g") ?? "—")</div>
+            </div>
+        </div>
+
+        @if (counts is not null)
+        {
+            <!-- Data Counts -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+                <div class="stat bg-base-200 rounded-box p-3">
+                    <div class="stat-title text-xs">Users</div>
+                    <div class="stat-value text-lg">@counts.Users</div>
+                </div>
+                <div class="stat bg-base-200 rounded-box p-3">
+                    <div class="stat-title text-xs">Roles</div>
+                    <div class="stat-value text-lg">@counts.Roles</div>
+                </div>
+                <div class="stat bg-base-200 rounded-box p-3">
+                    <div class="stat-title text-xs">Notes</div>
+                    <div class="stat-value text-lg">@counts.Notes</div>
+                </div>
+                <div class="stat bg-base-200 rounded-box p-3">
+                    <div class="stat-title text-xs">Notifications</div>
+                    <div class="stat-value text-lg">@counts.NotificationsTotal</div>
+                </div>
+                <div class="stat bg-base-200 rounded-box p-3">
+                    <div class="stat-title text-xs">Sessions</div>
+                    <div class="stat-value text-lg">@counts.ActiveSessions</div>
+                </div>
+                <div class="stat bg-base-200 rounded-box p-3">
+                    <div class="stat-title text-xs">Invitations</div>
+                    <div class="stat-value text-lg">@counts.PendingInvitations</div>
+                </div>
+                <div class="stat bg-base-200 rounded-box p-3">
+                    <div class="stat-title text-xs">Unread</div>
+                    <div class="stat-value text-lg">@counts.NotificationsUnread</div>
+                </div>
+            </div>
+        }
+
+        <!-- Tables -->
+        <div class="card bg-base-100 shadow-sm border border-base-300">
+            <div class="card-body">
+                <h2 class="card-title text-lg mb-4">Tables</h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>Table Name</th><th class="text-right">Rows</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var t in Model.Tables.OrderByDescending(t => t.RowCount))
+                            {
+                                <tr>
+                                    <td class="font-mono text-sm">@t.Name</td>
+                                    <td class="text-right">@t.RowCount</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users -->
+        <div class="card bg-base-100 shadow-sm border border-base-300">
+            <div class="card-body">
+                <h2 class="card-title text-lg mb-4">Users (@users.Count)</h2>
+                @if (users.Count == 0)
+                {
+                    <p class="text-base-content/60">No users.</p>
+                }
+                else
+                {
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Display Name</th>
+                                    <th>Roles</th>
+                                    <th>Active</th>
+                                    <th>2FA</th>
+                                    <th>Last Login</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var u in users)
+                                {
+                                    <tr>
+                                        <td class="text-sm">@u.Email</td>
+                                        <td class="text-sm">@(u.DisplayName ?? "—")</td>
+                                        <td class="text-sm">@(u.Roles.Count > 0 ? string.Join(", ", u.Roles) : "—")</td>
+                                        <td>
+                                            @if (u.IsActive) { <span class="badge badge-success badge-xs">Yes</span> }
+                                            else { <span class="badge badge-error badge-xs">No</span> }
+                                        </td>
+                                        <td>
+                                            @if (u.TwoFactorEnabled) { <span class="badge badge-info badge-xs">On</span> }
+                                            else { <span class="badge badge-ghost badge-xs">Off</span> }
+                                        </td>
+                                        <td class="text-sm">@(u.LastLoginAt?.ToString("g") ?? "Never")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Active Sessions -->
+        @if (sessions.Count > 0)
+        {
+            <div class="card bg-base-100 shadow-sm border border-base-300">
+                <div class="card-body">
+                    <h2 class="card-title text-lg mb-4">Active Sessions (@sessions.Count)</h2>
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Device</th>
+                                    <th>IP</th>
+                                    <th>Created</th>
+                                    <th>Last Activity</th>
+                                    <th>Expires</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in sessions)
+                                {
+                                    <tr class="@(s.IsExpired ? "opacity-40" : "")">
+                                        <td class="text-sm">@s.UserEmail</td>
+                                        <td class="text-sm">@(s.DeviceInfo ?? "—")</td>
+                                        <td class="font-mono text-xs">@(s.IpAddress ?? "—")</td>
+                                        <td class="text-sm">@s.CreatedAt.ToString("g")</td>
+                                        <td class="text-sm">@s.LastActivityAt.ToString("g")</td>
+                                        <td class="text-sm">@s.ExpiresAt.ToString("g")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Pending Invitations -->
+        @if (invitations.Count > 0)
+        {
+            <div class="card bg-base-100 shadow-sm border border-base-300">
+                <div class="card-body">
+                    <h2 class="card-title text-lg mb-4">Pending Invitations (@invitations.Count)</h2>
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Invited By</th>
+                                    <th>Sent</th>
+                                    <th>Expires</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var inv in invitations)
+                                {
+                                    <tr class="@(inv.IsExpired ? "opacity-40 line-through" : "")">
+                                        <td class="text-sm">@inv.Email</td>
+                                        <td class="text-sm">@inv.RoleName</td>
+                                        <td class="text-sm">@(inv.InvitedByEmail ?? "—")</td>
+                                        <td class="text-sm">@inv.SentAt.ToString("g")</td>
+                                        <td class="text-sm">@inv.ExpiresAt.ToString("g")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

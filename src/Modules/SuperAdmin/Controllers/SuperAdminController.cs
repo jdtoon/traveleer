@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using saas.Data.Core;
 using saas.Infrastructure.Middleware;
+using saas.Infrastructure.Services;
 using saas.Modules.FeatureFlags.Services;
 using saas.Modules.SuperAdmin.Services;
 using Swap.Htmx;
@@ -15,17 +17,26 @@ public class SuperAdminController : SwapController
     private readonly FeatureCacheInvalidator _cacheInvalidator;
     private readonly IMemoryCache _cache;
     private readonly ISuperAdminAuditService _audit;
+    private readonly ITenantInspectionService _inspection;
+    private readonly IConfiguration _configuration;
+    private readonly CoreDbContext _coreDb;
 
     public SuperAdminController(
         ISuperAdminService service,
         FeatureCacheInvalidator cacheInvalidator,
         IMemoryCache cache,
-        ISuperAdminAuditService audit)
+        ISuperAdminAuditService audit,
+        ITenantInspectionService inspection,
+        IConfiguration configuration,
+        CoreDbContext coreDb)
     {
         _service = service;
         _cacheInvalidator = cacheInvalidator;
         _cache = cache;
         _audit = audit;
+        _inspection = inspection;
+        _configuration = configuration;
+        _coreDb = coreDb;
     }
 
     // ── Dashboard ────────────────────────────────────────────────────────────
@@ -227,7 +238,28 @@ public class SuperAdminController : SwapController
     public async Task<IActionResult> Backups()
     {
         var model = await _service.GetLitestreamStatusAsync();
+        var databases = await _service.GetDatabaseReplicationInfoAsync();
+        ViewBag.Databases = databases;
         return SwapView(model);
+    }
+
+    [HttpPost("/super-admin/backups/sync")]
+    public async Task<IActionResult> TriggerSync([FromServices] ILitestreamConfigSync? litestreamSync)
+    {
+        if (litestreamSync is null)
+            return SwapResponse().WithErrorToast("Litestream sync service not available").Build();
+
+        await litestreamSync.SyncConfigAsync();
+        await _audit.LogAsync("ManualSync", "Litestream", "config", "Manual config sync triggered");
+
+        var model = await _service.GetLitestreamStatusAsync();
+        var databases = await _service.GetDatabaseReplicationInfoAsync();
+        ViewBag.Databases = databases;
+
+        return SwapResponse()
+            .WithView("Backups", model)
+            .WithSuccessToast("Config sync triggered")
+            .Build();
     }
 
     [HttpPost("/super-admin/features/{featureId}/toggle")]
@@ -276,4 +308,271 @@ public class SuperAdminController : SwapController
             .WithSuccessToast("Override saved")
             .Build();
     }
+
+    // ── Tenant Database Inspector (Item 13) ──────────────────────────────────
+
+    [HttpGet("/super-admin/tenants/{id}/database")]
+    public async Task<IActionResult> TenantDatabase(Guid id)
+    {
+        var tenant = await _service.GetTenantDetailAsync(id);
+        if (tenant is null) return NotFound();
+
+        var dbInfo = await _inspection.GetDatabaseInfoAsync(tenant.Slug);
+        var users = await _inspection.GetUsersAsync(tenant.Slug);
+        var counts = await _inspection.GetDataCountsAsync(tenant.Slug);
+        var sessions = await _inspection.GetActiveSessionsAsync(tenant.Slug);
+        var invitations = await _inspection.GetPendingInvitationsAsync(tenant.Slug);
+
+        ViewBag.Tenant = tenant;
+        ViewBag.Users = users;
+        ViewBag.Counts = counts;
+        ViewBag.Sessions = sessions;
+        ViewBag.Invitations = invitations;
+
+        return SwapView(dbInfo);
+    }
+
+    // ── Tenant Health (Item 14) ──────────────────────────────────────────────
+
+    [HttpGet("/super-admin/tenant-health")]
+    public async Task<IActionResult> TenantHealth()
+    {
+        var model = await _service.GetTenantHealthOverviewAsync();
+        return SwapView(model);
+    }
+
+    // ── Extended Tenant Actions (Item 15) ────────────────────────────────────
+
+    [HttpGet("/super-admin/tenants/{id}/extend-trial")]
+    public async Task<IActionResult> ExtendTrialModal(Guid id)
+    {
+        var tenant = await _service.GetTenantDetailAsync(id);
+        if (tenant is null) return NotFound();
+        return SwapView("_ExtendTrialModal", tenant);
+    }
+
+    [HttpPost("/super-admin/tenants/{id}/extend-trial")]
+    public async Task<IActionResult> ExtendTrial(Guid id, [FromForm] int days)
+    {
+        var success = await _service.ExtendTrialAsync(id, days);
+        if (!success) return NotFound();
+
+        await _audit.LogAsync("ExtendedTrial", "Tenant", id.ToString(), $"Trial extended by {days} days");
+
+        var model = await _service.GetTenantDetailAsync(id);
+        return SwapResponse()
+            .WithView(SwapViews.SuperAdmin._ModalClose)
+            .AlsoUpdate("main-content", "TenantDetail", model)
+            .WithSuccessToast($"Trial extended by {days} days")
+            .Build();
+    }
+
+    [HttpGet("/super-admin/tenants/{id}/delete")]
+    public async Task<IActionResult> DeleteTenantModal(Guid id)
+    {
+        var tenant = await _service.GetTenantDetailAsync(id);
+        if (tenant is null) return NotFound();
+        return SwapView("_DeleteTenantModal", tenant);
+    }
+
+    [HttpPost("/super-admin/tenants/{id}/delete")]
+    public async Task<IActionResult> DeleteTenant(Guid id, [FromForm] string confirmSlug)
+    {
+        var tenant = await _service.GetTenantDetailAsync(id);
+        if (tenant is null) return NotFound();
+
+        if (!string.Equals(confirmSlug, tenant.Slug, StringComparison.OrdinalIgnoreCase))
+        {
+            return SwapResponse().WithErrorToast("Slug confirmation does not match").Build();
+        }
+
+        await _service.ScheduleTenantDeletionAsync(id);
+        TenantResolutionMiddleware.InvalidateCache(_cache, tenant.Slug);
+        await _audit.LogAsync("ScheduledDeletion", "Tenant", id.ToString(), $"Tenant '{tenant.Slug}' scheduled for deletion");
+
+        var updatedModel = await _service.GetTenantDetailAsync(id);
+        return SwapResponse()
+            .WithView(SwapViews.SuperAdmin._ModalClose)
+            .AlsoUpdate("main-content", "TenantDetail", updatedModel)
+            .WithWarningToast("Tenant scheduled for deletion")
+            .Build();
+    }
+
+    // ── Impersonation (Item 16) ──────────────────────────────────────────────
+
+    [HttpPost("/super-admin/tenants/{id}/impersonate")]
+    public async Task<IActionResult> ImpersonateTenant(Guid id)
+    {
+        var tenant = await _service.GetTenantDetailAsync(id);
+        if (tenant is null) return NotFound();
+
+        await _audit.LogAsync("Impersonated", "Tenant", id.ToString(),
+            $"Super admin began impersonation of tenant '{tenant.Slug}'");
+
+        // Redirect to the tenant with impersonation token
+        return SwapResponse()
+            .WithRedirect($"/{tenant.Slug}/admin?impersonate=true")
+            .WithInfoToast($"Entering {tenant.Name} as admin")
+            .Build();
+    }
+
+    // ── Billing Dashboard (Item 17) ──────────────────────────────────────────
+
+    [HttpGet("/super-admin/billing")]
+    public async Task<IActionResult> Billing()
+    {
+        var model = await _service.GetBillingDashboardAsync();
+        return SwapView(model);
+    }
+
+    // ── System Config (Item 18) ──────────────────────────────────────────────
+
+    [HttpGet("/super-admin/config")]
+    public IActionResult Config()
+    {
+        var model = BuildConfigTree(_configuration);
+        return SwapView(model);
+    }
+
+    // ── Admin Management (Item 19) ───────────────────────────────────────────
+
+    [HttpGet("/super-admin/admins")]
+    public async Task<IActionResult> Admins()
+    {
+        var admins = await _service.GetAdminsAsync();
+        return SwapView(admins);
+    }
+
+    [HttpGet("/super-admin/admins/invite")]
+    public IActionResult InviteAdminModal()
+    {
+        return SwapView("_InviteAdminModal");
+    }
+
+    [HttpPost("/super-admin/admins/invite")]
+    public async Task<IActionResult> InviteAdmin([FromForm] string email, [FromForm] string displayName)
+    {
+        await _service.CreateAdminAsync(email, displayName);
+        await _audit.LogAsync("Invited", "SuperAdmin", email, $"Admin '{displayName}' ({email}) invited");
+
+        var admins = await _service.GetAdminsAsync();
+        return SwapResponse()
+            .WithView(SwapViews.SuperAdmin._ModalClose)
+            .AlsoUpdate("admin-list", "_AdminList", admins)
+            .WithSuccessToast($"Admin {email} invited")
+            .Build();
+    }
+
+    [HttpPost("/super-admin/admins/{id}/toggle")]
+    public async Task<IActionResult> ToggleAdmin(Guid id)
+    {
+        var (success, isActive) = await _service.ToggleAdminStatusAsync(id);
+        if (!success) return NotFound();
+
+        await _audit.LogAsync(isActive ? "Activated" : "Deactivated", "SuperAdmin", id.ToString());
+
+        var admins = await _service.GetAdminsAsync();
+        return SwapResponse()
+            .WithView("_AdminList", admins)
+            .WithSuccessToast($"Admin {(isActive ? "activated" : "deactivated")}")
+            .Build();
+    }
+
+    // ── Active Sessions (Item 20) ────────────────────────────────────────────
+
+    [HttpGet("/super-admin/sessions")]
+    public async Task<IActionResult> Sessions()
+    {
+        var model = await _service.GetAllActiveSessionsAsync();
+        return SwapView(model);
+    }
+
+    // ── Announcements (Item 21) ──────────────────────────────────────────────
+
+    [HttpGet("/super-admin/announcements")]
+    public IActionResult Announcements()
+    {
+        return SwapView();
+    }
+
+    [HttpGet("/super-admin/announcements/new")]
+    public IActionResult NewAnnouncementModal()
+    {
+        return SwapView("_AnnouncementModal");
+    }
+
+    [HttpPost("/super-admin/announcements/send")]
+    public async Task<IActionResult> SendAnnouncement([FromForm] string title, [FromForm] string message)
+    {
+        var count = await _service.BroadcastAnnouncementAsync(title, message);
+        await _audit.LogAsync("Broadcast", "Announcement", title, $"Sent to {count} tenants: {message}");
+
+        return SwapResponse()
+            .WithView(SwapViews.SuperAdmin._ModalClose)
+            .WithSuccessToast($"Announcement sent to {count} tenants")
+            .Build();
+    }
+
+    // ── Export (Item 22) ─────────────────────────────────────────────────────
+
+    [HttpGet("/super-admin/export/tenants")]
+    public async Task<IActionResult> ExportTenants()
+    {
+        var csv = await _service.ExportTenantsCsvAsync();
+        return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "tenants.csv");
+    }
+
+    [HttpGet("/super-admin/export/billing")]
+    public async Task<IActionResult> ExportBilling()
+    {
+        var csv = await _service.ExportBillingCsvAsync();
+        return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "billing.csv");
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private static List<ConfigSection> BuildConfigTree(IConfiguration config)
+    {
+        var sensitiveKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "password", "secret", "key", "token", "connectionstring", "apikey",
+            "accesskey", "secretkey", "credentials"
+        };
+
+        var sections = new List<ConfigSection>();
+        foreach (var section in config.GetChildren())
+        {
+            sections.Add(BuildSection(section, sensitiveKeys));
+        }
+        return sections;
+    }
+
+    private static ConfigSection BuildSection(IConfigurationSection section, HashSet<string> sensitiveKeys)
+    {
+        var result = new ConfigSection { Key = section.Key };
+
+        if (section.GetChildren().Any())
+        {
+            foreach (var child in section.GetChildren())
+            {
+                result.Children.Add(BuildSection(child, sensitiveKeys));
+            }
+        }
+        else
+        {
+            var isSensitive = sensitiveKeys.Any(sk => section.Key.Contains(sk, StringComparison.OrdinalIgnoreCase)
+                || section.Path.Contains(sk, StringComparison.OrdinalIgnoreCase));
+            result.Value = isSensitive ? "••••••••" : section.Value;
+        }
+
+        return result;
+    }
+}
+
+public class ConfigSection
+{
+    public string Key { get; set; } = string.Empty;
+    public string? Value { get; set; }
+    public List<ConfigSection> Children { get; set; } = [];
+    public bool HasChildren => Children.Count > 0;
 }

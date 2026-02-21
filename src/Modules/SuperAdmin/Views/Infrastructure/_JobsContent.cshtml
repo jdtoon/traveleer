@@ -1,0 +1,106 @@
+@model saas.Modules.SuperAdmin.Services.HangfireStatusModel
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+    <div class="stat bg-base-200 rounded-box p-3">
+        <div class="stat-title text-xs">Servers</div>
+        <div class="stat-value text-lg">@Model.ServerCount</div>
+    </div>
+    <div class="stat bg-base-200 rounded-box p-3">
+        <div class="stat-title text-xs">Succeeded</div>
+        <div class="stat-value text-lg text-success">@Model.SucceededJobs</div>
+    </div>
+    <div class="stat bg-base-200 rounded-box p-3">
+        <div class="stat-title text-xs">Failed</div>
+        <div class="stat-value text-lg @(Model.FailedJobs > 0 ? "text-error" : "")">@Model.FailedJobs</div>
+    </div>
+    <div class="stat bg-base-200 rounded-box p-3">
+        <div class="stat-title text-xs">Processing</div>
+        <div class="stat-value text-lg text-info">@Model.ProcessingJobs</div>
+    </div>
+    <div class="stat bg-base-200 rounded-box p-3">
+        <div class="stat-title text-xs">Enqueued</div>
+        <div class="stat-value text-lg">@Model.EnqueuedJobs</div>
+    </div>
+    <div class="stat bg-base-200 rounded-box p-3">
+        <div class="stat-title text-xs">Scheduled</div>
+        <div class="stat-value text-lg">@Model.ScheduledJobs</div>
+    </div>
+</div>
+
+<!-- Recurring Jobs -->
+<div class="card bg-base-100 shadow-sm border border-base-300 mb-6">
+    <div class="card-body">
+        <h2 class="card-title text-lg mb-4">Recurring Jobs (@Model.RecurringJobs.Count)</h2>
+        @if (Model.RecurringJobs.Count == 0)
+        {
+            <p class="text-base-content/60">No recurring jobs configured.</p>
+        }
+        else
+        {
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Job ID</th>
+                            <th>Cron</th>
+                            <th>Last Execution</th>
+                            <th>Next Execution</th>
+                            <th>Last State</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var job in Model.RecurringJobs)
+                        {
+                            var stateClass = job.LastJobState switch
+                            {
+                                "Succeeded" => "badge-success",
+                                "Failed" => "badge-error",
+                                "Processing" => "badge-info",
+                                _ => "badge-ghost"
+                            };
+                            <tr>
+                                <td class="font-mono text-sm">@job.JobId</td>
+                                <td class="font-mono text-xs">@job.Cron</td>
+                                <td class="text-sm">@(job.LastExecution?.ToString("g") ?? "Never")</td>
+                                <td class="text-sm">@(job.NextExecution?.ToString("g") ?? "—")</td>
+                                <td><span class="badge badge-sm @stateClass">@(job.LastJobState ?? "None")</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Recent Failures -->
+@if (Model.RecentFailures.Count > 0)
+{
+    <div class="card bg-base-100 shadow-sm border border-error/30">
+        <div class="card-body">
+            <h2 class="card-title text-lg mb-4 text-error">Recent Failures (@Model.RecentFailures.Count)</h2>
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Job</th>
+                            <th>Error</th>
+                            <th>Failed At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var fail in Model.RecentFailures)
+                        {
+                            <tr>
+                                <td class="font-mono text-sm">@fail.JobName</td>
+                                <td class="text-sm text-error max-w-md truncate">@fail.ExceptionMessage</td>
+                                <td class="text-sm">@fail.FailedAt.ToString("g")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

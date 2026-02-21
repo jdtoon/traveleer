@@ -1,0 +1,25 @@
+@model saas.Modules.SuperAdmin.Services.TenantDetailModel
+@{
+    ViewData["Title"] = "Delete Tenant";
+}
+
+<div class="modal modal-open">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg text-error mb-4">⚠️ Delete Tenant — @Model.Name</h3>
+        <form hx-post="/super-admin/tenants/@Model.Id/delete" hx-target="#modal-container">
+            <div class="alert alert-error mb-4">
+                <span class="text-sm">This will schedule the tenant for permanent deletion after a 30-day grace period. The tenant will be immediately suspended and all users will lose access.</span>
+            </div>
+            <div class="form-control mb-4">
+                <label class="label"><span class="label-text">Type the tenant slug <span class="font-bold">@Model.Slug</span> to confirm</span></label>
+                <input type="text" name="confirmSlug" class="input input-bordered w-full" required placeholder="@Model.Slug" />
+            </div>
+            <div class="modal-action">
+                <button type="submit" class="btn btn-error btn-sm">Schedule Deletion</button>
+                <button type="button" class="btn btn-ghost btn-sm"
+                        hx-get="about:blank" hx-target="#modal-container" hx-swap="innerHTML">Cancel</button>
+            </div>
+        </form>
+    </div>
+    <div class="modal-backdrop" hx-get="about:blank" hx-target="#modal-container" hx-swap="innerHTML"></div>
+</div>

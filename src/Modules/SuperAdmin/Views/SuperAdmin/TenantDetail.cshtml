@@ -14,7 +14,18 @@
             </div>
             <p class="opacity-60 ml-12">/@Model.Slug</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-wrap">
+            <swap-nav to="/super-admin/tenants/@Model.Id/database" class="btn btn-outline btn-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                </svg>
+                Inspect DB
+            </swap-nav>
+            <button class="btn btn-outline btn-sm"
+                    hx-get="/super-admin/tenants/@Model.Id/extend-trial"
+                    hx-target="#modal-container">
+                Extend Trial
+            </button>
             @if (Model.Status == TenantStatus.Active)
             {
                 <button class="btn btn-error btn-sm"
@@ -33,6 +44,11 @@
                     Activate
                 </button>
             }
+            <button class="btn btn-error btn-outline btn-sm"
+                    hx-get="/super-admin/tenants/@Model.Id/delete"
+                    hx-target="#modal-container">
+                Delete
+            </button>
         </div>
     </div>
 

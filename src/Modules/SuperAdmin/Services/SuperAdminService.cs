@@ -337,6 +337,361 @@ public class SuperAdminService : ISuperAdminService
         return _litestreamStatusService.GetStatusAsync();
     }
 
+    public Task<List<DatabaseReplicationInfo>> GetDatabaseReplicationInfoAsync()
+    {
+        var dbPath = Path.Combine(Directory.GetCurrentDirectory(), "db");
+        var tenantPath = Path.Combine(dbPath, "tenants");
+        var results = new List<DatabaseReplicationInfo>();
+
+        // Core databases
+        AddDbInfo(results, dbPath, "core.db", "Core");
+        AddDbInfo(results, dbPath, "audit.db", "Audit");
+        AddDbInfo(results, dbPath, "hangfire.db", "Hangfire");
+
+        // Tenant databases
+        if (Directory.Exists(tenantPath))
+        {
+            foreach (var file in Directory.GetFiles(tenantPath, "*.db").OrderBy(f => f))
+            {
+                var fileName = Path.GetFileName(file);
+                AddDbInfo(results, tenantPath, fileName, "Tenant");
+            }
+        }
+
+        return Task.FromResult(results);
+    }
+
+    private static void AddDbInfo(List<DatabaseReplicationInfo> list, string dir, string fileName, string category)
+    {
+        var fullPath = Path.Combine(dir, fileName);
+        if (!File.Exists(fullPath)) return;
+
+        var fi = new FileInfo(fullPath);
+        list.Add(new DatabaseReplicationInfo
+        {
+            FileName = fileName,
+            Category = category,
+            SizeBytes = fi.Length,
+            LastModifiedUtc = fi.LastWriteTimeUtc
+        });
+    }
+
+    // ── Tenant Health (Item 14) ──────────────────────────────────────────────
+
+    public async Task<TenantHealthOverviewModel> GetTenantHealthOverviewAsync()
+    {
+        var tenants = await _coreDb.Tenants
+            .Include(t => t.Plan)
+            .Include(t => t.ActiveSubscription)
+            .Where(t => !t.IsDeleted)
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+
+        var model = new TenantHealthOverviewModel
+        {
+            TotalTenants = tenants.Count,
+            ActiveTenants = tenants.Count(t => t.Status == TenantStatus.Active),
+            SuspendedTenants = tenants.Count(t => t.Status == TenantStatus.Suspended),
+            TrialingTenants = tenants.Count(t => t.TrialEndsAt.HasValue && t.TrialEndsAt > DateTime.UtcNow)
+        };
+
+        foreach (var t in tenants)
+        {
+            var dbPath = Path.Combine(Directory.GetCurrentDirectory(), "db", "tenants", $"{t.Slug}.db");
+            long dbSize = 0;
+            if (File.Exists(dbPath))
+                dbSize = new FileInfo(dbPath).Length;
+
+            var userCount = await GetTenantUserCountAsync(t.Slug);
+
+            model.Tenants.Add(new TenantHealthItem
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Slug = t.Slug,
+                Status = t.Status,
+                PlanName = t.Plan.Name,
+                UserCount = userCount,
+                DatabaseSizeBytes = dbSize
+            });
+
+            model.TotalUsers += userCount;
+        }
+
+        return model;
+    }
+
+    // ── Extended Tenant Management (Item 15) ─────────────────────────────────
+
+    public async Task<bool> ExtendTrialAsync(Guid tenantId, int days)
+    {
+        var tenant = await _coreDb.Tenants.FindAsync(tenantId);
+        if (tenant is null) return false;
+
+        tenant.TrialEndsAt = (tenant.TrialEndsAt ?? DateTime.UtcNow).AddDays(days);
+        await _coreDb.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task ScheduleTenantDeletionAsync(Guid tenantId)
+    {
+        var tenant = await _coreDb.Tenants.FindAsync(tenantId);
+        if (tenant is null) return;
+
+        tenant.Status = TenantStatus.Cancelled;
+        tenant.IsDeleted = true;
+        tenant.DeletedAt = DateTime.UtcNow;
+        tenant.ScheduledDeletionAt = DateTime.UtcNow.AddDays(30); // 30-day grace period
+        await _coreDb.SaveChangesAsync();
+    }
+
+    // ── Billing Dashboard (Item 17) ──────────────────────────────────────────
+
+    public async Task<BillingDashboardModel> GetBillingDashboardAsync()
+    {
+        var now = DateTime.UtcNow;
+        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var activeSubs = await _coreDb.Subscriptions
+            .Include(s => s.Plan)
+            .Where(s => s.Status == SubscriptionStatus.Active)
+            .ToListAsync();
+
+        var mrr = activeSubs.Sum(s => s.BillingCycle == BillingCycle.Annual
+            ? (s.Plan?.MonthlyPrice ?? 0) * 0.8m // Approximate annual discount
+            : s.Plan?.MonthlyPrice ?? 0);
+
+        var trialCount = await _coreDb.Subscriptions
+            .CountAsync(s => s.Status == SubscriptionStatus.Trialing);
+        var pastDueCount = await _coreDb.Subscriptions
+            .CountAsync(s => s.Status == SubscriptionStatus.PastDue);
+        var cancelledThisMonth = await _coreDb.Subscriptions
+            .CountAsync(s => s.Status == SubscriptionStatus.Cancelled && s.CancelledAt >= monthStart);
+
+        var totalRevenue = await _coreDb.Payments
+            .Where(p => p.Status == PaymentStatus.Success)
+            .SumAsync(p => (decimal?)p.Amount) ?? 0;
+
+        var planBreakdown = await _coreDb.Subscriptions
+            .Where(s => s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.Trialing)
+            .Include(s => s.Plan)
+            .GroupBy(s => s.Plan!.Name)
+            .Select(g => new PlanBreakdownItem
+            {
+                PlanName = g.Key,
+                SubscriberCount = g.Count(),
+                MonthlyPrice = g.First().Plan!.MonthlyPrice
+            })
+            .ToListAsync();
+
+        var recentPayments = await _coreDb.Payments
+            .Include(p => p.Tenant)
+            .OrderByDescending(p => p.TransactionDate)
+            .Take(10)
+            .Select(p => new RecentPaymentItem
+            {
+                TenantName = p.Tenant!.Name,
+                Amount = p.Amount,
+                Currency = p.Currency,
+                Status = p.Status.ToString(),
+                TransactionDate = p.TransactionDate
+            })
+            .ToListAsync();
+
+        var recentInvoices = await _coreDb.Invoices
+            .Include(i => i.Tenant)
+            .OrderByDescending(i => i.IssuedDate)
+            .Take(10)
+            .Select(i => new RecentInvoiceItem
+            {
+                TenantName = i.Tenant!.Name,
+                InvoiceNumber = i.InvoiceNumber,
+                Amount = i.Amount,
+                Currency = i.Currency,
+                Status = i.Status.ToString(),
+                IssuedDate = i.IssuedDate
+            })
+            .ToListAsync();
+
+        return new BillingDashboardModel
+        {
+            MonthlyRecurringRevenue = mrr,
+            TotalActiveSubscriptions = activeSubs.Count,
+            TrialSubscriptions = trialCount,
+            PastDueSubscriptions = pastDueCount,
+            CancelledThisMonth = cancelledThisMonth,
+            TotalRevenueAllTime = totalRevenue,
+            PlanBreakdown = planBreakdown,
+            RecentPayments = recentPayments,
+            RecentInvoices = recentInvoices
+        };
+    }
+
+    // ── Admin Management (Item 19) ───────────────────────────────────────────
+
+    public async Task<List<SuperAdminListItem>> GetAdminsAsync()
+    {
+        return await _coreDb.SuperAdmins
+            .OrderBy(a => a.Email)
+            .Select(a => new SuperAdminListItem
+            {
+                Id = a.Id,
+                Email = a.Email,
+                DisplayName = a.DisplayName ?? a.Email,
+                IsActive = a.IsActive,
+                LastLoginAt = a.LastLoginAt,
+                CreatedAt = a.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task CreateAdminAsync(string email, string displayName)
+    {
+        var admin = new Entities.SuperAdmin
+        {
+            Id = Guid.NewGuid(),
+            Email = email,
+            DisplayName = displayName,
+            IsActive = true
+        };
+        _coreDb.SuperAdmins.Add(admin);
+        await _coreDb.SaveChangesAsync();
+    }
+
+    public async Task<(bool success, bool isActive)> ToggleAdminStatusAsync(Guid adminId)
+    {
+        var admin = await _coreDb.SuperAdmins.FindAsync(adminId);
+        if (admin is null) return (false, false);
+
+        admin.IsActive = !admin.IsActive;
+        await _coreDb.SaveChangesAsync();
+        return (true, admin.IsActive);
+    }
+
+    // ── Active Sessions (Item 20) ────────────────────────────────────────────
+
+    public async Task<AllSessionsModel> GetAllActiveSessionsAsync()
+    {
+        var tenants = await _coreDb.Tenants
+            .Where(t => t.Status == TenantStatus.Active && !t.IsDeleted)
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+
+        var model = new AllSessionsModel();
+        var inspectionService = _serviceProvider.GetRequiredService<ITenantInspectionService>();
+
+        foreach (var tenant in tenants)
+        {
+            try
+            {
+                var sessions = await inspectionService.GetActiveSessionsAsync(tenant.Slug);
+                if (sessions.Count > 0)
+                {
+                    model.TenantSessions.Add(new TenantSessionSummary
+                    {
+                        TenantName = tenant.Name,
+                        TenantSlug = tenant.Slug,
+                        ActiveSessions = sessions.Count,
+                        Sessions = sessions
+                    });
+                    model.TotalSessions += sessions.Count;
+                }
+            }
+            catch
+            {
+                // Skip tenants with missing/corrupt DBs
+            }
+        }
+
+        return model;
+    }
+
+    // ── Announcements (Item 21) ──────────────────────────────────────────────
+
+    public async Task<int> BroadcastAnnouncementAsync(string title, string message)
+    {
+        var tenants = await _coreDb.Tenants
+            .Where(t => t.Status == TenantStatus.Active && !t.IsDeleted)
+            .ToListAsync();
+
+        var count = 0;
+        foreach (var tenant in tenants)
+        {
+            try
+            {
+                var dbPath = Path.Combine(Directory.GetCurrentDirectory(), "db", "tenants", $"{tenant.Slug}.db");
+                if (!File.Exists(dbPath)) continue;
+
+                var options = new DbContextOptionsBuilder<TenantDbContext>()
+                    .UseSqlite($"Data Source={dbPath}")
+                    .Options;
+
+                await using var tenantDb = new TenantDbContext(options);
+                var users = await tenantDb.Users.Select(u => u.Id).ToListAsync();
+
+                foreach (var userId in users)
+                {
+                    tenantDb.Notifications.Add(new saas.Modules.Notifications.Entities.Notification
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = userId,
+                        Title = $"📢 {title}",
+                        Message = message,
+                        Type = saas.Modules.Notifications.Entities.NotificationType.Info,
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
+                await tenantDb.SaveChangesAsync();
+                count++;
+            }
+            catch
+            {
+                // Skip tenants with missing/corrupt DBs
+            }
+        }
+
+        return count;
+    }
+
+    // ── Export (Item 22) ─────────────────────────────────────────────────────
+
+    public async Task<string> ExportTenantsCsvAsync()
+    {
+        var tenants = await _coreDb.Tenants
+            .Include(t => t.Plan)
+            .Include(t => t.ActiveSubscription)
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Name,Slug,Email,Status,Plan,Subscription,Created");
+        foreach (var t in tenants)
+        {
+            sb.AppendLine($"\"{t.Name}\",\"{t.Slug}\",\"{t.ContactEmail}\",{t.Status},{t.Plan.Name},{t.ActiveSubscription?.Status.ToString() ?? "None"},{t.CreatedAt:yyyy-MM-dd}");
+        }
+
+        return sb.ToString();
+    }
+
+    public async Task<string> ExportBillingCsvAsync()
+    {
+        var payments = await _coreDb.Payments
+            .Include(p => p.Tenant)
+            .OrderByDescending(p => p.TransactionDate)
+            .ToListAsync();
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Tenant,Amount,Currency,Status,Date,PaystackRef");
+        foreach (var p in payments)
+        {
+            sb.AppendLine($"\"{p.Tenant?.Name}\",{p.Amount},{p.Currency},{p.Status},{p.TransactionDate:yyyy-MM-dd},{p.PaystackReference}");
+        }
+
+        return sb.ToString();
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private async Task<int> GetTenantUserCountAsync(string slug)

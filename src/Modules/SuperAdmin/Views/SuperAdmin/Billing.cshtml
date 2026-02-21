@@ -1,0 +1,179 @@
+@model saas.Modules.SuperAdmin.Services.BillingDashboardModel
+@{
+    ViewData["Title"] = "Billing & Revenue";
+}
+
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">Billing & Revenue</h1>
+            <p class="text-base-content/70 mt-1">Subscription metrics, revenue tracking, and payment history.</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="/super-admin/export/billing" class="btn btn-ghost btn-sm" download>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Revenue Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="stat bg-base-200 rounded-box p-3">
+            <div class="stat-title text-xs">MRR</div>
+            <div class="stat-value text-lg">R @Model.MonthlyRecurringRevenue.ToString("N0")</div>
+        </div>
+        <div class="stat bg-base-200 rounded-box p-3">
+            <div class="stat-title text-xs">Active Subs</div>
+            <div class="stat-value text-lg text-success">@Model.TotalActiveSubscriptions</div>
+        </div>
+        <div class="stat bg-base-200 rounded-box p-3">
+            <div class="stat-title text-xs">Trialing</div>
+            <div class="stat-value text-lg text-info">@Model.TrialSubscriptions</div>
+        </div>
+        <div class="stat bg-base-200 rounded-box p-3">
+            <div class="stat-title text-xs">Past Due</div>
+            <div class="stat-value text-lg @(Model.PastDueSubscriptions > 0 ? "text-warning" : "")">@Model.PastDueSubscriptions</div>
+        </div>
+        <div class="stat bg-base-200 rounded-box p-3">
+            <div class="stat-title text-xs">Cancelled (Month)</div>
+            <div class="stat-value text-lg @(Model.CancelledThisMonth > 0 ? "text-error" : "")">@Model.CancelledThisMonth</div>
+        </div>
+        <div class="stat bg-base-200 rounded-box p-3">
+            <div class="stat-title text-xs">All-Time Revenue</div>
+            <div class="stat-value text-lg">R @Model.TotalRevenueAllTime.ToString("N0")</div>
+        </div>
+    </div>
+
+    <!-- Plan Breakdown -->
+    <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body">
+            <h2 class="card-title text-lg mb-4">Plan Breakdown</h2>
+            @if (Model.PlanBreakdown.Count == 0)
+            {
+                <p class="text-base-content/60">No active subscriptions.</p>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Plan</th>
+                                <th class="text-right">Subscribers</th>
+                                <th class="text-right">Monthly Price</th>
+                                <th class="text-right">Est. Monthly Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var plan in Model.PlanBreakdown)
+                            {
+                                <tr>
+                                    <td class="font-medium">@plan.PlanName</td>
+                                    <td class="text-right">@plan.SubscriberCount</td>
+                                    <td class="text-right">R @plan.MonthlyPrice.ToString("N0")</td>
+                                    <td class="text-right font-semibold">R @((plan.MonthlyPrice * plan.SubscriberCount).ToString("N0"))</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <!-- Recent Payments -->
+        <div class="card bg-base-100 shadow-sm border border-base-300">
+            <div class="card-body">
+                <h2 class="card-title text-lg mb-4">Recent Payments</h2>
+                @if (Model.RecentPayments.Count == 0)
+                {
+                    <p class="text-base-content/60">No payments recorded.</p>
+                }
+                else
+                {
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Tenant</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in Model.RecentPayments)
+                                {
+                                    var statusClass = p.Status switch
+                                    {
+                                        "Success" => "badge-success",
+                                        "Failed" => "badge-error",
+                                        "Refunded" => "badge-warning",
+                                        _ => "badge-ghost"
+                                    };
+                                    <tr>
+                                        <td class="text-sm">@p.TenantName</td>
+                                        <td class="text-sm font-mono">@p.Currency @p.Amount.ToString("N2")</td>
+                                        <td><span class="badge badge-sm @statusClass">@p.Status</span></td>
+                                        <td class="text-sm">@p.TransactionDate.ToString("dd MMM yyyy")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Recent Invoices -->
+        <div class="card bg-base-100 shadow-sm border border-base-300">
+            <div class="card-body">
+                <h2 class="card-title text-lg mb-4">Recent Invoices</h2>
+                @if (Model.RecentInvoices.Count == 0)
+                {
+                    <p class="text-base-content/60">No invoices issued.</p>
+                }
+                else
+                {
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Tenant</th>
+                                    <th>Invoice #</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Issued</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var inv in Model.RecentInvoices)
+                                {
+                                    var invStatusClass = inv.Status switch
+                                    {
+                                        "Paid" => "badge-success",
+                                        "Overdue" => "badge-error",
+                                        "Issued" => "badge-info",
+                                        "Cancelled" => "badge-ghost",
+                                        _ => "badge-ghost"
+                                    };
+                                    <tr>
+                                        <td class="text-sm">@inv.TenantName</td>
+                                        <td class="font-mono text-sm">@inv.InvoiceNumber</td>
+                                        <td class="text-sm font-mono">@inv.Currency @inv.Amount.ToString("N2")</td>
+                                        <td><span class="badge badge-sm @invStatusClass">@inv.Status</span></td>
+                                        <td class="text-sm">@inv.IssuedDate.ToString("dd MMM yyyy")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
