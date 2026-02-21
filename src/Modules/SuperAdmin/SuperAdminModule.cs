@@ -11,7 +11,7 @@ public class SuperAdminModule : IModule
     public IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>
     {
         ["SuperAdmin"] = "SuperAdmin",
-        ["Infrastructure"] = "Infrastructure"
+        ["Infrastructure"] = "SuperAdmin"
     };
 
     public IReadOnlyList<string> PartialViewSearchPaths => ["SuperAdmin", "Infrastructure"];
