@@ -2,6 +2,8 @@
     ViewData["Title"] = "Logs";
     var seqUrl = (string?)ViewBag.SeqUrl;
     var hasSeq = !string.IsNullOrEmpty(seqUrl);
+    // Seq is reverse-proxied through our app to bypass X-Frame-Options
+    var proxyBase = "/super-admin/proxy/seq";
 }
 
 <div class="flex flex-col gap-6">
@@ -12,7 +14,7 @@
         </div>
         @if (hasSeq)
         {
-            <a href="@seqUrl" target="_blank" class="btn btn-ghost btn-sm gap-1">
+            <a href="@proxyBase/" target="_blank" class="btn btn-ghost btn-sm gap-1">
                 Open Seq
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -29,7 +31,7 @@
             </svg>
             <div>
                 <div class="font-bold">Seq Not Configured</div>
-                <div class="text-sm">To enable the log viewer, set <code class="text-xs bg-base-300 px-1 rounded">Infrastructure:SeqUrl</code> in your configuration to the Seq UI address (e.g. <code class="text-xs bg-base-300 px-1 rounded">http://seq:8081</code>).</div>
+                <div class="text-sm">To enable the log viewer, set <code class="text-xs bg-base-300 px-1 rounded">Infrastructure:SeqUrl</code> in your configuration to the Seq UI address (e.g. <code class="text-xs bg-base-300 px-1 rounded">http://seq:80</code>).</div>
             </div>
         </div>
     }
@@ -51,16 +53,16 @@
             </div>
         </div>
 
-        <!-- Embedded Seq UI -->
+        <!-- Embedded Seq UI (proxied) -->
         <div class="card bg-base-100 shadow-sm border border-base-300">
             <div class="card-body p-0">
-                <iframe id="seq-iframe" src="@(seqUrl)/#/events" class="w-full rounded" style="height: 750px;" loading="lazy" title="Seq Log Viewer"></iframe>
+                <iframe id="seq-iframe" src="@(proxyBase)/#/events" class="w-full rounded" style="height: 750px;" loading="lazy" title="Seq Log Viewer"></iframe>
             </div>
         </div>
 
         <script>
             function setSeqFilter(query) {
-                var baseUrl = '@(seqUrl)';
+                var baseUrl = '@(proxyBase)';
                 var iframe = document.getElementById('seq-iframe');
                 iframe.src = baseUrl + '/#/events' + query;
             }

@@ -13,6 +13,13 @@ public class SecurityHeadersMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        // Proxy paths serve upstream content — don't inject our security headers
+        if (context.Request.Path.StartsWithSegments("/super-admin/proxy"))
+        {
+            await _next(context);
+            return;
+        }
+
         var headers = context.Response.Headers;
         headers["X-Content-Type-Options"] = "nosniff";
         headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
