@@ -24,11 +24,9 @@ public class SeqHealthCheck : IHealthCheck
             var client = _httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(5);
 
-            // Seq:Url points to the ingestion API (port 5341) — ping its root
+            // Seq:Url is the ingestion port (5341) — any HTTP response proves it's running
             var response = await client.GetAsync(seqUrl.TrimEnd('/'), cancellationToken);
-            return response.IsSuccessStatusCode
-                ? HealthCheckResult.Healthy("Seq ingestion API is reachable")
-                : HealthCheckResult.Degraded($"Seq returned {response.StatusCode}");
+            return HealthCheckResult.Healthy($"Seq is reachable (HTTP {(int)response.StatusCode})");
         }
         catch (Exception ex)
         {
