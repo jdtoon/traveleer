@@ -22,9 +22,9 @@
 | 5 | [Audit super admin actions](#5-audit-super-admin-actions) | P0 | ✅ Done |
 | 6 | [System Health Dashboard page](#6-system-health-dashboard-page) | P1 | ✅ Done |
 | 7 | [Redis Dashboard page](#7-redis-dashboard-page) | P1 | ✅ Done |
-| 8 | [RabbitMQ Dashboard page](#8-rabbitmq-dashboard-page) | P1 | ⬜ Not Started |
-| 9 | [Seq Log Viewer page](#9-seq-log-viewer-page) | P1 | ⬜ Not Started |
-| 10 | [Uptime Kuma integration page](#10-uptime-kuma-integration-page) | P1 | ⬜ Not Started |
+| 8 | [RabbitMQ Dashboard page](#8-rabbitmq-dashboard-page) | P1 | ✅ Done |
+| 9 | [Seq Log Viewer page](#9-seq-log-viewer-page) | P1 | ✅ Done |
+| 10 | [Uptime Kuma integration page](#10-uptime-kuma-integration-page) | P1 | ✅ Done |
 | 11 | [Enhanced Backups page](#11-enhanced-backups-page) | P1 | ⬜ Not Started |
 | 12 | [Enhanced Hangfire integration](#12-enhanced-hangfire-integration) | P1 | ⬜ Not Started |
 | 13 | [Tenant Database Inspector page](#13-tenant-database-inspector-page) | P2 | ⬜ Not Started |

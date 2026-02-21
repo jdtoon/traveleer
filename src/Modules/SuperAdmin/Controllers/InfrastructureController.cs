@@ -66,4 +66,40 @@ public class InfrastructureController : SwapController
         var redis = await _infra.GetRedisInfoAsync();
         return PartialView("_RedisContent", redis);
     }
+
+    // ── RabbitMQ Dashboard ────────────────────────────────────────────────────
+
+    [HttpGet("/super-admin/rabbitmq")]
+    public async Task<IActionResult> RabbitMQ()
+    {
+        var status = await _infra.GetRabbitMqStatusAsync();
+        ViewBag.ManagementUrl = _configuration["Infrastructure:RabbitMqManagementUrl"];
+        return SwapView(status);
+    }
+
+    [HttpGet("/super-admin/rabbitmq/refresh")]
+    public async Task<IActionResult> RabbitMqRefresh()
+    {
+        var status = await _infra.GetRabbitMqStatusAsync();
+        ViewBag.ManagementUrl = _configuration["Infrastructure:RabbitMqManagementUrl"];
+        return PartialView("_RabbitMqContent", status);
+    }
+
+    // ── Seq Logs Dashboard ────────────────────────────────────────────────────
+
+    [HttpGet("/super-admin/logs")]
+    public IActionResult Logs()
+    {
+        ViewBag.SeqUrl = _configuration["Infrastructure:SeqUrl"];
+        return SwapView();
+    }
+
+    // ── Uptime Kuma Dashboard ─────────────────────────────────────────────────
+
+    [HttpGet("/super-admin/uptime")]
+    public IActionResult Uptime()
+    {
+        ViewBag.UptimeKumaUrl = _configuration["Infrastructure:UptimeKumaUrl"];
+        return SwapView();
+    }
 }
