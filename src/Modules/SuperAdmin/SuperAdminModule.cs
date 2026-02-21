@@ -22,6 +22,10 @@ public class SuperAdminModule : IModule
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<ISuperAdminService, SuperAdminService>();
+        services.AddScoped<IInfrastructureService, InfrastructureService>();
+        services.AddScoped<ITenantInspectionService, TenantInspectionService>();
+        services.AddScoped<ISuperAdminAuditService, SuperAdminAuditService>();
+        services.AddHttpClient();
     }
 
     public void RegisterMiddleware(IApplicationBuilder app)

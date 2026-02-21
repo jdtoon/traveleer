@@ -10,7 +10,9 @@ public class AuditEntryConfiguration : IEntityTypeConfiguration<Entities.AuditEn
     {
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).ValueGeneratedOnAdd();
+        builder.Property(e => e.Source).HasMaxLength(20).HasDefaultValue("Tenant");
         builder.Property(e => e.TenantSlug).HasMaxLength(100);
+        builder.HasIndex(e => e.Source);
         builder.Property(e => e.EntityType).IsRequired().HasMaxLength(200);
         builder.Property(e => e.EntityId).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Action).IsRequired().HasMaxLength(50);

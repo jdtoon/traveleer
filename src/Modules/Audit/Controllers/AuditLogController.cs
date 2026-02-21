@@ -22,7 +22,7 @@ public class AuditLogController : SwapController
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(string? slug, string? entity, string? action, int page = 1)
+    public async Task<IActionResult> Index(string? slug, string? entity, string? action, string? source, int page = 1)
     {
         ViewData["Breadcrumb"] = "Audit Log";
 
@@ -37,11 +37,15 @@ public class AuditLogController : SwapController
         if (!string.IsNullOrWhiteSpace(action))
             query = query.Where(a => a.Action == action);
 
+        if (!string.IsNullOrWhiteSpace(source))
+            query = query.Where(a => a.Source == source);
+
         var entries = await PaginatedList<AuditLogItem>.CreateAsync(
             query.OrderByDescending(a => a.Timestamp)
                  .Select(a => new AuditLogItem
                  {
                      Id = a.Id,
+                     Source = a.Source,
                      EntityType = a.EntityType,
                      EntityId = a.EntityId,
                      Action = a.Action,
@@ -57,14 +61,15 @@ public class AuditLogController : SwapController
             Entries = entries,
             FilterEntity = entity,
             FilterAction = action,
-            FilterSlug = slug
+            FilterSlug = slug,
+            FilterSource = source
         };
 
         return SwapView(vm);
     }
 
     [HttpGet("list")]
-    public async Task<IActionResult> List(string? slug, string? entity, string? action, int page = 1)
+    public async Task<IActionResult> List(string? slug, string? entity, string? action, string? source, int page = 1)
     {
         var query = _auditDb.AuditEntries.AsNoTracking();
 
@@ -77,11 +82,15 @@ public class AuditLogController : SwapController
         if (!string.IsNullOrWhiteSpace(action))
             query = query.Where(a => a.Action == action);
 
+        if (!string.IsNullOrWhiteSpace(source))
+            query = query.Where(a => a.Source == source);
+
         var entries = await PaginatedList<AuditLogItem>.CreateAsync(
             query.OrderByDescending(a => a.Timestamp)
                  .Select(a => new AuditLogItem
                  {
                      Id = a.Id,
+                     Source = a.Source,
                      EntityType = a.EntityType,
                      EntityId = a.EntityId,
                      Action = a.Action,
@@ -97,7 +106,8 @@ public class AuditLogController : SwapController
             Entries = entries,
             FilterEntity = entity,
             FilterAction = action,
-            FilterSlug = slug
+            FilterSlug = slug,
+            FilterSource = source
         };
 
         return SwapView(SwapViews.AuditLog._AuditLogList, vm);

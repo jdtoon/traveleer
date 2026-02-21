@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
+using StackExchange.Redis;
 
 namespace saas.Infrastructure;
 
@@ -14,11 +15,21 @@ public static class CachingExtensions
         {
             var connectionString = configuration.GetValue<string>("Caching:Redis:ConnectionString")
                 ?? "localhost:6379";
+            var instanceName = configuration.GetValue<string>("Caching:Redis:InstanceName") ?? "saas:";
+
+            // Register the shared IConnectionMultiplexer so infrastructure services
+            // can query Redis server info (INFO, DBSIZE, CLIENT LIST, etc.)
+            services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                var opts = ConfigurationOptions.Parse(connectionString);
+                opts.AbortOnConnectFail = false; // Allow startup even if Redis is temporarily down
+                return ConnectionMultiplexer.Connect(opts);
+            });
 
             services.AddStackExchangeRedisCache(options =>
             {
                 options.Configuration = connectionString;
-                options.InstanceName = configuration.GetValue<string>("Caching:Redis:InstanceName") ?? "saas:";
+                options.InstanceName = instanceName;
             });
         }
         else

@@ -5,6 +5,7 @@ namespace saas.Modules.Audit.Models;
 public class AuditLogItem
 {
     public long Id { get; set; }
+    public string Source { get; set; } = "Tenant";
     public string EntityType { get; set; } = string.Empty;
     public string EntityId { get; set; } = string.Empty;
     public string Action { get; set; } = string.Empty;
@@ -20,4 +21,5 @@ public class AuditLogViewModel
     public string? FilterEntity { get; set; }
     public string? FilterAction { get; set; }
     public string? FilterSlug { get; set; }
+    public string? FilterSource { get; set; }
 }

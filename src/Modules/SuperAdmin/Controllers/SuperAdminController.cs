@@ -14,12 +14,18 @@ public class SuperAdminController : SwapController
     private readonly ISuperAdminService _service;
     private readonly FeatureCacheInvalidator _cacheInvalidator;
     private readonly IMemoryCache _cache;
+    private readonly ISuperAdminAuditService _audit;
 
-    public SuperAdminController(ISuperAdminService service, FeatureCacheInvalidator cacheInvalidator, IMemoryCache cache)
+    public SuperAdminController(
+        ISuperAdminService service,
+        FeatureCacheInvalidator cacheInvalidator,
+        IMemoryCache cache,
+        ISuperAdminAuditService audit)
     {
         _service = service;
         _cacheInvalidator = cacheInvalidator;
         _cache = cache;
+        _audit = audit;
     }
 
     // ── Dashboard ────────────────────────────────────────────────────────────
@@ -66,7 +72,10 @@ public class SuperAdminController : SwapController
         // Invalidate resolution cache so the suspended status takes effect immediately
         var model = await _service.GetTenantDetailAsync(id);
         if (model is not null)
+        {
             TenantResolutionMiddleware.InvalidateCache(_cache, model.Slug);
+            await _audit.LogAsync("Suspended", "Tenant", id.ToString(), $"Tenant '{model.Slug}' suspended");
+        }
 
         return SwapResponse()
             .WithView(SwapViews.SuperAdmin.TenantDetail, model)
@@ -82,7 +91,10 @@ public class SuperAdminController : SwapController
 
         var model = await _service.GetTenantDetailAsync(id);
         if (model is not null)
+        {
             TenantResolutionMiddleware.InvalidateCache(_cache, model.Slug);
+            await _audit.LogAsync("Activated", "Tenant", id.ToString(), $"Tenant '{model.Slug}' activated");
+        }
 
         return SwapResponse()
             .WithView(SwapViews.SuperAdmin.TenantDetail, model)
@@ -153,6 +165,9 @@ public class SuperAdminController : SwapController
         }
 
         await _service.SavePlanAsync(model);
+        await _audit.LogAsync(
+            model.Id.HasValue ? "Updated" : "Created", "Plan", model.Slug,
+            $"Plan '{model.Name}' ({model.Slug}) — {model.MonthlyPrice:C}/mo");
 
         // Invalidate cached rate limit for this plan so changes take effect immediately
         _cache.Remove($"plan-rate-limit-{model.Slug}");
@@ -189,6 +204,8 @@ public class SuperAdminController : SwapController
     {
         await _service.TogglePlanFeatureAsync(planId, featureId);
         _cacheInvalidator.Invalidate();
+        await _audit.LogAsync("Toggled", "PlanFeature", $"{planId}:{featureId}",
+            $"Feature {featureId} toggled for plan {planId}");
 
         var model = await _service.GetFeatureMatrixAsync();
         return SwapResponse()
@@ -215,6 +232,10 @@ public class SuperAdminController : SwapController
     {
         await _service.SaveTenantFeatureOverrideAsync(model);
         _cacheInvalidator.InvalidateTenant(model.TenantId);
+        await _audit.LogAsync(
+            model.IsEnabled ? "OverrideEnabled" : "OverrideDisabled",
+            "TenantFeatureOverride", $"{model.TenantId}:{model.FeatureId}",
+            $"Override for tenant {model.TenantId}, feature {model.FeatureId}: {(model.IsEnabled ? "enabled" : "disabled")} — {model.Reason}");
 
         var tenant = await _service.GetTenantDetailAsync(model.TenantId);
 

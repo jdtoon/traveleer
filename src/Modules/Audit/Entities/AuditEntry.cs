@@ -3,6 +3,10 @@ namespace saas.Modules.Audit.Entities;
 public class AuditEntry
 {
     public long Id { get; set; }
+    /// <summary>
+    /// "Tenant" for EF interceptor-generated entries, "SuperAdmin" for admin action audit entries.
+    /// </summary>
+    public string Source { get; set; } = "Tenant";
     public string? TenantSlug { get; set; }
     public string EntityType { get; set; } = string.Empty;
     public string EntityId { get; set; } = string.Empty;
