@@ -5,7 +5,7 @@
 <dialog class="modal modal-open">
     <div class="modal-box">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="font-bold text-lg">📢 Broadcast Announcement</h3>
+            <h3 class="font-bold text-lg">📢 Create Announcement</h3>
             <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>
         </div>
         <form hx-post="/super-admin/announcements/send" hx-target="#modal-container">
@@ -13,18 +13,31 @@
                 <label class="label"><span class="label-text">Title</span></label>
                 <input type="text" name="title" class="input input-bordered w-full" required placeholder="Scheduled Maintenance" />
             </div>
-            <div class="form-control mb-4">
+            <div class="form-control mb-3">
                 <label class="label"><span class="label-text">Message</span></label>
-                <textarea name="message" class="textarea textarea-bordered w-full" rows="4" required placeholder="We will be performing scheduled maintenance on..."></textarea>
+                <textarea name="message" class="textarea textarea-bordered w-full" rows="3" required placeholder="We will be performing scheduled maintenance on..."></textarea>
             </div>
-            <div class="alert alert-warning mb-4">
-                <span class="text-sm">This will send a notification to every user in every active tenant.</span>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Type</span></label>
+                    <select name="type" class="select select-bordered w-full">
+                        <option value="Info" selected>Info</option>
+                        <option value="Warning">Warning</option>
+                        <option value="Critical">Critical</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Expires (optional)</span></label>
+                    <input type="datetime-local" name="expiresAt" class="input input-bordered w-full" />
+                </div>
+            </div>
+            <div class="alert alert-info text-sm mb-4">
+                <span>This banner will appear at the top of every tenant page until deactivated or expired.</span>
             </div>
             <div class="modal-action">
                 <button type="button" class="btn" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
-                <button type="submit" class="btn btn-primary btn-sm"
-                        hx-confirm="Send this announcement to ALL active tenants?">
-                    Broadcast
+                <button type="submit" class="btn btn-primary btn-sm">
+                    Create Announcement
                 </button>
             </div>
         </form>

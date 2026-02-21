@@ -14,3 +14,15 @@ public class SuperAdminConfiguration : IEntityTypeConfiguration<Entities.SuperAd
         builder.Property(e => e.DisplayName).HasMaxLength(200);
     }
 }
+
+public class AnnouncementConfiguration : IEntityTypeConfiguration<Entities.Announcement>, ICoreEntityConfiguration
+{
+    public void Configure(EntityTypeBuilder<Entities.Announcement> builder)
+    {
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Title).IsRequired().HasMaxLength(200);
+        builder.Property(e => e.Message).IsRequired().HasMaxLength(2000);
+        builder.Property(e => e.Type).HasConversion<string>().HasMaxLength(20);
+        builder.Property(e => e.CreatedByEmail).HasMaxLength(256);
+    }
+}

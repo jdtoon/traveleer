@@ -8,6 +8,7 @@ public interface ITenantInspectionService
     Task<List<TenantRoleInfo>> GetRolesAsync(string slug);
     Task<TenantDataCountsModel> GetDataCountsAsync(string slug);
     Task<List<TenantInvitationInfo>> GetPendingInvitationsAsync(string slug);
+    Task<QueryResult> ExecuteReadOnlyQueryAsync(string slug, string sql);
 }
 
 // ── Models ───────────────────────────────────────────────────────────────────
@@ -95,4 +96,15 @@ public class TenantInvitationInfo
     public DateTime SentAt { get; set; }
     public DateTime ExpiresAt { get; set; }
     public bool IsExpired => DateTime.UtcNow > ExpiresAt;
+}
+
+public class QueryResult
+{
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public List<string> Columns { get; set; } = [];
+    public List<List<object?>> Rows { get; set; } = [];
+    public int RowCount { get; set; }
+    public bool Truncated { get; set; }
+    public double ElapsedMs { get; set; }
 }

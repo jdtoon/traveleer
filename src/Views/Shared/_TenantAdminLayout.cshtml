@@ -60,6 +60,9 @@
                 </div>
             </div>
 
+            <!-- Announcement banners -->
+            @await Html.PartialAsync("_AnnouncementBanner")
+
             <!-- Main Content -->
             <main class="flex-1 p-4 md:p-6 overflow-auto" id="main-content" role="main" aria-label="Main content">
                 @RenderBody()

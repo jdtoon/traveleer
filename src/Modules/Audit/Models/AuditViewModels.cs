@@ -22,4 +22,9 @@ public class AuditLogViewModel
     public string? FilterAction { get; set; }
     public string? FilterSlug { get; set; }
     public string? FilterSource { get; set; }
+    public string? FilterSearch { get; set; }
+    public string? FilterFrom { get; set; }
+    public string? FilterTo { get; set; }
+    public List<string> DistinctSources { get; set; } = [];
+    public List<string> DistinctActions { get; set; } = [];
 }

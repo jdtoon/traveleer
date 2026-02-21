@@ -207,6 +207,96 @@ public class TenantInspectionService : ITenantInspectionService
             .ToListAsync();
     }
 
+    // ── Query Console ────────────────────────────────────────────────────────
+
+    public async Task<QueryResult> ExecuteReadOnlyQueryAsync(string slug, string sql)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        const int maxRows = 1000;
+
+        // Whitelist: only SELECT, PRAGMA, EXPLAIN allowed
+        var trimmed = sql.TrimStart();
+        var upper = trimmed.Split([' ', '\t', '\n', '\r', '(', ';'], StringSplitOptions.RemoveEmptyEntries)
+                          .FirstOrDefault()?.ToUpperInvariant() ?? "";
+
+        if (upper is not ("SELECT" or "PRAGMA" or "EXPLAIN" or "WITH"))
+        {
+            return new QueryResult
+            {
+                Success = false,
+                Error = "Only SELECT, PRAGMA, EXPLAIN and WITH (CTE) queries are allowed.",
+                ElapsedMs = sw.Elapsed.TotalMilliseconds
+            };
+        }
+
+        var dbPath = GetTenantDbPath(slug);
+        if (!File.Exists(dbPath))
+        {
+            return new QueryResult
+            {
+                Success = false,
+                Error = $"Database file not found for tenant '{slug}'.",
+                ElapsedMs = sw.Elapsed.TotalMilliseconds
+            };
+        }
+
+        try
+        {
+            var connectionString = $"Data Source={dbPath};Mode=ReadOnly";
+            await using var connection = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
+            await connection.OpenAsync();
+
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.CommandTimeout = 5;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            var columns = new List<string>();
+            for (var i = 0; i < reader.FieldCount; i++)
+                columns.Add(reader.GetName(i));
+
+            var rows = new List<List<object?>>();
+            var truncated = false;
+
+            while (await reader.ReadAsync())
+            {
+                if (rows.Count >= maxRows)
+                {
+                    truncated = true;
+                    break;
+                }
+
+                var row = new List<object?>();
+                for (var i = 0; i < reader.FieldCount; i++)
+                    row.Add(reader.IsDBNull(i) ? null : reader.GetValue(i));
+                rows.Add(row);
+            }
+
+            sw.Stop();
+            return new QueryResult
+            {
+                Success = true,
+                Columns = columns,
+                Rows = rows,
+                RowCount = rows.Count,
+                Truncated = truncated,
+                ElapsedMs = sw.Elapsed.TotalMilliseconds
+            };
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            _logger.LogWarning(ex, "Query console error for tenant {Slug}: {Sql}", slug, sql);
+            return new QueryResult
+            {
+                Success = false,
+                Error = ex.Message,
+                ElapsedMs = sw.Elapsed.TotalMilliseconds
+            };
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private string GetTenantDbPath(string slug)

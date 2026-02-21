@@ -13,6 +13,14 @@
     <div class="flex items-center gap-2 mb-1">
         <swap-nav to="/super-admin/tenants/@(tenant?.Id)" class="btn btn-ghost btn-sm btn-circle">←</swap-nav>
         <h1 class="text-2xl font-bold">Database Inspector — @(tenant?.Name)</h1>
+        <div class="ml-auto">
+            <swap-nav to="/super-admin/tenants/@(tenant?.Id)/query" class="btn btn-primary btn-sm gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Query Console
+            </swap-nav>
+        </div>
     </div>
 
     @if (Model is null)

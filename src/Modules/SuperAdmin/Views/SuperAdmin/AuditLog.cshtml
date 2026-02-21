@@ -1,0 +1,83 @@
+@model saas.Modules.Audit.Models.AuditLogViewModel
+@{
+    ViewData["Title"] = "Audit Log";
+}
+
+<div class="space-y-4">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">Audit Log</h1>
+            <p class="text-base-content/70 mt-1">All system activity — super admin actions and tenant changes</p>
+        </div>
+        <div class="text-sm opacity-60">
+            @Model.Entries.TotalCount entries
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card bg-base-200">
+        <div class="card-body p-4">
+            <form hx-get="/super-admin/audit-log/list"
+                  hx-target="#audit-log-list"
+                  hx-push-url="false"
+                  class="flex flex-wrap gap-3 items-end">
+                <div class="form-control">
+                    <label class="label label-text text-xs">Source</label>
+                    <select name="source" class="select select-bordered select-sm w-36">
+                        <option value="">All Sources</option>
+                        @foreach (var s in Model.DistinctSources)
+                        {
+                            <option value="@s" selected="@(Model.FilterSource == s)">@s</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label label-text text-xs">Action</label>
+                    <select name="action" class="select select-bordered select-sm w-40">
+                        <option value="">All Actions</option>
+                        @foreach (var a in Model.DistinctActions)
+                        {
+                            <option value="@a" selected="@(Model.FilterAction == a)">@a</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label label-text text-xs">Entity Type</label>
+                    <input type="text" name="entity" value="@Model.FilterEntity"
+                           placeholder="e.g. Tenant, Plan"
+                           class="input input-bordered input-sm w-36" />
+                </div>
+                <div class="form-control">
+                    <label class="label label-text text-xs">Tenant Slug</label>
+                    <input type="text" name="slug" value="@Model.FilterSlug"
+                           placeholder="e.g. demo"
+                           class="input input-bordered input-sm w-32" />
+                </div>
+                <div class="form-control">
+                    <label class="label label-text text-xs">Search</label>
+                    <input type="text" name="search" value="@Model.FilterSearch"
+                           placeholder="Entity ID, email, details..."
+                           class="input input-bordered input-sm w-52" />
+                </div>
+                <div class="form-control">
+                    <label class="label label-text text-xs">From</label>
+                    <input type="date" name="from" value="@Model.FilterFrom"
+                           class="input input-bordered input-sm w-36" />
+                </div>
+                <div class="form-control">
+                    <label class="label label-text text-xs">To</label>
+                    <input type="date" name="to" value="@Model.FilterTo"
+                           class="input input-bordered input-sm w-36" />
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                <a hx-get="/super-admin/audit-log/list"
+                   hx-target="#audit-log-list"
+                   class="btn btn-ghost btn-sm">Clear</a>
+            </form>
+        </div>
+    </div>
+
+    <div id="audit-log-list">
+        @await Html.PartialAsync("_AuditLogList", Model)
+    </div>
+</div>

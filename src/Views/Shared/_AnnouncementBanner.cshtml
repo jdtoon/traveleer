@@ -1,0 +1,58 @@
+@inject saas.Modules.SuperAdmin.Services.IAnnouncementService AnnouncementService
+@{
+    var announcements = await AnnouncementService.GetActiveAnnouncementsAsync();
+}
+
+@foreach (var a in announcements)
+{
+    var alertClass = a.Type switch
+    {
+        saas.Modules.SuperAdmin.Entities.AnnouncementType.Warning => "alert-warning",
+        saas.Modules.SuperAdmin.Entities.AnnouncementType.Critical => "alert-error",
+        _ => "alert-info"
+    };
+    var storageKey = $"dismiss-announcement-{a.Id}";
+    <div class="announcement-banner @alertClass alert rounded-none text-sm py-2 px-4" 
+         id="announcement-@a.Id"
+         data-announcement-id="@a.Id"
+         style="display:none;">
+        <div class="flex items-center justify-between w-full">
+            <div class="flex items-center gap-2">
+                @if (a.Type == saas.Modules.SuperAdmin.Entities.AnnouncementType.Critical)
+                {
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                }
+                else
+                {
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                }
+                <span><strong>@a.Title</strong> — @a.Message</span>
+            </div>
+            <button type="button" class="btn btn-ghost btn-xs btn-circle" 
+                    onclick="dismissAnnouncement('@a.Id')" aria-label="Dismiss">✕</button>
+        </div>
+    </div>
+}
+
+@if (announcements.Count > 0)
+{
+    <script>
+        (function() {
+            document.querySelectorAll('.announcement-banner').forEach(function(el) {
+                var id = el.dataset.announcementId;
+                if (!localStorage.getItem('dismiss-announcement-' + id)) {
+                    el.style.display = '';
+                }
+            });
+        })();
+        function dismissAnnouncement(id) {
+            localStorage.setItem('dismiss-announcement-' + id, '1');
+            var el = document.getElementById('announcement-' + id);
+            if (el) el.style.display = 'none';
+        }
+    </script>
+}

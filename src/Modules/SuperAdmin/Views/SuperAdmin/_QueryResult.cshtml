@@ -1,0 +1,72 @@
+@model saas.Modules.SuperAdmin.Services.QueryResult
+
+@if (!Model.Success)
+{
+    <div class="alert alert-error text-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span class="font-mono">@Model.Error</span>
+        <span class="text-xs opacity-60">(@Model.ElapsedMs.ToString("F1") ms)</span>
+    </div>
+}
+else
+{
+    <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body p-3">
+            <!-- Stats bar -->
+            <div class="flex items-center justify-between text-xs text-base-content/60 mb-2">
+                <span>
+                    @Model.RowCount row@(Model.RowCount != 1 ? "s" : "")
+                    @if (Model.Truncated)
+                    {
+                        <span class="badge badge-warning badge-xs ml-1">truncated at 1,000</span>
+                    }
+                </span>
+                <span>@Model.ElapsedMs.ToString("F1") ms · @Model.Columns.Count column@(Model.Columns.Count != 1 ? "s" : "")</span>
+            </div>
+
+            @if (Model.Columns.Count == 0)
+            {
+                <p class="text-base-content/60 text-sm">Query returned no columns.</p>
+            }
+            else
+            {
+                <div class="overflow-x-auto max-h-[60vh]">
+                    <table class="table table-xs table-pin-rows">
+                        <thead>
+                            <tr>
+                                <th class="text-xs opacity-40">#</th>
+                                @foreach (var col in Model.Columns)
+                                {
+                                    <th class="font-mono text-xs">@col</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var r = 0; r < Model.Rows.Count; r++)
+                            {
+                                <tr class="hover">
+                                    <td class="text-xs opacity-40">@(r + 1)</td>
+                                    @foreach (var cell in Model.Rows[r])
+                                    {
+                                        <td class="font-mono text-xs max-w-xs truncate">
+                                            @if (cell is null)
+                                            {
+                                                <span class="opacity-30 italic">NULL</span>
+                                            }
+                                            else
+                                            {
+                                                @cell.ToString()
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}

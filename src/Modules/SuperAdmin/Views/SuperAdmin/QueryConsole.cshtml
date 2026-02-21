@@ -1,0 +1,103 @@
+@model saas.Modules.SuperAdmin.Services.QueryResult
+@{
+    var tenant = ViewBag.Tenant as saas.Modules.SuperAdmin.Services.TenantDetailModel;
+    var tables = ViewBag.Tables as List<saas.Modules.SuperAdmin.Services.TableInfo> ?? new();
+    ViewData["Title"] = $"Query Console: {tenant?.Name}";
+}
+
+<div class="flex flex-col gap-4">
+    <!-- Header -->
+    <div class="flex items-center gap-2">
+        <swap-nav to="/super-admin/tenants/@(tenant?.Id)/database" class="btn btn-ghost btn-sm btn-circle">←</swap-nav>
+        <div>
+            <h1 class="text-2xl font-bold">Query Console</h1>
+            <p class="text-base-content/60 text-sm">@(tenant?.Name) — Read-only SQL</p>
+        </div>
+    </div>
+
+    <div class="alert alert-warning text-sm py-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+        <span>Read-only mode. Only <code class="font-mono text-xs">SELECT</code>, <code class="font-mono text-xs">PRAGMA</code>, <code class="font-mono text-xs">EXPLAIN</code>, and <code class="font-mono text-xs">WITH</code> queries are permitted. Max 1,000 rows. 5s timeout.</span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <!-- Schema sidebar -->
+        <div class="lg:col-span-1">
+            <div class="card bg-base-100 shadow-sm border border-base-300">
+                <div class="card-body p-3">
+                    <h3 class="font-semibold text-sm mb-2">Tables</h3>
+                    <ul class="space-y-1 max-h-80 overflow-y-auto">
+                        @foreach (var t in tables.OrderBy(t => t.Name))
+                        {
+                            <li>
+                                <button type="button"
+                                        class="text-xs font-mono text-left w-full hover:bg-base-200 rounded px-2 py-1 flex justify-between"
+                                        onclick="insertTable('@t.Name')">
+                                    <span>@t.Name</span>
+                                    <span class="text-base-content/40">@t.RowCount</span>
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Query editor + results -->
+        <div class="lg:col-span-3 flex flex-col gap-4">
+            <div class="card bg-base-100 shadow-sm border border-base-300">
+                <div class="card-body p-3">
+                    <form hx-post="/super-admin/tenants/@(tenant?.Id)/query"
+                          hx-target="#query-results"
+                          hx-indicator="#query-spinner">
+                        <div class="form-control">
+                            <textarea id="sql-input" name="sql" rows="5"
+                                      class="textarea textarea-bordered font-mono text-sm w-full"
+                                      placeholder="SELECT * FROM Users LIMIT 10;"
+                                      spellcheck="false"></textarea>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Execute
+                            </button>
+                            <span id="query-spinner" class="htmx-indicator loading loading-spinner loading-sm"></span>
+                            <div class="flex gap-1 ml-auto">
+                                <button type="button" class="btn btn-ghost btn-xs" onclick="setQuery('SELECT name FROM sqlite_master WHERE type=\'table\' ORDER BY name;')">Tables</button>
+                                <button type="button" class="btn btn-ghost btn-xs" onclick="setQuery('SELECT * FROM Users LIMIT 20;')">Users</button>
+                                <button type="button" class="btn btn-ghost btn-xs" onclick="setQuery('PRAGMA table_info(Users);')">Schema</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Results area -->
+            <div id="query-results">
+                <div class="text-center text-base-content/40 py-8 text-sm">
+                    Run a query to see results here.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function insertTable(name) {
+        var el = document.getElementById('sql-input');
+        el.value = 'SELECT * FROM "' + name + '" LIMIT 100;';
+        el.focus();
+    }
+    function setQuery(sql) {
+        var el = document.getElementById('sql-input');
+        el.value = sql;
+        el.focus();
+    }
+</script>
+}

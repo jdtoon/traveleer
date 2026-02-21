@@ -1,3 +1,4 @@
+@model List<saas.Modules.SuperAdmin.Entities.Announcement>
 @{
     ViewData["Title"] = "Announcements";
 }
@@ -6,7 +7,7 @@
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold">Announcements</h1>
-            <p class="text-base-content/70 mt-1">Broadcast notifications to all tenant users.</p>
+            <p class="text-base-content/70 mt-1">Platform-wide banner announcements visible to all tenants.</p>
         </div>
         <button class="btn btn-primary btn-sm"
                 hx-get="/super-admin/announcements/new"
@@ -18,14 +19,7 @@
         </button>
     </div>
 
-    <div class="card bg-base-100 shadow-sm border border-base-300">
-        <div class="card-body">
-            <div class="alert alert-info">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Announcements are delivered as in-app notifications to every user in every active tenant. Use this sparingly for important platform-wide messages.</span>
-            </div>
-        </div>
+    <div id="announcement-list">
+        @await Html.PartialAsync("_AnnouncementList", Model)
     </div>
 </div>

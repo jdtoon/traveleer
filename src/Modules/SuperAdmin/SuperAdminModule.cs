@@ -26,6 +26,7 @@ public class SuperAdminModule : IModule
         services.AddScoped<IInfrastructureService, InfrastructureService>();
         services.AddScoped<ITenantInspectionService, TenantInspectionService>();
         services.AddScoped<ISuperAdminAuditService, SuperAdminAuditService>();
+        services.AddScoped<IAnnouncementService, AnnouncementService>();
         services.AddHttpClient();
     }
 

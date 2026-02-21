@@ -1,0 +1,78 @@
+@model List<saas.Modules.SuperAdmin.Entities.Announcement>
+
+@if (Model.Count == 0)
+{
+    <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body text-center text-base-content/60">
+            <p>No announcements yet. Create one to display a banner across all tenant pages.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body p-0">
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Type</th>
+                            <th>Title</th>
+                            <th>Message</th>
+                            <th>Created</th>
+                            <th>Expires</th>
+                            <th>By</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var a in Model)
+                        {
+                            var isExpired = a.ExpiresAt.HasValue && a.ExpiresAt.Value < DateTime.UtcNow;
+                            var typeBadge = a.Type switch
+                            {
+                                saas.Modules.SuperAdmin.Entities.AnnouncementType.Warning => "badge-warning",
+                                saas.Modules.SuperAdmin.Entities.AnnouncementType.Critical => "badge-error",
+                                _ => "badge-info"
+                            };
+                            <tr class="@(!a.IsActive || isExpired ? "opacity-50" : "")">
+                                <td>
+                                    @if (a.IsActive && !isExpired)
+                                    {
+                                        <span class="badge badge-success badge-xs">Active</span>
+                                    }
+                                    else if (isExpired)
+                                    {
+                                        <span class="badge badge-ghost badge-xs">Expired</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-ghost badge-xs">Inactive</span>
+                                    }
+                                </td>
+                                <td><span class="badge @typeBadge badge-xs">@a.Type</span></td>
+                                <td class="font-medium text-sm max-w-48 truncate">@a.Title</td>
+                                <td class="text-sm max-w-64 truncate">@a.Message</td>
+                                <td class="text-xs">@a.CreatedAt.ToString("g")</td>
+                                <td class="text-xs">@(a.ExpiresAt?.ToString("g") ?? "—")</td>
+                                <td class="text-xs">@(a.CreatedByEmail ?? "—")</td>
+                                <td>
+                                    @if (a.IsActive && !isExpired)
+                                    {
+                                        <button class="btn btn-ghost btn-xs text-error"
+                                                hx-post="/super-admin/announcements/@a.Id/deactivate"
+                                                hx-target="#announcement-list"
+                                                hx-confirm="Deactivate this announcement?">
+                                            Deactivate
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

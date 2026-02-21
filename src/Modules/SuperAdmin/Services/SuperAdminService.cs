@@ -608,51 +608,28 @@ public class SuperAdminService : ISuperAdminService
 
     // ── Announcements (Item 21) ──────────────────────────────────────────────
 
-    public async Task<int> BroadcastAnnouncementAsync(string title, string message)
+    public async Task<Guid> BroadcastAnnouncementAsync(string title, string message, string type, DateTime? expiresAt, string? createdByEmail)
     {
-        var tenants = await _coreDb.Tenants
-            .Where(t => t.Status == TenantStatus.Active && !t.IsDeleted)
-            .ToListAsync();
+        var announcementType = Enum.TryParse<Entities.AnnouncementType>(type, true, out var parsed)
+            ? parsed
+            : Entities.AnnouncementType.Info;
 
-        var count = 0;
-        foreach (var tenant in tenants)
+        var announcement = new Entities.Announcement
         {
-            try
-            {
-                var dbPath = Path.Combine(Directory.GetCurrentDirectory(), "db", "tenants", $"{tenant.Slug}.db");
-                if (!File.Exists(dbPath)) continue;
+            Id = Guid.NewGuid(),
+            Title = title,
+            Message = message,
+            Type = announcementType,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = expiresAt,
+            CreatedByEmail = createdByEmail
+        };
 
-                var options = new DbContextOptionsBuilder<TenantDbContext>()
-                    .UseSqlite($"Data Source={dbPath}")
-                    .Options;
+        _coreDb.Announcements.Add(announcement);
+        await _coreDb.SaveChangesAsync();
 
-                await using var tenantDb = new TenantDbContext(options);
-                var users = await tenantDb.Users.Select(u => u.Id).ToListAsync();
-
-                foreach (var userId in users)
-                {
-                    tenantDb.Notifications.Add(new saas.Modules.Notifications.Entities.Notification
-                    {
-                        Id = Guid.NewGuid(),
-                        UserId = userId,
-                        Title = $"📢 {title}",
-                        Message = message,
-                        Type = saas.Modules.Notifications.Entities.NotificationType.Info,
-                        IsRead = false,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                }
-
-                await tenantDb.SaveChangesAsync();
-                count++;
-            }
-            catch
-            {
-                // Skip tenants with missing/corrupt DBs
-            }
-        }
-
-        return count;
+        return announcement.Id;
     }
 
     // ── Export (Item 22) ─────────────────────────────────────────────────────

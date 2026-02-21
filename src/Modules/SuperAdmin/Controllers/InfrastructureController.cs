@@ -128,11 +128,11 @@ public class InfrastructureController : SwapController
 
     [Route("/super-admin/proxy/seq/{**path}")]
     public Task ProxySeq(string? path)
-        => ProxyTo(_configuration["Infrastructure:SeqUrl"], path);
+        => ProxyTo(_configuration["Infrastructure:SeqUrl"], path, "/super-admin/proxy/seq/");
 
     [Route("/super-admin/proxy/uptime/{**path}")]
     public Task ProxyUptime(string? path)
-        => ProxyTo(_configuration["Infrastructure:UptimeKumaUrl"], path);
+        => ProxyTo(_configuration["Infrastructure:UptimeKumaUrl"], path, "/super-admin/proxy/uptime/");
 
     private static readonly HashSet<string> StrippedHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -140,7 +140,7 @@ public class InfrastructureController : SwapController
         "X-Frame-Options", "Content-Security-Policy", "X-Content-Security-Policy"
     };
 
-    private async Task ProxyTo(string? baseUrl, string? path)
+    private async Task ProxyTo(string? baseUrl, string? path, string proxyPrefix)
     {
         if (string.IsNullOrEmpty(baseUrl))
         {
@@ -182,7 +182,25 @@ public class InfrastructureController : SwapController
                 Response.Headers[key] = values.ToArray();
             }
 
-            await response.Content.CopyToAsync(Response.Body);
+            // For HTML responses, inject a <base> tag so asset paths resolve through the proxy
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
+            if (contentType.Contains("text/html", StringComparison.OrdinalIgnoreCase))
+            {
+                var html = await response.Content.ReadAsStringAsync();
+                // Insert <base href> right after <head> (or <head ...>)
+                html = System.Text.RegularExpressions.Regex.Replace(
+                    html,
+                    @"(<head[^>]*>)",
+                    $"$1<base href=\"{proxyPrefix}\">",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                Response.ContentType = response.Content.Headers.ContentType?.ToString() ?? "text/html";
+                Response.Headers.Remove("Content-Length"); // Length changed after rewrite
+                await Response.WriteAsync(html);
+            }
+            else
+            {
+                await response.Content.CopyToAsync(Response.Body);
+            }
         }
         catch (HttpRequestException)
         {

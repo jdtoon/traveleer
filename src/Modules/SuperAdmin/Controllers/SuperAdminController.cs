@@ -1,11 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using saas.Data.Audit;
 using saas.Data.Core;
 using saas.Infrastructure.Middleware;
 using saas.Infrastructure.Services;
+using saas.Modules.Audit.Entities;
+using saas.Modules.Audit.Models;
 using saas.Modules.FeatureFlags.Services;
 using saas.Modules.SuperAdmin.Services;
+using saas.Data;
 using Swap.Htmx;
 
 namespace saas.Modules.SuperAdmin.Controllers;
@@ -20,6 +25,8 @@ public class SuperAdminController : SwapController
     private readonly ITenantInspectionService _inspection;
     private readonly IConfiguration _configuration;
     private readonly CoreDbContext _coreDb;
+    private readonly AuditDbContext _auditDb;
+    private readonly IAnnouncementService _announcementService;
 
     public SuperAdminController(
         ISuperAdminService service,
@@ -28,7 +35,9 @@ public class SuperAdminController : SwapController
         ISuperAdminAuditService audit,
         ITenantInspectionService inspection,
         IConfiguration configuration,
-        CoreDbContext coreDb)
+        CoreDbContext coreDb,
+        AuditDbContext auditDb,
+        IAnnouncementService announcementService)
     {
         _service = service;
         _cacheInvalidator = cacheInvalidator;
@@ -37,6 +46,8 @@ public class SuperAdminController : SwapController
         _inspection = inspection;
         _configuration = configuration;
         _coreDb = coreDb;
+        _auditDb = auditDb;
+        _announcementService = announcementService;
     }
 
     // ── Dashboard ────────────────────────────────────────────────────────────
@@ -332,6 +343,32 @@ public class SuperAdminController : SwapController
         return SwapView(dbInfo);
     }
 
+    // ── Query Console ────────────────────────────────────────────────────────
+
+    [HttpGet("/super-admin/tenants/{id}/query")]
+    public async Task<IActionResult> QueryConsole(Guid id)
+    {
+        var tenant = await _service.GetTenantDetailAsync(id);
+        if (tenant is null) return NotFound();
+
+        var dbInfo = await _inspection.GetDatabaseInfoAsync(tenant.Slug);
+        ViewBag.Tenant = tenant;
+        ViewBag.Tables = dbInfo?.Tables ?? [];
+
+        return SwapView(new QueryResult());
+    }
+
+    [HttpPost("/super-admin/tenants/{id}/query")]
+    public async Task<IActionResult> ExecuteQuery(Guid id, [FromForm] string sql)
+    {
+        var tenant = await _service.GetTenantDetailAsync(id);
+        if (tenant is null) return NotFound();
+
+        var result = await _inspection.ExecuteReadOnlyQueryAsync(tenant.Slug, sql);
+
+        return SwapView("_QueryResult", result);
+    }
+
     // ── Tenant Health (Item 14) ──────────────────────────────────────────────
 
     [HttpGet("/super-admin/tenant-health")]
@@ -490,9 +527,10 @@ public class SuperAdminController : SwapController
     // ── Announcements (Item 21) ──────────────────────────────────────────────
 
     [HttpGet("/super-admin/announcements")]
-    public IActionResult Announcements()
+    public async Task<IActionResult> Announcements()
     {
-        return SwapView();
+        var announcements = await _announcementService.GetAllAnnouncementsAsync();
+        return SwapView(announcements);
     }
 
     [HttpGet("/super-admin/announcements/new")]
@@ -502,15 +540,119 @@ public class SuperAdminController : SwapController
     }
 
     [HttpPost("/super-admin/announcements/send")]
-    public async Task<IActionResult> SendAnnouncement([FromForm] string title, [FromForm] string message)
+    public async Task<IActionResult> SendAnnouncement(
+        [FromForm] string title, [FromForm] string message,
+        [FromForm] string type, [FromForm] string? expiresAt)
     {
-        var count = await _service.BroadcastAnnouncementAsync(title, message);
-        await _audit.LogAsync("Broadcast", "Announcement", title, $"Sent to {count} tenants: {message}");
+        DateTime? expires = DateTime.TryParse(expiresAt, out var d) ? d : null;
+        var email = User.Identity?.Name;
 
+        await _service.BroadcastAnnouncementAsync(title, message, type, expires, email);
+        await _audit.LogAsync("Broadcast", "Announcement", title, $"Type={type}: {message}");
+
+        var announcements = await _announcementService.GetAllAnnouncementsAsync();
         return SwapResponse()
             .WithView(SwapViews.SuperAdmin._ModalClose)
-            .WithSuccessToast($"Announcement sent to {count} tenants")
+            .AlsoUpdate("announcement-list", "_AnnouncementList", announcements)
+            .WithSuccessToast("Announcement created")
             .Build();
+    }
+
+    [HttpPost("/super-admin/announcements/{id}/deactivate")]
+    public async Task<IActionResult> DeactivateAnnouncement(Guid id)
+    {
+        await _announcementService.DeactivateAsync(id);
+        await _audit.LogAsync("Deactivated", "Announcement", id.ToString());
+
+        var announcements = await _announcementService.GetAllAnnouncementsAsync();
+        return SwapView("_AnnouncementList", announcements);
+    }
+
+    // ── Audit Log (dedicated super admin route — bypasses tenant feature flag) ──
+
+    [HttpGet("/super-admin/audit-log")]
+    public async Task<IActionResult> AuditLog(
+        string? source, string? action, string? entity, string? slug,
+        string? search, string? from, string? to, int page = 1)
+    {
+        var vm = await BuildAuditLogViewModel(source, action, entity, slug, search, from, to, page);
+        return SwapView(vm);
+    }
+
+    [HttpGet("/super-admin/audit-log/list")]
+    public async Task<IActionResult> AuditLogList(
+        string? source, string? action, string? entity, string? slug,
+        string? search, string? from, string? to, int page = 1)
+    {
+        var vm = await BuildAuditLogViewModel(source, action, entity, slug, search, from, to, page);
+        return PartialView("_AuditLogList", vm);
+    }
+
+    [HttpGet("/super-admin/audit-log/detail/{id}")]
+    public async Task<IActionResult> AuditLogDetail(long id)
+    {
+        var entry = await _auditDb.AuditEntries.AsNoTracking().FirstOrDefaultAsync(a => a.Id == id);
+        if (entry is null) return NotFound();
+        return PartialView("_AuditDetailModal", entry);
+    }
+
+    private async Task<AuditLogViewModel> BuildAuditLogViewModel(
+        string? source, string? action, string? entity, string? slug,
+        string? search, string? from, string? to, int page)
+    {
+        var query = _auditDb.AuditEntries.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(source))
+            query = query.Where(a => a.Source == source);
+        if (!string.IsNullOrWhiteSpace(action))
+            query = query.Where(a => a.Action == action);
+        if (!string.IsNullOrWhiteSpace(entity))
+            query = query.Where(a => a.EntityType.Contains(entity));
+        if (!string.IsNullOrWhiteSpace(slug))
+            query = query.Where(a => a.TenantSlug == slug);
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(a =>
+                (a.EntityId != null && a.EntityId.Contains(search)) ||
+                (a.UserEmail != null && a.UserEmail.Contains(search)) ||
+                (a.NewValues != null && a.NewValues.Contains(search)));
+        if (DateTime.TryParse(from, out var fromDate))
+            query = query.Where(a => a.Timestamp >= fromDate);
+        if (DateTime.TryParse(to, out var toDate))
+            query = query.Where(a => a.Timestamp <= toDate.AddDays(1));
+
+        var entries = await PaginatedList<AuditLogItem>.CreateAsync(
+            query.OrderByDescending(a => a.Timestamp)
+                 .Select(a => new AuditLogItem
+                 {
+                     Id = a.Id,
+                     Source = a.Source,
+                     EntityType = a.EntityType,
+                     EntityId = a.EntityId,
+                     Action = a.Action,
+                     UserEmail = a.UserEmail ?? "system",
+                     TenantSlug = a.TenantSlug ?? string.Empty,
+                     Timestamp = a.Timestamp,
+                     HasChanges = a.OldValues != null || a.NewValues != null
+                 }),
+            page, 25);
+
+        // Gather distinct values for filter dropdowns
+        var distinctSources = await _auditDb.AuditEntries.Select(a => a.Source).Distinct().ToListAsync();
+        var distinctActions = await _auditDb.AuditEntries.Select(a => a.Action).Distinct().OrderBy(a => a).ToListAsync();
+
+        return new AuditLogViewModel
+        {
+            Entries = entries,
+            FilterSource = source,
+            FilterAction = action,
+            FilterEntity = entity,
+            FilterSlug = slug,
+            FilterSearch = search,
+            FilterFrom = from,
+            FilterTo = to,
+            DistinctSources = distinctSources,
+            DistinctActions = distinctActions
+        };
     }
 
     // ── Export (Item 22) ─────────────────────────────────────────────────────

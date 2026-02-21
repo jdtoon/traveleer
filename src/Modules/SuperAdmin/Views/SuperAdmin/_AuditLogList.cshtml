@@ -1,0 +1,93 @@
+@model saas.Modules.Audit.Models.AuditLogViewModel
+
+<div class="overflow-x-auto">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Source</th>
+                <th>Action</th>
+                <th>Entity</th>
+                <th>Entity ID</th>
+                <th>User</th>
+                <th>Tenant</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Entries.Items.Count == 0)
+            {
+                <tr>
+                    <td colspan="8" class="text-center py-8 opacity-60">No audit entries found</td>
+                </tr>
+            }
+            @foreach (var entry in Model.Entries.Items)
+            {
+                <tr class="hover">
+                    <td class="text-xs whitespace-nowrap">@entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>
+                        @{
+                            var sourceBadge = entry.Source switch
+                            {
+                                "SuperAdmin" => "badge-primary",
+                                "Tenant" => "badge-secondary",
+                                _ => "badge-ghost"
+                            };
+                        }
+                        <span class="badge badge-sm @sourceBadge">@entry.Source</span>
+                    </td>
+                    <td>
+                        @{
+                            var badgeClass = entry.Action switch
+                            {
+                                "Added" or "Created" or "Invited" => "badge-success",
+                                "Modified" or "Updated" or "PlanChanged" or "Toggled" or "ExtendedTrial" => "badge-warning",
+                                "Deleted" or "ScheduledDeletion" or "Deactivated" => "badge-error",
+                                "Suspended" => "badge-error",
+                                "Activated" => "badge-success",
+                                "Impersonated" or "Broadcast" or "ManualSync" => "badge-info",
+                                _ => "badge-ghost"
+                            };
+                        }
+                        <span class="badge badge-sm @badgeClass">@entry.Action</span>
+                    </td>
+                    <td class="font-mono text-sm">@entry.EntityType</td>
+                    <td class="font-mono text-xs max-w-[120px] truncate" title="@entry.EntityId">@entry.EntityId</td>
+                    <td class="text-sm">@entry.UserEmail</td>
+                    <td class="text-sm font-mono">@entry.TenantSlug</td>
+                    <td>
+                        @if (entry.HasChanges)
+                        {
+                            <a hx-get="/super-admin/audit-log/detail/@entry.Id"
+                               hx-target="#modal-container"
+                               class="btn btn-ghost btn-xs">Detail</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (Model.Entries.TotalPages > 1)
+{
+    <div class="flex justify-center mt-4">
+        <div class="join">
+            @for (var i = 1; i <= Model.Entries.TotalPages; i++)
+            {
+                var qs = $"page={i}";
+                if (!string.IsNullOrEmpty(Model.FilterSource)) qs += $"&source={Model.FilterSource}";
+                if (!string.IsNullOrEmpty(Model.FilterAction)) qs += $"&action={Model.FilterAction}";
+                if (!string.IsNullOrEmpty(Model.FilterEntity)) qs += $"&entity={Model.FilterEntity}";
+                if (!string.IsNullOrEmpty(Model.FilterSlug)) qs += $"&slug={Model.FilterSlug}";
+                if (!string.IsNullOrEmpty(Model.FilterSearch)) qs += $"&search={Uri.EscapeDataString(Model.FilterSearch)}";
+                if (!string.IsNullOrEmpty(Model.FilterFrom)) qs += $"&from={Model.FilterFrom}";
+                if (!string.IsNullOrEmpty(Model.FilterTo)) qs += $"&to={Model.FilterTo}";
+
+                <a hx-get="/super-admin/audit-log/list?@qs"
+                   hx-target="#audit-log-list"
+                   class="join-item btn btn-sm @(i == Model.Entries.PageIndex ? "btn-active" : "")">@i</a>
+            }
+        </div>
+    </div>
+}

@@ -1,0 +1,70 @@
+@model saas.Modules.Audit.Entities.AuditEntry
+
+<dialog class="modal modal-open">
+    <div class="modal-box max-w-2xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-lg">Audit Detail — @Model.Action @Model.EntityType</h3>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-sm mb-4">
+            <div><span class="font-semibold">Source:</span> <span class="badge badge-sm @(Model.Source == "SuperAdmin" ? "badge-primary" : "badge-secondary")">@Model.Source</span></div>
+            <div><span class="font-semibold">Timestamp:</span> @Model.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</div>
+            <div><span class="font-semibold">Entity Type:</span> @Model.EntityType</div>
+            <div><span class="font-semibold">Entity ID:</span> @Model.EntityId</div>
+            <div><span class="font-semibold">Action:</span> @Model.Action</div>
+            <div><span class="font-semibold">User:</span> @(Model.UserEmail ?? "system")</div>
+            <div><span class="font-semibold">Tenant:</span> @(Model.TenantSlug ?? "—")</div>
+            <div><span class="font-semibold">IP Address:</span> @(Model.IpAddress ?? "—")</div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.AffectedColumns))
+        {
+            <div class="mb-3">
+                <span class="font-semibold text-sm">Affected Columns:</span>
+                <div class="flex flex-wrap gap-1 mt-1">
+                    @foreach (var col in Model.AffectedColumns.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        <span class="badge badge-sm badge-outline">@col.Trim()</span>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.OldValues))
+        {
+            <div class="collapse collapse-arrow bg-base-200 mb-2">
+                <input type="checkbox" checked />
+                <div class="collapse-title font-semibold text-sm">Old Values</div>
+                <div class="collapse-content">
+                    <pre class="text-xs overflow-x-auto whitespace-pre-wrap break-words">@Model.OldValues</pre>
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.NewValues))
+        {
+            <div class="collapse collapse-arrow bg-base-200 mb-2">
+                <input type="checkbox" checked />
+                <div class="collapse-title font-semibold text-sm">New Values / Details</div>
+                <div class="collapse-content">
+                    <pre class="text-xs overflow-x-auto whitespace-pre-wrap break-words">@Model.NewValues</pre>
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.UserAgent))
+        {
+            <div class="mt-2 text-xs opacity-50 truncate" title="@Model.UserAgent">
+                <span class="font-semibold">User Agent:</span> @Model.UserAgent
+            </div>
+        }
+
+        <div class="modal-action">
+            <button type="button" class="btn btn-sm" onclick="this.closest('.modal').classList.remove('modal-open')">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

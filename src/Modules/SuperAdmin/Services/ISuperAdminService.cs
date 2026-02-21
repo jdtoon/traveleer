@@ -51,7 +51,7 @@ public interface ISuperAdminService
     Task<AllSessionsModel> GetAllActiveSessionsAsync();
 
     // Announcements (Item 21)
-    Task<int> BroadcastAnnouncementAsync(string title, string message);
+    Task<Guid> BroadcastAnnouncementAsync(string title, string message, string type, DateTime? expiresAt, string? createdByEmail);
 
     // Export (Item 22)
     Task<string> ExportTenantsCsvAsync();
