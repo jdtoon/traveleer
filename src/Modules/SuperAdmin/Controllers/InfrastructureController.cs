@@ -169,17 +169,38 @@ public class InfrastructureController : SwapController
         var client = _httpClientFactory.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(30);
 
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-
-        Response.StatusCode = (int)response.StatusCode;
-
-        // Copy response headers, stripping hop-by-hop and frame-blocking ones
-        foreach (var (key, values) in response.Headers.Concat(response.Content.Headers))
+        try
         {
-            if (StrippedHeaders.Contains(key)) continue;
-            Response.Headers[key] = values.ToArray();
-        }
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
 
-        await response.Content.CopyToAsync(Response.Body);
+            Response.StatusCode = (int)response.StatusCode;
+
+            // Copy response headers, stripping hop-by-hop and frame-blocking ones
+            foreach (var (key, values) in response.Headers.Concat(response.Content.Headers))
+            {
+                if (StrippedHeaders.Contains(key)) continue;
+                Response.Headers[key] = values.ToArray();
+            }
+
+            await response.Content.CopyToAsync(Response.Body);
+        }
+        catch (HttpRequestException)
+        {
+            Response.StatusCode = 502;
+            Response.ContentType = "text/html";
+            await Response.WriteAsync(
+                "<div style='padding:2rem;text-align:center;font-family:sans-serif;color:#888'>" +
+                "<h2>Service Unavailable</h2>" +
+                "<p>The upstream service is not reachable. Make sure Docker containers are running.</p></div>");
+        }
+        catch (TaskCanceledException)
+        {
+            Response.StatusCode = 504;
+            Response.ContentType = "text/html";
+            await Response.WriteAsync(
+                "<div style='padding:2rem;text-align:center;font-family:sans-serif;color:#888'>" +
+                "<h2>Gateway Timeout</h2>" +
+                "<p>The upstream service did not respond in time.</p></div>");
+        }
     }
 }

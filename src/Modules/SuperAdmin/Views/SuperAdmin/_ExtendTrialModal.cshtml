@@ -3,9 +3,12 @@
     ViewData["Title"] = "Extend Trial";
 }
 
-<div class="modal modal-open">
+<dialog class="modal modal-open">
     <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">Extend Trial — @Model.Name</h3>
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-lg">Extend Trial — @Model.Name</h3>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>
+        </div>
         <form hx-post="/super-admin/tenants/@Model.Id/extend-trial" hx-target="#modal-container">
             <div class="form-control mb-4">
                 <label class="label"><span class="label-text">Additional Days</span></label>
@@ -13,11 +16,12 @@
                 <label class="label"><span class="label-text-alt">Days to add to the current trial end date</span></label>
             </div>
             <div class="modal-action">
+                <button type="button" class="btn" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
                 <button type="submit" class="btn btn-primary btn-sm">Extend Trial</button>
-                <button type="button" class="btn btn-ghost btn-sm"
-                        hx-get="about:blank" hx-target="#modal-container" hx-swap="innerHTML">Cancel</button>
             </div>
         </form>
     </div>
-    <div class="modal-backdrop" hx-get="about:blank" hx-target="#modal-container" hx-swap="innerHTML"></div>
-</div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

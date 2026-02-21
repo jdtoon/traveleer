@@ -13,7 +13,7 @@
         <div class="card-body">
             @foreach (var section in Model)
             {
-                @await Html.PartialAsync("_ConfigNode", section, new ViewDataDictionary(ViewData) { { "Depth", 0 } })
+                @await Html.PartialAsync("_ConfigNode", section, new ViewDataDictionary(ViewData) { ["Depth"] = 0 })
             }
         </div>
     </div>

@@ -12,7 +12,7 @@
             <div class="collapse-content px-2">
                 @foreach (var child in Model.Children)
                 {
-                    @await Html.PartialAsync("_ConfigNode", child, new ViewDataDictionary(ViewData) { { "Depth", depth + 1 } })
+                    @await Html.PartialAsync("_ConfigNode", child, new ViewDataDictionary(ViewData) { ["Depth"] = depth + 1 })
                 }
             </div>
         </details>

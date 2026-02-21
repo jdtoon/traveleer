@@ -2,9 +2,12 @@
     ViewData["Title"] = "Add Admin";
 }
 
-<div class="modal modal-open">
+<dialog class="modal modal-open">
     <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">Add Super Admin</h3>
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-lg">Add Super Admin</h3>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>
+        </div>
         <form hx-post="/super-admin/admins/invite" hx-target="#modal-container">
             <div class="form-control mb-3">
                 <label class="label"><span class="label-text">Email</span></label>
@@ -15,11 +18,12 @@
                 <input type="text" name="displayName" class="input input-bordered w-full" required placeholder="Jane Admin" />
             </div>
             <div class="modal-action">
+                <button type="button" class="btn" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
                 <button type="submit" class="btn btn-primary btn-sm">Add Admin</button>
-                <button type="button" class="btn btn-ghost btn-sm"
-                        hx-get="about:blank" hx-target="#modal-container" hx-swap="innerHTML">Cancel</button>
             </div>
         </form>
     </div>
-    <div class="modal-backdrop" hx-get="about:blank" hx-target="#modal-container" hx-swap="innerHTML"></div>
-</div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>
