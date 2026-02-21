@@ -133,22 +133,20 @@
 
                         @* ── Infrastructure ── *@
                         <li>
-                            <span class="opacity-40 cursor-not-allowed flex items-center gap-2" title="Coming soon">
+                            <swap-nav to="/super-admin/health" class="@(currentAction == "Health" ? "active" : "")">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 System Health
-                                <span class="badge badge-xs badge-ghost ml-auto">soon</span>
-                            </span>
+                            </swap-nav>
                         </li>
                         <li>
-                            <span class="opacity-40 cursor-not-allowed flex items-center gap-2" title="Coming soon">
+                            <swap-nav to="/super-admin/redis" class="@(currentAction == "Redis" ? "active" : "")">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
                                 </svg>
                                 Redis
-                                <span class="badge badge-xs badge-ghost ml-auto">soon</span>
-                            </span>
+                            </swap-nav>
                         </li>
                         <li>
                             <span class="opacity-40 cursor-not-allowed flex items-center gap-2" title="Coming soon">

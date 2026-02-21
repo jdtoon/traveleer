@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -267,43 +268,20 @@ public static class ApplicationBuilderExtensions
 
     public static WebApplication MapEndpoints(this WebApplication app)
     {
+        // Liveness endpoint — excludes infrastructure checks (Redis, RabbitMQ, Seq, etc.)
+        // Used by Docker HEALTHCHECK and basic uptime monitors
         app.MapHealthChecks("/health", new HealthCheckOptions
         {
-            ResponseWriter = async (context, report) =>
-            {
-                context.Response.ContentType = "application/json";
-                var result = new
-                {
-                    status = report.Status.ToString(),
-                    checks = report.Entries.Select(e => new
-                    {
-                        name = e.Key,
-                        status = e.Value.Status.ToString(),
-                        description = e.Value.Description
-                    })
-                };
-                await context.Response.WriteAsJsonAsync(result);
-            }
-        }).AddEndpointFilter(async (context, next) =>
+            Predicate = check => !check.Tags.Contains("infrastructure"),
+            ResponseWriter = WriteHealthResponse
+        }).AddEndpointFilter(HealthCheckIpFilter);
+
+        // Full health endpoint — includes all checks including infrastructure
+        // Used by the Super Admin health dashboard
+        app.MapHealthChecks("/health/full", new HealthCheckOptions
         {
-            var config = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
-            var allowedIPs = config["HealthCheck:AllowedIPs"];
-
-            // Empty or missing = allow all (default behaviour)
-            if (string.IsNullOrWhiteSpace(allowedIPs))
-                return await next(context);
-
-            var remoteIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();
-            var allowed = allowedIPs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            if (remoteIp is null || !allowed.Contains(remoteIp))
-            {
-                context.HttpContext.Response.StatusCode = 404;
-                return Results.NotFound();
-            }
-
-            return await next(context);
-        });
+            ResponseWriter = WriteHealthResponse
+        }).AddEndpointFilter(HealthCheckIpFilter);
 
         app.MapControllerRoute(
             name: "marketing-root",
@@ -365,5 +343,42 @@ public static class ApplicationBuilderExtensions
             pattern: "{controller=Home}/{action=Index}/{id?}");
 
         return app;
+    }
+
+    private static async Task WriteHealthResponse(HttpContext context, HealthReport report)
+    {
+        context.Response.ContentType = "application/json";
+        var result = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description
+            })
+        };
+        await context.Response.WriteAsJsonAsync(result);
+    }
+
+    private static async ValueTask<object?> HealthCheckIpFilter(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        var config = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
+        var allowedIPs = config["HealthCheck:AllowedIPs"];
+
+        // Empty or missing = allow all (default behaviour)
+        if (string.IsNullOrWhiteSpace(allowedIPs))
+            return await next(context);
+
+        var remoteIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();
+        var allowed = allowedIPs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (remoteIp is null || !allowed.Contains(remoteIp))
+        {
+            context.HttpContext.Response.StatusCode = 404;
+            return Results.NotFound();
+        }
+
+        return await next(context);
     }
 }

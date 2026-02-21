@@ -20,8 +20,8 @@
 | 3 | [Create IInfrastructureService abstraction](#3-create-iinfrastructureservice-abstraction) | P0 | ✅ Done |
 | 4 | [Create ITenantInspectionService abstraction](#4-create-itenantinspectionservice-abstraction) | P0 | ✅ Done |
 | 5 | [Audit super admin actions](#5-audit-super-admin-actions) | P0 | ✅ Done |
-| 6 | [System Health Dashboard page](#6-system-health-dashboard-page) | P1 | ⬜ Not Started |
-| 7 | [Redis Dashboard page](#7-redis-dashboard-page) | P1 | ⬜ Not Started |
+| 6 | [System Health Dashboard page](#6-system-health-dashboard-page) | P1 | ✅ Done |
+| 7 | [Redis Dashboard page](#7-redis-dashboard-page) | P1 | ✅ Done |
 | 8 | [RabbitMQ Dashboard page](#8-rabbitmq-dashboard-page) | P1 | ⬜ Not Started |
 | 9 | [Seq Log Viewer page](#9-seq-log-viewer-page) | P1 | ⬜ Not Started |
 | 10 | [Uptime Kuma integration page](#10-uptime-kuma-integration-page) | P1 | ⬜ Not Started |
@@ -37,7 +37,7 @@
 | 20 | [Active Sessions & Security page](#20-active-sessions--security-page) | P3 | ⬜ Not Started |
 | 21 | [Notification/Announcement System](#21-notificationannouncement-system) | P3 | ⬜ Not Started |
 | 22 | [Export & Reporting](#22-export--reporting) | P3 | ⬜ Not Started |
-| 23 | [Docker Compose iframe support](#23-docker-compose-iframe-support) | P1 | ⬜ Not Started |
+| 23 | [Docker Compose iframe support](#23-docker-compose-iframe-support) | P1 | ✅ Done |
 
 ---
 

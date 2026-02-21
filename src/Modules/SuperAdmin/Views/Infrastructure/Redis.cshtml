@@ -1,0 +1,29 @@
+@model RedisInfoModel?
+@{
+    ViewData["Title"] = "Redis";
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">Redis</h1>
+            <p class="opacity-60">Cache server metrics</p>
+        </div>
+        @if (Model is not null)
+        {
+            <div class="flex items-center gap-2">
+                <span class="text-xs opacity-50">Auto-refreshes every 15s</span>
+                <button class="btn btn-ghost btn-sm" hx-get="/super-admin/redis/refresh" hx-target="#redis-content" hx-swap="innerHTML">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        }
+    </div>
+
+    <div id="redis-content" hx-get="/super-admin/redis/refresh" hx-trigger="every 15s" hx-swap="innerHTML">
+        @await Html.PartialAsync("_RedisContent", Model)
+    </div>
+</div>

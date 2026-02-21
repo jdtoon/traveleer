@@ -10,10 +10,11 @@ public class SuperAdminModule : IModule
 
     public IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>
     {
-        ["SuperAdmin"] = "SuperAdmin"
+        ["SuperAdmin"] = "SuperAdmin",
+        ["Infrastructure"] = "Infrastructure"
     };
 
-    public IReadOnlyList<string> PartialViewSearchPaths => ["SuperAdmin"];
+    public IReadOnlyList<string> PartialViewSearchPaths => ["SuperAdmin", "Infrastructure"];
 
     public IReadOnlyList<string> PublicRoutePrefixes => ["super-admin"];
 

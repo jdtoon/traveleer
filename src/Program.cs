@@ -54,7 +54,12 @@ builder.Services.AddDatabaseConfig(builder.Configuration);
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<CoreDbContext>("core-database")
     .AddCheck<TenantDirectoryHealthCheck>("tenant-directory")
-    .AddCheck<LitestreamReadinessHealthCheck>("litestream-readiness");
+    .AddCheck<LitestreamReadinessHealthCheck>("litestream-readiness")
+    .AddCheck<RedisHealthCheck>("redis", tags: ["infrastructure"])
+    .AddCheck<RabbitMqHealthCheck>("rabbitmq", tags: ["infrastructure"])
+    .AddCheck<SeqHealthCheck>("seq", tags: ["infrastructure"])
+    .AddCheck<DiskSpaceHealthCheck>("disk-space", tags: ["infrastructure"])
+    .AddCheck<HangfireHealthCheck>("hangfire", tags: ["infrastructure"]);
 builder.Services.AddCoreServices(builder.Configuration);
 builder.Services.AddSingleton<saas.Infrastructure.Services.IEmailTemplateService, saas.Infrastructure.Services.EmailTemplateService>();
 

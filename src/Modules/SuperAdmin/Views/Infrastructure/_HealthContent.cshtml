@@ -1,0 +1,190 @@
+@model SystemHealthModel
+@{
+    var disk = (DiskUsageModel)ViewBag.DiskUsage;
+    var databases = (List<DatabaseSizeInfo>)ViewBag.Databases;
+    var hangfire = (HangfireStatusModel)ViewBag.Hangfire;
+
+    var statusColor = Model.OverallStatus switch
+    {
+        "Healthy" => "success",
+        "Degraded" => "warning",
+        _ => "error"
+    };
+    var statusIcon = Model.OverallStatus switch
+    {
+        "Healthy" => "✓",
+        "Degraded" => "⚠",
+        _ => "✕"
+    };
+}
+
+<!-- Overall Status Banner -->
+<div class="alert alert-@statusColor shadow-sm mb-4">
+    <span class="text-xl font-bold">@statusIcon</span>
+    <div>
+        <div class="font-bold">System Status: @Model.OverallStatus</div>
+        <div class="text-xs opacity-70">@Model.Checks.Count checks completed in @Model.TotalDuration.TotalMilliseconds.ToString("F0")ms · Last checked @Model.CheckedAtUtc.ToString("HH:mm:ss") UTC</div>
+    </div>
+</div>
+
+<!-- Health Check Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-6">
+    @foreach (var check in Model.Checks.OrderBy(c => c.Status == "Healthy" ? 2 : c.Status == "Degraded" ? 1 : 0))
+    {
+        var cardColor = check.Status switch
+        {
+            "Healthy" => "border-success/30",
+            "Degraded" => "border-warning/30",
+            _ => "border-error/30"
+        };
+        var badgeColor = check.Status switch
+        {
+            "Healthy" => "badge-success",
+            "Degraded" => "badge-warning",
+            _ => "badge-error"
+        };
+        var icon = check.Status switch
+        {
+            "Healthy" => "✓",
+            "Degraded" => "⚠",
+            _ => "✕"
+        };
+        <div class="card bg-base-100 border-2 @cardColor shadow-sm">
+            <div class="card-body p-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-sm">@check.Name</h3>
+                    <span class="badge @badgeColor badge-sm gap-1">@icon @check.Status</span>
+                </div>
+                @if (!string.IsNullOrEmpty(check.Description))
+                {
+                    <p class="text-xs opacity-60 mt-1">@check.Description</p>
+                }
+                <div class="text-xs opacity-40 mt-1">@check.Duration.TotalMilliseconds.ToString("F0")ms</div>
+                @if (!string.IsNullOrEmpty(check.Exception))
+                {
+                    <div class="text-xs text-error mt-1 truncate" title="@check.Exception">@check.Exception</div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Disk & Hangfire Row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <!-- Disk Usage -->
+    <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body p-4">
+            <h2 class="card-title text-base mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                </svg>
+                Disk Usage
+            </h2>
+            @{
+                var diskColor = disk.DiskUsagePercent switch
+                {
+                    > 90 => "progress-error",
+                    > 75 => "progress-warning",
+                    _ => "progress-success"
+                };
+            }
+            <progress class="progress @diskColor w-full" value="@disk.DiskUsagePercent" max="100"></progress>
+            <div class="flex justify-between text-xs opacity-60 mt-1">
+                <span>@disk.FreeDiskFormatted free</span>
+                <span>@disk.TotalDiskFormatted total</span>
+            </div>
+            <div class="text-xs mt-2">
+                <span class="font-semibold">Database files:</span> @disk.UsedByDatabasesFormatted
+            </div>
+        </div>
+    </div>
+
+    <!-- Hangfire Status -->
+    <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body p-4">
+            <h2 class="card-title text-base mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Background Jobs
+            </h2>
+            @if (hangfire.IsAvailable)
+            {
+                <div class="grid grid-cols-3 gap-3 text-center">
+                    <div>
+                        <div class="text-lg font-bold text-success">@hangfire.SucceededJobs</div>
+                        <div class="text-[10px] uppercase opacity-50">Succeeded</div>
+                    </div>
+                    <div>
+                        <div class="text-lg font-bold @(hangfire.FailedJobs > 0 ? "text-error" : "")">@hangfire.FailedJobs</div>
+                        <div class="text-[10px] uppercase opacity-50">Failed</div>
+                    </div>
+                    <div>
+                        <div class="text-lg font-bold">@hangfire.ProcessingJobs</div>
+                        <div class="text-[10px] uppercase opacity-50">Processing</div>
+                    </div>
+                </div>
+                <div class="flex justify-between text-xs opacity-50 mt-3">
+                    <span>@hangfire.ServerCount server(s)</span>
+                    <span>@hangfire.RecurringJobCount recurring</span>
+                    <span>@hangfire.EnqueuedJobs queued</span>
+                </div>
+                @if (hangfire.RecentFailures.Count > 0)
+                {
+                    <div class="divider my-2"></div>
+                    <div class="text-xs">
+                        <div class="font-semibold text-error mb-1">Recent Failures</div>
+                        @foreach (var fail in hangfire.RecentFailures.Take(3))
+                        {
+                            <div class="flex justify-between opacity-70 mb-0.5">
+                                <span class="truncate max-w-[200px]" title="@fail.JobName">@fail.JobName</span>
+                                <span>@fail.FailedAt.ToString("MMM dd HH:mm")</span>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-sm opacity-50">Hangfire unavailable</div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Database Sizes Table -->
+<div class="card bg-base-100 shadow-sm border border-base-300">
+    <div class="card-body p-4">
+        <h2 class="card-title text-base mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+            </svg>
+            Database Files
+        </h2>
+        <div class="overflow-x-auto">
+            <table class="table table-sm table-zebra">
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Category</th>
+                        <th class="text-right">Size</th>
+                        <th class="text-right">WAL</th>
+                        <th class="text-right">Last Modified</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var db in databases.OrderByDescending(d => d.SizeBytes))
+                    {
+                        <tr>
+                            <td class="font-mono text-xs">@db.FileName</td>
+                            <td><span class="badge badge-ghost badge-sm">@db.Category</span></td>
+                            <td class="text-right">@db.SizeFormatted</td>
+                            <td class="text-right opacity-60">@db.WalSizeFormatted</td>
+                            <td class="text-right text-xs opacity-60">@(db.LastModifiedUtc?.ToString("MMM dd HH:mm") ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

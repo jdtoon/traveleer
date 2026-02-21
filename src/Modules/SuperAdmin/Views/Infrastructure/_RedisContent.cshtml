@@ -1,0 +1,145 @@
+@model RedisInfoModel?
+
+@if (Model is null)
+{
+    <!-- Memory cache fallback -->
+    <div class="alert alert-info shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+            <div class="font-bold">In-Memory Cache Active</div>
+            <div class="text-sm">Redis is not configured. The application is using the built-in in-memory cache provider. To enable Redis, set <code class="text-xs bg-base-300 px-1 rounded">Caching:Provider</code> to <code class="text-xs bg-base-300 px-1 rounded">Redis</code> in your configuration.</div>
+        </div>
+    </div>
+}
+else if (!Model.IsConnected)
+{
+    <div class="alert alert-error shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div>
+            <div class="font-bold">Redis Disconnected</div>
+            <div class="text-sm">Cannot connect to Redis at @Model.Endpoint. Check the Redis container status and connection string.</div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Connection Status -->
+    <div class="alert alert-success shadow-sm mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+            <span class="font-bold">Connected</span>
+            <span class="text-sm opacity-70 ml-2">@Model.Endpoint · Redis @Model.RedisVersion · Instance: @Model.InstanceName</span>
+        </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div class="stat bg-base-100 shadow-sm border border-base-300 rounded-box p-4">
+            <div class="stat-title text-xs">Uptime</div>
+            <div class="stat-value text-lg">
+                @if (Model.Uptime.HasValue)
+                {
+                    @(Model.Uptime.Value.Days > 0 ? $"{Model.Uptime.Value.Days}d " : "")@Model.Uptime.Value.ToString(@"hh\:mm\:ss")
+                }
+                else
+                {
+                    <span class="opacity-40">—</span>
+                }
+            </div>
+        </div>
+
+        <div class="stat bg-base-100 shadow-sm border border-base-300 rounded-box p-4">
+            <div class="stat-title text-xs">Connected Clients</div>
+            <div class="stat-value text-lg">@Model.ConnectedClients</div>
+        </div>
+
+        <div class="stat bg-base-100 shadow-sm border border-base-300 rounded-box p-4">
+            <div class="stat-title text-xs">Total Keys</div>
+            <div class="stat-value text-lg">@Model.TotalKeys.ToString("N0")</div>
+            @if (Model.EvictedKeys > 0)
+            {
+                <div class="stat-desc text-warning">@Model.EvictedKeys.ToString("N0") evicted</div>
+            }
+        </div>
+
+        <div class="stat bg-base-100 shadow-sm border border-base-300 rounded-box p-4">
+            <div class="stat-title text-xs">Commands Processed</div>
+            <div class="stat-value text-lg">@Model.TotalCommandsProcessed.ToString("N0")</div>
+        </div>
+    </div>
+
+    <!-- Memory & Cache Hit Rate -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <!-- Memory -->
+        <div class="card bg-base-100 shadow-sm border border-base-300">
+            <div class="card-body p-4">
+                <h2 class="card-title text-base mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Memory Usage
+                </h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-sm opacity-60">Used</div>
+                        <div class="text-xl font-bold">@(Model.UsedMemory ?? "—")</div>
+                    </div>
+                    <div>
+                        <div class="text-sm opacity-60">Peak</div>
+                        <div class="text-xl font-bold">@(Model.PeakMemory ?? "—")</div>
+                    </div>
+                </div>
+                @{
+                    var fragColor = Model.MemoryFragmentationRatio switch
+                    {
+                        > 1.5 => "text-warning",
+                        < 1.0 and > 0 => "text-info",
+                        _ => ""
+                    };
+                }
+                <div class="text-xs mt-3 opacity-60">
+                    Fragmentation ratio: <span class="@fragColor font-mono">@Model.MemoryFragmentationRatio.ToString("F2")</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cache Hit Rate -->
+        <div class="card bg-base-100 shadow-sm border border-base-300">
+            <div class="card-body p-4">
+                <h2 class="card-title text-base mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Cache Hit Rate
+                </h2>
+                @{
+                    var hitRateColor = Model.HitRate switch
+                    {
+                        >= 90 => "progress-success",
+                        >= 70 => "progress-warning",
+                        _ => "progress-error"
+                    };
+                    var hitRateDisplay = Model.HitRate.ToString("F1");
+                }
+                <div class="text-3xl font-bold mb-2">@hitRateDisplay%</div>
+                <progress class="progress @hitRateColor w-full" value="@hitRateDisplay" max="100"></progress>
+                <div class="grid grid-cols-2 gap-4 mt-3 text-xs">
+                    <div>
+                        <span class="opacity-60">Hits:</span>
+                        <span class="font-mono">@Model.KeyspaceHits.ToString("N0")</span>
+                    </div>
+                    <div>
+                        <span class="opacity-60">Misses:</span>
+                        <span class="font-mono">@Model.KeyspaceMisses.ToString("N0")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

@@ -96,6 +96,10 @@ services:
       - RateLimiting__RegistrationWindowMinutes=${RateLimiting__RegistrationWindowMinutes:-5}
       # ── Seq (structured logging) ────────────────────────────
       - Seq__Url=${Seq__Url:-http://seq:5341}
+      # ── Infrastructure (Super Admin dashboards) ─────────────
+      - Infrastructure__SeqUrl=${Infrastructure__SeqUrl:-http://seq:80}
+      - Infrastructure__RabbitMqManagementUrl=${Infrastructure__RabbitMqManagementUrl:-http://rabbitmq:15672}
+      - Infrastructure__UptimeKumaUrl=${Infrastructure__UptimeKumaUrl:-http://uptime-kuma:3001}
     restart: unless-stopped
     depends_on:
       redis:
