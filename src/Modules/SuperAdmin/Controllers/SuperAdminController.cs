@@ -104,6 +104,37 @@ public class SuperAdminController : SwapController
 
     // ── Plan Management ──────────────────────────────────────────────────────
 
+    [HttpGet("/super-admin/tenants/{tenantId}/change-plan")]
+    public async Task<IActionResult> ChangeTenantPlanModal(Guid tenantId)
+    {
+        var tenant = await _service.GetTenantDetailAsync(tenantId);
+        if (tenant is null) return NotFound();
+
+        var plans = await _service.GetPlansAsync();
+        ViewData["Plans"] = plans.Where(p => p.IsActive).ToList();
+        return SwapView(SwapViews.SuperAdmin._ChangeTenantPlanModal, tenant);
+    }
+
+    [HttpPost("/super-admin/tenants/{tenantId}/change-plan")]
+    public async Task<IActionResult> ChangeTenantPlan(Guid tenantId, [FromForm] Guid planId)
+    {
+        var (success, oldPlan, newPlan) = await _service.ChangeTenantPlanAsync(tenantId, planId);
+        if (!success) return NotFound();
+
+        await _audit.LogAsync("PlanChanged", "Tenant", tenantId.ToString(),
+            $"Plan changed from '{oldPlan}' to '{newPlan}'");
+
+        // Invalidate feature cache for this tenant since plan features may differ
+        _cacheInvalidator.InvalidateTenant(tenantId);
+
+        var model = await _service.GetTenantDetailAsync(tenantId);
+        return SwapResponse()
+            .WithView(SwapViews.SuperAdmin._ModalClose)
+            .AlsoUpdate("main-content", SwapViews.SuperAdmin.TenantDetail, model)
+            .WithSuccessToast($"Plan changed to {newPlan}")
+            .Build();
+    }
+
     [HttpGet("/super-admin/plans")]
     public async Task<IActionResult> Plans()
     {

@@ -14,6 +14,7 @@ public interface ISuperAdminService
     Task<TenantDetailModel?> GetTenantDetailAsync(Guid tenantId);
     Task<bool> SuspendTenantAsync(Guid tenantId);
     Task<bool> ActivateTenantAsync(Guid tenantId);
+    Task<(bool Success, string? OldPlanName, string? NewPlanName)> ChangeTenantPlanAsync(Guid tenantId, Guid newPlanId);
 
     // Plan management
     Task<List<Plan>> GetPlansAsync();

@@ -174,6 +174,20 @@ public class SuperAdminService : ISuperAdminService
         return true;
     }
 
+    public async Task<(bool Success, string? OldPlanName, string? NewPlanName)> ChangeTenantPlanAsync(Guid tenantId, Guid newPlanId)
+    {
+        var tenant = await _coreDb.Tenants.Include(t => t.Plan).FirstOrDefaultAsync(t => t.Id == tenantId);
+        if (tenant is null) return (false, null, null);
+
+        var newPlan = await _coreDb.Plans.FindAsync(newPlanId);
+        if (newPlan is null) return (false, null, null);
+
+        var oldPlanName = tenant.Plan.Name;
+        tenant.PlanId = newPlanId;
+        await _coreDb.SaveChangesAsync();
+        return (true, oldPlanName, newPlan.Name);
+    }
+
     // ── Plan Management ──────────────────────────────────────────────────────
 
     public async Task<List<Plan>> GetPlansAsync()
