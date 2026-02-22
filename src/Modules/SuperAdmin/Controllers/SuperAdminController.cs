@@ -572,19 +572,21 @@ public class SuperAdminController : SwapController
 
     [HttpGet("/super-admin/audit-log")]
     public async Task<IActionResult> AuditLog(
-        string? source, string? action, string? entity, string? slug,
-        string? search, string? from, string? to, int page = 1)
+        [FromQuery] string? source, [FromQuery(Name = "action")] string? actionFilter,
+        [FromQuery] string? entity, [FromQuery] string? slug,
+        [FromQuery] string? search, [FromQuery] string? from, [FromQuery] string? to, int page = 1)
     {
-        var vm = await BuildAuditLogViewModel(source, action, entity, slug, search, from, to, page);
+        var vm = await BuildAuditLogViewModel(source, actionFilter, entity, slug, search, from, to, page);
         return SwapView(vm);
     }
 
     [HttpGet("/super-admin/audit-log/list")]
     public async Task<IActionResult> AuditLogList(
-        string? source, string? action, string? entity, string? slug,
-        string? search, string? from, string? to, int page = 1)
+        [FromQuery] string? source, [FromQuery(Name = "action")] string? actionFilter,
+        [FromQuery] string? entity, [FromQuery] string? slug,
+        [FromQuery] string? search, [FromQuery] string? from, [FromQuery] string? to, int page = 1)
     {
-        var vm = await BuildAuditLogViewModel(source, action, entity, slug, search, from, to, page);
+        var vm = await BuildAuditLogViewModel(source, actionFilter, entity, slug, search, from, to, page);
         return PartialView("_AuditLogList", vm);
     }
 
