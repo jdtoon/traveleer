@@ -7,41 +7,52 @@ namespace saas.Shared;
 /// </summary>
 public interface IBillingService
 {
+    // Subscriptions
     Task<SubscriptionInitResult> InitializeSubscriptionAsync(SubscriptionInitRequest request);
     Task<SubscriptionStatus?> GetSubscriptionStatusAsync(Guid tenantId);
     Task<bool> CancelSubscriptionAsync(Guid tenantId);
-    Task<PlanChangeResult> ChangePlanAsync(Guid tenantId, Guid newPlanId);
-    Task<PlanChangePreview> PreviewPlanChangeAsync(Guid tenantId, Guid newPlanId);
+    Task<PlanChangeResult> ChangePlanAsync(Guid tenantId, Guid newPlanId, BillingCycle? newCycle = null);
+    Task<PlanChangePreview> PreviewPlanChangeAsync(Guid tenantId, Guid newPlanId, BillingCycle? newCycle = null);
+
+    // Seat management
+    Task<SeatChangeResult> UpdateSeatCountAsync(Guid tenantId, int newSeatCount);
+    Task<SeatChangePreview> PreviewSeatChangeAsync(Guid tenantId, int newSeatCount);
+
+    // One-off charges
+    Task<ChargeResult> ChargeOneOffAsync(Guid tenantId, decimal amount, string description);
+
+    // Refunds
+    Task<RefundResult> IssueRefundAsync(Guid paymentId, decimal? amount = null);
+
+    // Discounts
+    Task<DiscountResult> ApplyDiscountAsync(Guid tenantId, string discountCode);
+
+    // Usage billing
+    Task<UsageBillingResult> ProcessUsageBillingAsync(Guid tenantId);
+
+    // Paystack sync
     Task SyncPlansAsync();
-    Task<WebhookResult> ProcessWebhookAsync(string payload, string signature);
-    /// <summary>
-    /// Verify a transaction with the payment gateway and link the real subscription code.
-    /// Called from the payment callback to ensure we have the correct subscription code
-    /// even if the webhook hasn't arrived yet.
-    /// </summary>
-    Task VerifyAndLinkSubscriptionAsync(string reference);
-    /// <summary>
-    /// Push plan price/name changes to the payment gateway.
-    /// Called when SuperAdmin edits a plan.
-    /// </summary>
     Task<bool> UpdatePlanInGatewayAsync(Guid planId);
-    /// <summary>
-    /// Get the Paystack manage subscription link for updating card details.
-    /// Returns null if not available.
-    /// </summary>
-    Task<string?> GetManageLinkAsync(Guid tenantId);
-    /// <summary>
-    /// Reconcile local subscription statuses with the payment gateway.
-    /// Called periodically by a background service.
-    /// </summary>
     Task ReconcileSubscriptionsAsync();
+
+    // Webhooks
+    Task<WebhookResult> ProcessWebhookAsync(string payload, string signature);
+    Task VerifyAndLinkSubscriptionAsync(string reference);
+
+    // Customer portal
+    Task<string?> GetManageLinkAsync(Guid tenantId);
+    Task<BillingDashboard> GetBillingDashboardAsync(Guid tenantId);
 }
+
+// ── Supporting Records ───────────────────────────────────────────
 
 public record SubscriptionInitRequest(
     Guid TenantId,
     string Email,
     Guid PlanId,
     BillingCycle BillingCycle,
+    int SeatCount = 1,
+    string? DiscountCode = null,
     string? CallbackUrl = null
 );
 
@@ -55,12 +66,11 @@ public record SubscriptionInitResult(
 public record PlanChangeResult(
     bool Success,
     string? PaymentUrl = null,
+    decimal CreditApplied = 0,
+    decimal AmountCharged = 0,
     string? Error = null
 );
 
-/// <summary>
-/// Preview of a plan change with pro-rated amounts.
-/// </summary>
 public record PlanChangePreview(
     bool IsValid,
     string? Error = null,
@@ -68,6 +78,8 @@ public record PlanChangePreview(
     string NewPlanName = "",
     decimal CurrentPlanPrice = 0,
     decimal NewPlanPrice = 0,
+    BillingCycle CurrentCycle = BillingCycle.Monthly,
+    BillingCycle NewCycle = BillingCycle.Monthly,
     int RemainingDays = 0,
     int TotalCycleDays = 30,
     decimal UnusedCredit = 0,
@@ -77,7 +89,94 @@ public record PlanChangePreview(
     decimal CreditForNextCycle = 0
 );
 
-public record WebhookResult(
+public record SeatChangeResult(
     bool Success,
+    int PreviousSeats = 0,
+    int NewSeats = 0,
+    decimal AmountCharged = 0,
+    decimal CreditIssued = 0,
     string? Error = null
 );
+
+public record SeatChangePreview(
+    bool IsValid,
+    int CurrentSeats = 0,
+    int NewSeats = 0,
+    int SeatDifference = 0,
+    decimal PricePerSeat = 0,
+    int RemainingDays = 0,
+    int TotalCycleDays = 30,
+    decimal ProratedAmount = 0,
+    bool IsIncrease = true,
+    string? Error = null
+);
+
+public record ChargeResult(
+    bool Success,
+    Guid? InvoiceId = null,
+    Guid? PaymentId = null,
+    string? PaymentUrl = null,
+    string? Error = null
+);
+
+public record RefundResult(
+    bool Success,
+    decimal AmountRefunded = 0,
+    string? PaystackRefundReference = null,
+    string? Error = null
+);
+
+public record DiscountResult(
+    bool Success,
+    string? DiscountName = null,
+    decimal? DiscountValue = null,
+    DiscountType? Type = null,
+    string? Error = null
+);
+
+public record UsageBillingResult(
+    bool Success,
+    Guid? InvoiceId = null,
+    decimal TotalUsageCharge = 0,
+    Dictionary<string, UsageChargeLine>? UsageBreakdown = null,
+    string? Error = null
+);
+
+public record UsageChargeLine(
+    string MetricDisplayName,
+    long IncludedQuantity,
+    long ActualQuantity,
+    long OverageQuantity,
+    decimal PricePerUnit,
+    decimal TotalCharge
+);
+
+public record WebhookResult(bool Success, string? Error = null);
+
+public record BillingDashboard(
+    string PlanName,
+    string PlanSlug,
+    BillingCycle BillingCycle,
+    decimal CurrentPrice,
+    SubscriptionStatus Status,
+    DateTime? NextBillingDate,
+    DateTime? TrialEndsAt,
+    bool IsTrialing,
+    int CurrentSeats,
+    int? IncludedSeats,
+    int? MaxSeats,
+    decimal? PerSeatPrice,
+    decimal CreditBalance,
+    decimal EstimatedNextInvoice,
+    List<UsageSummaryLine>? UsageSummary,
+    List<ActiveAddOnLine>? ActiveAddOns,
+    List<ActiveDiscountLine>? ActiveDiscounts,
+    List<InvoiceSummaryLine> RecentInvoices,
+    List<PaymentMethodLine> PaymentMethods
+);
+
+public record UsageSummaryLine(string Metric, string DisplayName, long Used, long? Included, decimal OverageCharge);
+public record ActiveAddOnLine(string Name, decimal Price, AddOnInterval Interval, DateTime ActivatedAt);
+public record ActiveDiscountLine(string Name, string Code, DiscountType Type, decimal Value, int? RemainingCycles);
+public record InvoiceSummaryLine(string InvoiceNumber, decimal Total, InvoiceStatus Status, DateTime IssuedDate);
+public record PaymentMethodLine(string Last4, string CardType, string Bank, string ExpiryMonth, string ExpiryYear, bool IsDefault);

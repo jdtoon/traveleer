@@ -75,7 +75,7 @@ public class InvoiceGeneratorTests : IAsyncDisposable
 
         Assert.NotNull(invoice);
         Assert.StartsWith("INV-", invoice.InvoiceNumber);
-        Assert.Equal(499m, invoice.Amount);
+        Assert.Equal(499m, invoice.Total);
         Assert.Equal("ZAR", invoice.Currency);
         Assert.Equal(InvoiceStatus.Issued, invoice.Status);
         Assert.Equal(_tenantId, invoice.TenantId);
@@ -104,7 +104,7 @@ public class InvoiceGeneratorTests : IAsyncDisposable
         Assert.Equal(1, count);
 
         var saved = await _db.Invoices.FirstAsync();
-        Assert.Equal(250m, saved.Amount);
+        Assert.Equal(250m, saved.Total);
     }
 
     [Fact]

@@ -19,12 +19,21 @@ public class CoreDbContext : DbContext
     public DbSet<TenantFeatureOverride> TenantFeatureOverrides => Set<TenantFeatureOverride>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceLineItem> InvoiceLineItems => Set<InvoiceLineItem>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SuperAdmin> SuperAdmins => Set<SuperAdmin>();
     public DbSet<MagicLinkToken> MagicLinkTokens => Set<MagicLinkToken>();
     public DbSet<UsageRecord> UsageRecords => Set<UsageRecord>();
     public DbSet<PendingRegistration> PendingRegistrations => Set<PendingRegistration>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<PlanPricingTier> PlanPricingTiers => Set<PlanPricingTier>();
+    public DbSet<AddOn> AddOns => Set<AddOn>();
+    public DbSet<TenantAddOn> TenantAddOns => Set<TenantAddOn>();
+    public DbSet<Discount> Discounts => Set<Discount>();
+    public DbSet<TenantDiscount> TenantDiscounts => Set<TenantDiscount>();
+    public DbSet<TenantCredit> TenantCredits => Set<TenantCredit>();
+    public DbSet<BillingProfile> BillingProfiles => Set<BillingProfile>();
+    public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

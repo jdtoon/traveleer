@@ -16,7 +16,20 @@ public class PlanConfiguration : IEntityTypeConfiguration<Plan>, ICoreEntityConf
         builder.HasIndex(e => e.Slug).IsUnique();
         builder.Property(e => e.Description).HasMaxLength(500);
         builder.Property(e => e.Currency).HasMaxLength(10);
-        builder.Property(e => e.PaystackPlanCode).HasMaxLength(100);
+        builder.Property(e => e.BillingModel).HasConversion<string>().HasMaxLength(20);
+        builder.Property(e => e.PaystackMonthlyPlanCode).HasMaxLength(100);
+        builder.Property(e => e.PaystackAnnualPlanCode).HasMaxLength(100);
+        builder.Ignore(e => e.IsFreePlan);
+
+        builder.HasMany(e => e.PricingTiers).WithOne(t => t.Plan).HasForeignKey(t => t.PlanId);
+    }
+}
+
+public class PlanPricingTierConfiguration : IEntityTypeConfiguration<PlanPricingTier>, ICoreEntityConfiguration
+{
+    public void Configure(EntityTypeBuilder<PlanPricingTier> builder)
+    {
+        builder.HasKey(e => e.Id);
     }
 }
 
@@ -29,6 +42,9 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>,
         builder.Property(e => e.BillingCycle).HasConversion<string>().HasMaxLength(20);
         builder.Property(e => e.PaystackSubscriptionCode).HasMaxLength(200);
         builder.Property(e => e.PaystackCustomerCode).HasMaxLength(200);
+        builder.Property(e => e.PaystackAuthorizationCode).HasMaxLength(200);
+        builder.Property(e => e.PaystackEmailToken).HasMaxLength(200);
+        builder.Property(e => e.PaystackAuthorizationEmail).HasMaxLength(200);
 
         builder.HasOne(e => e.Plan).WithMany().HasForeignKey(e => e.PlanId);
     }
@@ -45,9 +61,28 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>, ICoreEnti
         builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
         builder.Property(e => e.PaystackReference).HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
+        builder.Property(e => e.CompanyName).HasMaxLength(200);
+        builder.Property(e => e.CompanyAddress).HasMaxLength(500);
+        builder.Property(e => e.CompanyVatNumber).HasMaxLength(50);
+        builder.Property(e => e.TenantCompanyName).HasMaxLength(200);
+        builder.Property(e => e.TenantBillingAddress).HasMaxLength(500);
+        builder.Property(e => e.TenantVatNumber).HasMaxLength(50);
+        builder.Ignore(e => e.Amount);
 
         builder.HasOne(e => e.Subscription).WithMany().HasForeignKey(e => e.SubscriptionId);
         builder.HasOne(e => e.Payment).WithOne(p => p.Invoice).HasForeignKey<Payment>(p => p.InvoiceId);
+        builder.HasMany(e => e.LineItems).WithOne(li => li.Invoice).HasForeignKey(li => li.InvoiceId);
+    }
+}
+
+public class InvoiceLineItemConfiguration : IEntityTypeConfiguration<InvoiceLineItem>, ICoreEntityConfiguration
+{
+    public void Configure(EntityTypeBuilder<InvoiceLineItem> builder)
+    {
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Type).HasConversion<string>().HasMaxLength(20);
+        builder.Property(e => e.Description).IsRequired().HasMaxLength(500);
+        builder.Property(e => e.UsageMetric).HasMaxLength(100);
     }
 }
 
@@ -71,5 +106,95 @@ public class UsageRecordConfiguration : IEntityTypeConfiguration<UsageRecord>, I
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Metric).IsRequired().HasMaxLength(100);
         builder.HasIndex(e => new { e.TenantId, e.Metric, e.PeriodStart });
+    }
+}
+
+public class AddOnConfiguration : IEntityTypeConfiguration<AddOn>, ICoreEntityConfiguration
+{
+    public void Configure(EntityTypeBuilder<AddOn> builder)
+    {
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Name).IsRequired().HasMaxLength(100);
+        builder.Property(e => e.Slug).IsRequired().HasMaxLength(100);
+        builder.HasIndex(e => e.Slug).IsUnique();
+        builder.Property(e => e.Description).HasMaxLength(500);
+        builder.Property(e => e.Currency).HasMaxLength(10);
+        builder.Property(e => e.BillingInterval).HasConversion<string>().HasMaxLength(20);
+        builder.Property(e => e.PaystackPlanCode).HasMaxLength(100);
+    }
+}
+
+public class TenantAddOnConfiguration : IEntityTypeConfiguration<TenantAddOn>, ICoreEntityConfiguration
+{
+    public void Configure(EntityTypeBuilder<TenantAddOn> builder)
+    {
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.PaystackSubscriptionCode).HasMaxLength(200);
+        builder.HasOne(e => e.AddOn).WithMany(a => a.TenantAddOns).HasForeignKey(e => e.AddOnId);
+    }
+}
+
+public class DiscountConfiguration : IEntityTypeConfiguration<Discount>, ICoreEntityConfiguration
+{
+    public void Configure(EntityTypeBuilder<Discount> builder)
+    {
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Code).IsRequired().HasMaxLength(50);
+        builder.HasIndex(e => e.Code).IsUnique();
+        builder.Property(e => e.Name).IsRequired().HasMaxLength(100);
+        builder.Property(e => e.Description).HasMaxLength(500);
+        builder.Property(e => e.Type).HasConversion<string>().HasMaxLength(20);
+        builder.Property(e => e.Currency).HasMaxLength(10);
+        builder.Property(e => e.ApplicablePlanSlugs).HasMaxLength(500);
+    }
+}
+
+public class TenantDiscountConfiguration : IEntityTypeConfiguration<TenantDiscount>, ICoreEntityConfiguration
+{
+    public void Configure(EntityTypeBuilder<TenantDiscount> builder)
+    {
+        builder.HasKey(e => e.Id);
+        builder.HasOne(e => e.Discount).WithMany(d => d.TenantDiscounts).HasForeignKey(e => e.DiscountId);
+    }
+}
+
+public class TenantCreditConfiguration : IEntityTypeConfiguration<TenantCredit>, ICoreEntityConfiguration
+{
+    public void Configure(EntityTypeBuilder<TenantCredit> builder)
+    {
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Currency).HasMaxLength(10);
+        builder.Property(e => e.Reason).HasConversion<string>().HasMaxLength(20);
+        builder.Property(e => e.Description).HasMaxLength(500);
+        builder.HasOne(e => e.ConsumedByInvoice).WithMany().HasForeignKey(e => e.ConsumedByInvoiceId);
+    }
+}
+
+public class BillingProfileConfiguration : IEntityTypeConfiguration<BillingProfile>, ICoreEntityConfiguration
+{
+    public void Configure(EntityTypeBuilder<BillingProfile> builder)
+    {
+        builder.HasKey(e => e.TenantId);
+        builder.Property(e => e.CompanyName).HasMaxLength(200);
+        builder.Property(e => e.BillingAddress).HasMaxLength(500);
+        builder.Property(e => e.City).HasMaxLength(100);
+        builder.Property(e => e.Province).HasMaxLength(100);
+        builder.Property(e => e.PostalCode).HasMaxLength(20);
+        builder.Property(e => e.Country).HasMaxLength(5);
+        builder.Property(e => e.VatNumber).HasMaxLength(50);
+        builder.Property(e => e.BillingEmail).HasMaxLength(200);
+    }
+}
+
+public class WebhookEventConfiguration : IEntityTypeConfiguration<WebhookEvent>, ICoreEntityConfiguration
+{
+    public void Configure(EntityTypeBuilder<WebhookEvent> builder)
+    {
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.PaystackEventType).IsRequired().HasMaxLength(100);
+        builder.Property(e => e.PaystackReference).IsRequired().HasMaxLength(200);
+        builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+        builder.Property(e => e.ErrorMessage).HasMaxLength(2000);
+        builder.HasIndex(e => new { e.PaystackEventType, e.PaystackReference });
     }
 }

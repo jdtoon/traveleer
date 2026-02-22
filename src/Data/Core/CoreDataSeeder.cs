@@ -30,6 +30,7 @@ public static class CoreDataSeeder
                 Id = Guid.NewGuid(), Name = "Free", Slug = "free",
                 Description = "Get started for free",
                 MonthlyPrice = 0, AnnualPrice = null, Currency = "ZAR",
+                BillingModel = BillingModel.FlatRate,
                 SortOrder = 0, MaxUsers = 3, MaxRequestsPerMinute = 30, IsActive = true
             },
             new Plan
@@ -37,6 +38,7 @@ public static class CoreDataSeeder
                 Id = Guid.NewGuid(), Name = "Starter", Slug = "starter",
                 Description = "For small teams getting started",
                 MonthlyPrice = 199, AnnualPrice = 1990, Currency = "ZAR",
+                BillingModel = BillingModel.FlatRate,
                 SortOrder = 1, MaxUsers = 10, MaxRequestsPerMinute = 60, IsActive = true
             },
             new Plan
@@ -44,6 +46,7 @@ public static class CoreDataSeeder
                 Id = Guid.NewGuid(), Name = "Professional", Slug = "professional",
                 Description = "For growing teams",
                 MonthlyPrice = 499, AnnualPrice = 4990, Currency = "ZAR",
+                BillingModel = BillingModel.FlatRate,
                 SortOrder = 2, MaxUsers = 25, MaxRequestsPerMinute = 120, IsActive = true
             },
             new Plan
@@ -51,6 +54,7 @@ public static class CoreDataSeeder
                 Id = Guid.NewGuid(), Name = "Enterprise", Slug = "enterprise",
                 Description = "For large organisations",
                 MonthlyPrice = 999, AnnualPrice = 9990, Currency = "ZAR",
+                BillingModel = BillingModel.FlatRate,
                 SortOrder = 3, MaxUsers = null, MaxRequestsPerMinute = null, IsActive = true
             }
         };

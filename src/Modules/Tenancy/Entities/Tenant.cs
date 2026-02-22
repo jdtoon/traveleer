@@ -11,14 +11,17 @@ public class Tenant : IAuditableEntity
     public string ContactEmail { get; set; } = string.Empty;
     public TenantStatus Status { get; set; }
     public string? DatabaseName { get; set; }
+
+    // Billing
     public Guid PlanId { get; set; }
     public Plan Plan { get; set; } = null!;
     public Subscription? ActiveSubscription { get; set; }
+    public BillingProfile? BillingProfile { get; set; }
     public ICollection<Invoice> Invoices { get; set; } = [];
     public ICollection<Payment> Payments { get; set; } = [];
-
-    // Trial support
-    public DateTime? TrialEndsAt { get; set; }
+    public ICollection<TenantAddOn> AddOns { get; set; } = [];
+    public ICollection<TenantDiscount> Discounts { get; set; } = [];
+    public ICollection<TenantCredit> Credits { get; set; } = [];
 
     // Soft delete support
     public bool IsDeleted { get; set; }

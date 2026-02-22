@@ -68,7 +68,7 @@ public class PaystackBillingService : IBillingService
                 Amount = (int)amount,
                 Currency = plan.Currency ?? "ZAR",
                 CallbackUrl = callbackUrl,
-                Plan = plan.PaystackPlanCode,
+                Plan = plan.PaystackMonthlyPlanCode,
                 Metadata = new Dictionary<string, object>
                 {
                     ["tenant_id"] = request.TenantId.ToString(),
@@ -174,7 +174,7 @@ public class PaystackBillingService : IBillingService
         return true;
     }
 
-    public async Task<PlanChangeResult> ChangePlanAsync(Guid tenantId, Guid newPlanId)
+    public async Task<PlanChangeResult> ChangePlanAsync(Guid tenantId, Guid newPlanId, BillingCycle? newCycle = null)
     {
         var plan = await _coreDb.Plans.FindAsync(newPlanId);
         if (plan is null)
@@ -264,7 +264,8 @@ public class PaystackBillingService : IBillingService
         }
 
         // ── Paid plan: redirect to Paystack checkout ──
-        var preview = await PreviewPlanChangeAsync(tenantId, newPlanId);
+        // TODO: Handle BillingCycle selection when annual billing feature is enabled
+        var preview = await PreviewPlanChangeAsync(tenantId, newPlanId, newCycle);
         var chargeAmount = preview.IsValid && preview.AmountDue > 0
             ? preview.AmountDue * 100
             : plan.MonthlyPrice * 100;
@@ -278,7 +279,7 @@ public class PaystackBillingService : IBillingService
                 Amount = (int)chargeAmount,
                 Currency = plan.Currency ?? "ZAR",
                 CallbackUrl = callbackUrl,
-                Plan = plan.PaystackPlanCode,
+                Plan = plan.PaystackMonthlyPlanCode,
                 Metadata = new Dictionary<string, object>
                 {
                     ["tenant_id"] = tenantId.ToString(),
@@ -328,7 +329,7 @@ public class PaystackBillingService : IBillingService
         }
     }
 
-    public async Task<PlanChangePreview> PreviewPlanChangeAsync(Guid tenantId, Guid newPlanId)
+    public async Task<PlanChangePreview> PreviewPlanChangeAsync(Guid tenantId, Guid newPlanId, BillingCycle? newCycle = null)
     {
         var tenant = await _coreDb.Tenants.Include(t => t.Plan).FirstOrDefaultAsync(t => t.Id == tenantId);
         if (tenant is null) return new PlanChangePreview(false, Error: "Tenant not found");
@@ -349,6 +350,8 @@ public class PaystackBillingService : IBillingService
             .OrderByDescending(s => s.StartDate)
             .FirstOrDefaultAsync();
 
+        var currentCycle = existingSub?.BillingCycle ?? BillingCycle.Monthly;
+        var targetCycle = newCycle ?? currentCycle;
         var now = DateTime.UtcNow;
         int totalCycleDays = 30;
         int remainingDays = totalCycleDays;
@@ -374,6 +377,8 @@ public class PaystackBillingService : IBillingService
             NewPlanName: newPlan.Name,
             CurrentPlanPrice: currentPlan.MonthlyPrice,
             NewPlanPrice: newPlan.MonthlyPrice,
+            CurrentCycle: currentCycle,
+            NewCycle: targetCycle,
             RemainingDays: remainingDays,
             TotalCycleDays: totalCycleDays,
             UnusedCredit: unusedCredit,
@@ -398,10 +403,10 @@ public class PaystackBillingService : IBillingService
             foreach (var dbPlan in dbPlans)
             {
                 // Check if plan already exists in Paystack
-                if (!string.IsNullOrEmpty(dbPlan.PaystackPlanCode))
+                if (!string.IsNullOrEmpty(dbPlan.PaystackMonthlyPlanCode))
                 {
                     var exists = paystackPlans.Any(p =>
-                        p.PlanCode == dbPlan.PaystackPlanCode);
+                        p.PlanCode == dbPlan.PaystackMonthlyPlanCode);
                     if (exists) continue;
                 }
 
@@ -416,7 +421,7 @@ public class PaystackBillingService : IBillingService
 
                 if (monthlyResult is not null)
                 {
-                    dbPlan.PaystackPlanCode = monthlyResult.PlanCode;
+                    dbPlan.PaystackMonthlyPlanCode = monthlyResult.PlanCode;
                     _logger.LogInformation("Created Paystack plan {PlanCode} for {Name}",
                         monthlyResult.PlanCode, dbPlan.Name);
                 }
@@ -887,10 +892,10 @@ public class PaystackBillingService : IBillingService
                 try
                 {
                     var plan = await _coreDb.Plans.FindAsync(subscription.PlanId);
-                    if (plan is not null && !string.IsNullOrEmpty(plan.PaystackPlanCode))
+                    if (plan is not null && !string.IsNullOrEmpty(plan.PaystackMonthlyPlanCode))
                     {
                         var subs = await _paystack.ListSubscriptionsAsync(
-                            verification.Customer.CustomerCode, plan.PaystackPlanCode);
+                            verification.Customer.CustomerCode, plan.PaystackMonthlyPlanCode);
                         var match = subs.FirstOrDefault();
                         if (match is not null && !string.IsNullOrEmpty(match.SubscriptionCode))
                         {
@@ -949,7 +954,7 @@ public class PaystackBillingService : IBillingService
         try
         {
             // If no Paystack plan code yet, create a new plan on Paystack
-            if (string.IsNullOrEmpty(plan.PaystackPlanCode))
+            if (string.IsNullOrEmpty(plan.PaystackMonthlyPlanCode))
             {
                 var createResult = await _paystack.CreatePlanAsync(new PaystackCreatePlanRequest
                 {
@@ -961,7 +966,7 @@ public class PaystackBillingService : IBillingService
 
                 if (createResult is not null)
                 {
-                    plan.PaystackPlanCode = createResult.PlanCode;
+                    plan.PaystackMonthlyPlanCode = createResult.PlanCode;
                     await _coreDb.SaveChangesAsync();
                     _logger.LogInformation("Created Paystack plan {PlanCode} for {Name}",
                         createResult.PlanCode, plan.Name);
@@ -973,7 +978,7 @@ public class PaystackBillingService : IBillingService
             }
 
             // Existing plan — update name/amount on Paystack
-            var result = await _paystack.UpdatePlanAsync(plan.PaystackPlanCode, new PaystackUpdatePlanRequest
+            var result = await _paystack.UpdatePlanAsync(plan.PaystackMonthlyPlanCode, new PaystackUpdatePlanRequest
             {
                 Name = $"{plan.Name} (Monthly)",
                 Amount = (int)(plan.MonthlyPrice * 100),
@@ -981,9 +986,9 @@ public class PaystackBillingService : IBillingService
             });
 
             if (result)
-                _logger.LogInformation("Updated Paystack plan {PlanCode} for {Name}", plan.PaystackPlanCode, plan.Name);
+                _logger.LogInformation("Updated Paystack plan {PlanCode} for {Name}", plan.PaystackMonthlyPlanCode, plan.Name);
             else
-                _logger.LogWarning("Failed to update Paystack plan {PlanCode}", plan.PaystackPlanCode);
+                _logger.LogWarning("Failed to update Paystack plan {PlanCode}", plan.PaystackMonthlyPlanCode);
 
             return result;
         }
@@ -1101,10 +1106,10 @@ public class PaystackBillingService : IBillingService
                 subscription.PaystackCustomerCode = verification.Customer.CustomerCode;
 
                 var plan = await _coreDb.Plans.FindAsync(subscription.PlanId);
-                if (plan is not null && !string.IsNullOrEmpty(plan.PaystackPlanCode))
+                if (plan is not null && !string.IsNullOrEmpty(plan.PaystackMonthlyPlanCode))
                 {
                     var subs = await _paystack.ListSubscriptionsAsync(
-                        verification.Customer.CustomerCode, plan.PaystackPlanCode);
+                        verification.Customer.CustomerCode, plan.PaystackMonthlyPlanCode);
                     var match = subs.FirstOrDefault();
                     if (match is not null && !string.IsNullOrEmpty(match.SubscriptionCode))
                     {
@@ -1120,5 +1125,179 @@ public class PaystackBillingService : IBillingService
         {
             _logger.LogWarning(ex, "Could not link subscription from charge.success for reference {Ref}", reference);
         }
+    }
+
+    // ── New interface methods (stubs — to be fully implemented) ──────────────
+
+    public async Task<SeatChangeResult> UpdateSeatCountAsync(Guid tenantId, int newSeatCount)
+    {
+        // TODO: Implement per-seat billing via Paystack quantity updates
+        var subscription = await _coreDb.Subscriptions
+            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+            .Include(s => s.Plan)
+            .FirstOrDefaultAsync();
+
+        if (subscription is null)
+            return new SeatChangeResult(false, Error: "No active subscription found");
+
+        if (subscription.Plan.BillingModel != BillingModel.PerSeat && subscription.Plan.BillingModel != BillingModel.Hybrid)
+            return new SeatChangeResult(false, Error: "Plan does not support per-seat billing");
+
+        var previousSeats = subscription.Quantity;
+        subscription.Quantity = newSeatCount;
+        await _coreDb.SaveChangesAsync();
+
+        _logger.LogInformation("Updated seat count for tenant {TenantId} from {Old} to {New}", tenantId, previousSeats, newSeatCount);
+        return new SeatChangeResult(true, PreviousSeats: previousSeats, NewSeats: newSeatCount);
+    }
+
+    public Task<SeatChangePreview> PreviewSeatChangeAsync(Guid tenantId, int newSeatCount)
+    {
+        // TODO: Implement proration preview for seat changes
+        return Task.FromResult(new SeatChangePreview(
+            IsValid: true,
+            CurrentSeats: 1,
+            NewSeats: newSeatCount,
+            SeatDifference: newSeatCount - 1,
+            PricePerSeat: 0,
+            RemainingDays: 30,
+            TotalCycleDays: 30,
+            ProratedAmount: 0,
+            IsIncrease: newSeatCount > 1
+        ));
+    }
+
+    public async Task<ChargeResult> ChargeOneOffAsync(Guid tenantId, decimal amount, string description)
+    {
+        // TODO: Implement one-off charge via Paystack charge authorization
+        var subscription = await _coreDb.Subscriptions
+            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+            .FirstOrDefaultAsync();
+
+        if (subscription is null || string.IsNullOrEmpty(subscription.PaystackAuthorizationCode))
+            return new ChargeResult(false, Error: "No active subscription or stored authorization");
+
+        _logger.LogWarning("ChargeOneOffAsync not yet fully implemented for Paystack. Tenant: {TenantId}, Amount: {Amount}", tenantId, amount);
+        return new ChargeResult(false, Error: "One-off charges via Paystack not yet implemented");
+    }
+
+    public async Task<RefundResult> IssueRefundAsync(Guid paymentId, decimal? amount = null)
+    {
+        // TODO: Implement refund via Paystack Refund API
+        var payment = await _coreDb.Payments.FindAsync(paymentId);
+        if (payment is null)
+            return new RefundResult(false, Error: "Payment not found");
+
+        _logger.LogWarning("IssueRefundAsync not yet fully implemented for Paystack. PaymentId: {PaymentId}", paymentId);
+        return new RefundResult(false, Error: "Refunds via Paystack not yet implemented");
+    }
+
+    public async Task<DiscountResult> ApplyDiscountAsync(Guid tenantId, string discountCode)
+    {
+        var discount = await _coreDb.Discounts
+            .FirstOrDefaultAsync(d => d.Code == discountCode && d.IsActive);
+
+        if (discount is null)
+            return new DiscountResult(false, Error: "Invalid or expired discount code");
+
+        if (discount.MaxRedemptions.HasValue)
+        {
+            var usageCount = await _coreDb.TenantDiscounts.CountAsync(td => td.DiscountId == discount.Id);
+            if (usageCount >= discount.MaxRedemptions.Value)
+                return new DiscountResult(false, Error: "Discount code has reached maximum redemptions");
+        }
+
+        var tenantDiscount = new TenantDiscount
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            DiscountId = discount.Id,
+            AppliedAt = DateTime.UtcNow,
+            ExpiresAt = discount.DurationInCycles.HasValue ? DateTime.UtcNow.AddMonths(discount.DurationInCycles.Value) : null,
+            RemainingCycles = discount.DurationInCycles
+        };
+
+        _coreDb.TenantDiscounts.Add(tenantDiscount);
+        await _coreDb.SaveChangesAsync();
+
+        return new DiscountResult(true, DiscountName: discount.Name, DiscountValue: discount.Value, Type: discount.Type);
+    }
+
+    public Task<UsageBillingResult> ProcessUsageBillingAsync(Guid tenantId)
+    {
+        // TODO: Implement usage-based billing cycle processing
+        _logger.LogWarning("ProcessUsageBillingAsync not yet fully implemented for Paystack. Tenant: {TenantId}", tenantId);
+        return Task.FromResult(new UsageBillingResult(false, Error: "Usage billing via Paystack not yet implemented"));
+    }
+
+    public async Task<BillingDashboard> GetBillingDashboardAsync(Guid tenantId)
+    {
+        var subscription = await _coreDb.Subscriptions
+            .Where(s => s.TenantId == tenantId)
+            .OrderByDescending(s => s.StartDate)
+            .Include(s => s.Plan)
+            .FirstOrDefaultAsync();
+
+        var recentInvoices = await _coreDb.Invoices
+            .Where(i => i.TenantId == tenantId)
+            .OrderByDescending(i => i.IssuedDate)
+            .Take(10)
+            .Select(i => new InvoiceSummaryLine(i.InvoiceNumber, i.Total, i.Status, i.IssuedDate))
+            .ToListAsync();
+
+        var creditBalance = await _coreDb.TenantCredits
+            .Where(c => c.TenantId == tenantId && c.RemainingAmount > 0)
+            .SumAsync(c => c.RemainingAmount);
+
+        if (subscription is null)
+        {
+            return new BillingDashboard(
+                PlanName: "None", PlanSlug: "", BillingCycle: BillingCycle.Monthly,
+                CurrentPrice: 0, Status: SubscriptionStatus.Cancelled,
+                NextBillingDate: null, TrialEndsAt: null, IsTrialing: false,
+                CurrentSeats: 0, IncludedSeats: null, MaxSeats: null, PerSeatPrice: null,
+                CreditBalance: creditBalance, EstimatedNextInvoice: 0,
+                UsageSummary: null, ActiveAddOns: null, ActiveDiscounts: null,
+                RecentInvoices: recentInvoices, PaymentMethods: new List<PaymentMethodLine>()
+            );
+        }
+
+        var plan = subscription.Plan;
+        var isTrialing = subscription.TrialEndsAt.HasValue && subscription.TrialEndsAt > DateTime.UtcNow;
+        var currentPrice = (subscription.BillingCycle == BillingCycle.Annual ? plan.AnnualPrice : null) ?? plan.MonthlyPrice;
+
+        var activeDiscounts = await _coreDb.TenantDiscounts
+            .Where(td => td.TenantId == tenantId && (!td.ExpiresAt.HasValue || td.ExpiresAt > DateTime.UtcNow))
+            .Include(td => td.Discount)
+            .Select(td => new ActiveDiscountLine(td.Discount.Name, td.Discount.Code, td.Discount.Type, td.Discount.Value, td.RemainingCycles))
+            .ToListAsync();
+
+        var activeAddOns = await _coreDb.TenantAddOns
+            .Where(ta => ta.TenantId == tenantId && ta.DeactivatedAt == null)
+            .Include(ta => ta.AddOn)
+            .Select(ta => new ActiveAddOnLine(ta.AddOn.Name, ta.AddOn.Price, ta.AddOn.BillingInterval, ta.ActivatedAt))
+            .ToListAsync();
+
+        return new BillingDashboard(
+            PlanName: plan.Name,
+            PlanSlug: plan.Slug,
+            BillingCycle: subscription.BillingCycle,
+            CurrentPrice: currentPrice,
+            Status: subscription.Status,
+            NextBillingDate: subscription.NextBillingDate,
+            TrialEndsAt: subscription.TrialEndsAt,
+            IsTrialing: isTrialing,
+            CurrentSeats: subscription.Quantity,
+            IncludedSeats: plan.IncludedSeats,
+            MaxSeats: plan.MaxUsers,
+            PerSeatPrice: subscription.BillingCycle == BillingCycle.Annual ? plan.PerSeatAnnualPrice : plan.PerSeatMonthlyPrice,
+            CreditBalance: creditBalance,
+            EstimatedNextInvoice: currentPrice,
+            UsageSummary: null,
+            ActiveAddOns: activeAddOns,
+            ActiveDiscounts: activeDiscounts,
+            RecentInvoices: recentInvoices,
+            PaymentMethods: new List<PaymentMethodLine>()
+        );
     }
 }

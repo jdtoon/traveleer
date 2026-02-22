@@ -125,15 +125,17 @@ public class ExpiredTrialJob
 
         var now = DateTime.UtcNow;
         var expiredTrials = await coreDb.Tenants
+            .Include(t => t.ActiveSubscription)
             .Where(t => t.Status == TenantStatus.Active
-                && t.TrialEndsAt != null
-                && t.TrialEndsAt < now)
+                && t.ActiveSubscription != null
+                && t.ActiveSubscription.TrialEndsAt != null
+                && t.ActiveSubscription.TrialEndsAt < now)
             .ToListAsync(ct);
 
         foreach (var tenant in expiredTrials)
         {
             tenant.Status = TenantStatus.Suspended;
-            _logger.LogWarning("Tenant {Slug} trial expired at {TrialEnd} — suspended", tenant.Slug, tenant.TrialEndsAt);
+            _logger.LogWarning("Tenant {Slug} trial expired at {TrialEnd} — suspended", tenant.Slug, tenant.ActiveSubscription?.TrialEndsAt);
         }
 
         if (expiredTrials.Count > 0)

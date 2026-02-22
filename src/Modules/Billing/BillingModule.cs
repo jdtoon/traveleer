@@ -17,6 +17,9 @@ public class BillingModule : IModule
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
+        // Billing options (tax, company info, trials, grace period, feature toggles)
+        services.Configure<BillingOptions>(configuration.GetSection(BillingOptions.SectionName));
+
         var provider = configuration.GetValue<string>("Billing:Provider") ?? "Mock";
 
         if (provider.Equals("Paystack", StringComparison.OrdinalIgnoreCase))

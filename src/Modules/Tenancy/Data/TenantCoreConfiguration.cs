@@ -20,7 +20,11 @@ public class TenantCoreConfiguration : IEntityTypeConfiguration<Tenant>, ICoreEn
 
         builder.HasOne(e => e.Plan).WithMany(p => p.Tenants).HasForeignKey(e => e.PlanId);
         builder.HasOne(e => e.ActiveSubscription).WithOne(s => s.Tenant).HasForeignKey<Subscription>(s => s.TenantId);
+        builder.HasOne(e => e.BillingProfile).WithOne(bp => bp.Tenant).HasForeignKey<BillingProfile>(bp => bp.TenantId);
         builder.HasMany(e => e.Invoices).WithOne(i => i.Tenant).HasForeignKey(i => i.TenantId);
         builder.HasMany(e => e.Payments).WithOne(p => p.Tenant).HasForeignKey(p => p.TenantId);
+        builder.HasMany(e => e.AddOns).WithOne(a => a.Tenant).HasForeignKey(a => a.TenantId);
+        builder.HasMany(e => e.Discounts).WithOne(d => d.Tenant).HasForeignKey(d => d.TenantId);
+        builder.HasMany(e => e.Credits).WithOne(c => c.Tenant).HasForeignKey(c => c.TenantId);
     }
 }

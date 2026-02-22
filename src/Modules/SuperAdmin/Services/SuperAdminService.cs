@@ -392,7 +392,7 @@ public class SuperAdminService : ISuperAdminService
             TotalTenants = tenants.Count,
             ActiveTenants = tenants.Count(t => t.Status == TenantStatus.Active),
             SuspendedTenants = tenants.Count(t => t.Status == TenantStatus.Suspended),
-            TrialingTenants = tenants.Count(t => t.TrialEndsAt.HasValue && t.TrialEndsAt > DateTime.UtcNow)
+            TrialingTenants = tenants.Count(t => t.ActiveSubscription != null && t.ActiveSubscription.TrialEndsAt.HasValue && t.ActiveSubscription.TrialEndsAt > DateTime.UtcNow)
         };
 
         foreach (var t in tenants)
@@ -425,10 +425,16 @@ public class SuperAdminService : ISuperAdminService
 
     public async Task<bool> ExtendTrialAsync(Guid tenantId, int days)
     {
-        var tenant = await _coreDb.Tenants.FindAsync(tenantId);
+        var tenant = await _coreDb.Tenants
+            .Include(t => t.ActiveSubscription)
+            .FirstOrDefaultAsync(t => t.Id == tenantId);
         if (tenant is null) return false;
 
-        tenant.TrialEndsAt = (tenant.TrialEndsAt ?? DateTime.UtcNow).AddDays(days);
+        if (tenant.ActiveSubscription is not null)
+        {
+            tenant.ActiveSubscription.TrialEndsAt = (tenant.ActiveSubscription.TrialEndsAt ?? DateTime.UtcNow).AddDays(days);
+        }
+
         await _coreDb.SaveChangesAsync();
         return true;
     }

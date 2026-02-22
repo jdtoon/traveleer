@@ -68,14 +68,29 @@ public class SuperAdminServiceTests : IAsyncLifetime
         public Task<SubscriptionInitResult> InitializeSubscriptionAsync(SubscriptionInitRequest r) => Task.FromResult(new SubscriptionInitResult(true));
         public Task<SubscriptionStatus?> GetSubscriptionStatusAsync(Guid t) => Task.FromResult<SubscriptionStatus?>(SubscriptionStatus.Active);
         public Task<bool> CancelSubscriptionAsync(Guid t) => Task.FromResult(true);
-        public Task<PlanChangeResult> ChangePlanAsync(Guid t, Guid p) => Task.FromResult(new PlanChangeResult(true));
-        public Task<PlanChangePreview> PreviewPlanChangeAsync(Guid t, Guid p) => Task.FromResult(new PlanChangePreview(true));
+        public Task<PlanChangeResult> ChangePlanAsync(Guid t, Guid p, BillingCycle? newCycle = null) => Task.FromResult(new PlanChangeResult(true));
+        public Task<PlanChangePreview> PreviewPlanChangeAsync(Guid t, Guid p, BillingCycle? newCycle = null) => Task.FromResult(new PlanChangePreview(true));
         public Task SyncPlansAsync() => Task.CompletedTask;
         public Task<WebhookResult> ProcessWebhookAsync(string p, string s) => Task.FromResult(new WebhookResult(true));
         public Task VerifyAndLinkSubscriptionAsync(string reference) => Task.CompletedTask;
         public Task<bool> UpdatePlanInGatewayAsync(Guid planId) => Task.FromResult(true);
         public Task<string?> GetManageLinkAsync(Guid tenantId) => Task.FromResult<string?>(null);
         public Task ReconcileSubscriptionsAsync() => Task.CompletedTask;
+        public Task<SeatChangeResult> UpdateSeatCountAsync(Guid tenantId, int newSeatCount) => Task.FromResult(new SeatChangeResult(true));
+        public Task<SeatChangePreview> PreviewSeatChangeAsync(Guid tenantId, int newSeatCount) => Task.FromResult(new SeatChangePreview(true));
+        public Task<ChargeResult> ChargeOneOffAsync(Guid tenantId, decimal amount, string description) => Task.FromResult(new ChargeResult(true));
+        public Task<RefundResult> IssueRefundAsync(Guid paymentId, decimal? amount = null) => Task.FromResult(new RefundResult(true));
+        public Task<DiscountResult> ApplyDiscountAsync(Guid tenantId, string discountCode) => Task.FromResult(new DiscountResult(true));
+        public Task<UsageBillingResult> ProcessUsageBillingAsync(Guid tenantId) => Task.FromResult(new UsageBillingResult(true));
+        public Task<BillingDashboard> GetBillingDashboardAsync(Guid tenantId) => Task.FromResult(new BillingDashboard(
+            PlanName: "Free", PlanSlug: "free", BillingCycle: BillingCycle.Monthly,
+            CurrentPrice: 0, Status: SubscriptionStatus.Active,
+            NextBillingDate: null, TrialEndsAt: null, IsTrialing: false,
+            CurrentSeats: 1, IncludedSeats: null, MaxSeats: null, PerSeatPrice: null,
+            CreditBalance: 0, EstimatedNextInvoice: 0,
+            UsageSummary: null, ActiveAddOns: null, ActiveDiscounts: null,
+            RecentInvoices: new List<InvoiceSummaryLine>(),
+            PaymentMethods: new List<PaymentMethodLine>()));
     }
 
     private class MockLitestreamStatusService : ILitestreamStatusService

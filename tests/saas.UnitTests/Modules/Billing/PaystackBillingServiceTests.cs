@@ -74,7 +74,7 @@ public class PaystackBillingServiceTests : IAsyncDisposable
             AnnualPrice = 4990,
             Currency = "ZAR",
             SortOrder = 1,
-            PaystackPlanCode = "PLN_test123"
+            PaystackMonthlyPlanCode = "PLN_test123"
         });
 
         _db.Tenants.Add(new Tenant
@@ -357,7 +357,7 @@ public class PaystackBillingServiceTests : IAsyncDisposable
         // Verify invoice was generated via subscription code lookup
         var invoice = await _db.Invoices.FirstOrDefaultAsync(i => i.PaystackReference == "inv_ref_123");
         Assert.NotNull(invoice);
-        Assert.Equal(499m, invoice.Amount);
+        Assert.Equal(499m, invoice.Total);
     }
 
     [Fact]
@@ -988,7 +988,7 @@ public class PaystackBillingServiceTests : IAsyncDisposable
 
         // Plan should now have the Paystack code
         var updatedPlan = await _db.Plans.FindAsync(newPlanId);
-        Assert.Equal("PLN_new_created", updatedPlan!.PaystackPlanCode);
+        Assert.Equal("PLN_new_created", updatedPlan!.PaystackMonthlyPlanCode);
     }
 
     [Fact]

@@ -266,11 +266,13 @@ public class RegistrationController : SwapController
                 ErrorMessage = result.ErrorMessage });
         }
 
-        // Set 14-day trial on free plan tenants
-        var freeTenant = await _coreDb.Tenants.FirstOrDefaultAsync(t => t.Slug == pending.Slug);
-        if (freeTenant is not null)
+        // Set 14-day trial on free plan tenants via their active subscription
+        var freeTenant = await _coreDb.Tenants
+            .Include(t => t.ActiveSubscription)
+            .FirstOrDefaultAsync(t => t.Slug == pending.Slug);
+        if (freeTenant?.ActiveSubscription is not null)
         {
-            freeTenant.TrialEndsAt = DateTime.UtcNow.AddDays(14);
+            freeTenant.ActiveSubscription.TrialEndsAt = DateTime.UtcNow.AddDays(14);
             await _coreDb.SaveChangesAsync();
         }
 
