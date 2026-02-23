@@ -48,10 +48,19 @@ public class BillingModule : IModule
             services.AddScoped<IBillingService, MockBillingService>();
         }
 
-        // Invoice generator is used by both providers
+        // Invoice generator (legacy) is used by both providers
         services.AddScoped<InvoiceGenerator>();
 
-        // Usage metering
-        services.AddScoped<IUsageMeteringService, UsageMeteringService>();
+        // Core billing services
+        services.AddScoped<ICreditService, CreditService>();
+        services.AddScoped<IDiscountService, DiscountService>();
+        services.AddScoped<IInvoiceEngine, InvoiceEngine>();
+        services.AddScoped<ISeatBillingService, SeatBillingService>();
+        services.AddScoped<IDunningService, DunningService>();
+        services.AddScoped<IAddOnService, AddOnService>();
+
+        // Usage metering + billing
+        services.AddScoped<IUsageMeteringService, UsageBillingService>();
+        services.AddScoped<IUsageBillingService, UsageBillingService>();
     }
 }

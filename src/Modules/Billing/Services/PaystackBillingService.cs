@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using saas.Data.Audit;
 using saas.Data.Core;
 using saas.Modules.Billing.DTOs;
+using saas.Modules.Billing.Entities;
 using saas.Modules.Billing.Models;
 using saas.Shared;
 
@@ -18,6 +19,11 @@ public class PaystackBillingService : IBillingService
     private readonly PaystackClient _paystack;
     private readonly CoreDbContext _coreDb;
     private readonly InvoiceGenerator _invoiceGenerator;
+    private readonly ISeatBillingService _seatBilling;
+    private readonly IInvoiceEngine _invoiceEngine;
+    private readonly IUsageBillingService _usageBilling;
+    private readonly IDunningService _dunning;
+    private readonly ICreditService _creditService;
     private readonly PaystackOptions _options;
     private readonly IAuditWriter _audit;
     private readonly IEmailService _emailService;
@@ -27,6 +33,11 @@ public class PaystackBillingService : IBillingService
         PaystackClient paystack,
         CoreDbContext coreDb,
         InvoiceGenerator invoiceGenerator,
+        ISeatBillingService seatBilling,
+        IInvoiceEngine invoiceEngine,
+        IUsageBillingService usageBilling,
+        IDunningService dunning,
+        ICreditService creditService,
         IOptions<PaystackOptions> options,
         IAuditWriter audit,
         IEmailService emailService,
@@ -35,6 +46,11 @@ public class PaystackBillingService : IBillingService
         _paystack = paystack;
         _coreDb = coreDb;
         _invoiceGenerator = invoiceGenerator;
+        _seatBilling = seatBilling;
+        _invoiceEngine = invoiceEngine;
+        _usageBilling = usageBilling;
+        _dunning = dunning;
+        _creditService = creditService;
         _options = options.Value;
         _audit = audit;
         _emailService = emailService;
@@ -422,8 +438,34 @@ public class PaystackBillingService : IBillingService
                 if (monthlyResult is not null)
                 {
                     dbPlan.PaystackMonthlyPlanCode = monthlyResult.PlanCode;
-                    _logger.LogInformation("Created Paystack plan {PlanCode} for {Name}",
+                    _logger.LogInformation("Created Paystack monthly plan {PlanCode} for {Name}",
                         monthlyResult.PlanCode, dbPlan.Name);
+                }
+
+                // Create annual plan in Paystack if annual pricing is set
+                if (dbPlan.AnnualPrice > 0)
+                {
+                    if (!string.IsNullOrEmpty(dbPlan.PaystackAnnualPlanCode))
+                    {
+                        var annualExists = paystackPlans.Any(p =>
+                            p.PlanCode == dbPlan.PaystackAnnualPlanCode);
+                        if (annualExists) continue;
+                    }
+
+                    var annualResult = await _paystack.CreatePlanAsync(new PaystackCreatePlanRequest
+                    {
+                        Name = $"{dbPlan.Name} (Annual)",
+                        Interval = "annually",
+                        Amount = (int)(dbPlan.AnnualPrice.Value * 100),
+                        Currency = dbPlan.Currency ?? "ZAR"
+                    });
+
+                    if (annualResult is not null)
+                    {
+                        dbPlan.PaystackAnnualPlanCode = annualResult.PlanCode;
+                        _logger.LogInformation("Created Paystack annual plan {PlanCode} for {Name}",
+                            annualResult.PlanCode, dbPlan.Name);
+                    }
                 }
             }
 
@@ -462,7 +504,39 @@ public class PaystackBillingService : IBillingService
 
         _logger.LogInformation("Processing Paystack webhook: {Event}", webhookEvent.Event);
 
-        return webhookEvent.Event switch
+        // Webhook idempotency via WebhookEvent table
+        var webhookRef = webhookEvent.Data.Reference;
+        var eventType = webhookEvent.Event;
+        if (!string.IsNullOrEmpty(webhookRef))
+        {
+            var existing = await _coreDb.WebhookEvents
+                .FirstOrDefaultAsync(w => w.PaystackReference == webhookRef && w.PaystackEventType == eventType);
+            if (existing?.Status == WebhookEventStatus.Processed)
+            {
+                _logger.LogInformation("Duplicate webhook ignored: {Event} {Reference}", eventType, webhookRef);
+                return new WebhookResult(true);
+            }
+
+            if (existing is null)
+            {
+                _coreDb.WebhookEvents.Add(new WebhookEvent
+                {
+                    Id = Guid.NewGuid(),
+                    PaystackEventType = eventType,
+                    PaystackReference = webhookRef,
+                    Payload = payload,
+                    Status = WebhookEventStatus.Processing,
+                    Attempts = 1,
+                    ReceivedAt = DateTime.UtcNow
+                });
+                await _coreDb.SaveChangesAsync();
+            }
+        }
+
+        WebhookResult result;
+        try
+        {
+            result = webhookEvent.Event switch
         {
             "charge.success" => await HandleChargeSuccessAsync(webhookEvent),
             "subscription.create" => await HandleSubscriptionCreatedAsync(webhookEvent),
@@ -474,6 +548,28 @@ public class PaystackBillingService : IBillingService
             "invoice.payment_failed" => await HandlePaymentFailedAsync(webhookEvent),
             _ => new WebhookResult(true) // Acknowledge unhandled events
         };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing webhook {Event}", eventType);
+            result = new WebhookResult(false, Error: ex.Message);
+        }
+
+        // Mark webhook event as processed or failed
+        if (!string.IsNullOrEmpty(webhookRef))
+        {
+            var evt = await _coreDb.WebhookEvents
+                .FirstOrDefaultAsync(w => w.PaystackReference == webhookRef && w.PaystackEventType == eventType);
+            if (evt is not null)
+            {
+                evt.Status = result.Success ? WebhookEventStatus.Processed : WebhookEventStatus.Failed;
+                evt.ProcessedAt = DateTime.UtcNow;
+                evt.ErrorMessage = result.Error;
+                await _coreDb.SaveChangesAsync();
+            }
+        }
+
+        return result;
     }
 
     // ── Webhook Handlers ───────────────────────────────────────────
@@ -508,6 +604,22 @@ public class PaystackBillingService : IBillingService
             TransactionDate = DateTime.UtcNow
         };
         _coreDb.Payments.Add(payment);
+
+        // Store authorization code if reusable
+        if (data.Authorization is not null && data.Authorization.Reusable)
+        {
+            var sub = await _coreDb.Subscriptions
+                .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefaultAsync();
+
+            if (sub is not null)
+            {
+                sub.PaystackAuthorizationCode = data.Authorization.AuthorizationCode;
+                sub.PaystackAuthorizationEmail = data.Customer?.Email;
+                _logger.LogInformation("Saved reusable authorization for tenant {TenantId}", tenantId);
+            }
+        }
 
         // Update related invoice if exists
         var invoice = await _coreDb.Invoices
@@ -755,11 +867,11 @@ public class PaystackBillingService : IBillingService
 
         if (subscription is not null)
         {
-            subscription.Status = SubscriptionStatus.PastDue;
-            await _coreDb.SaveChangesAsync();
+            // Delegate to dunning service for proper grace period handling
+            await _dunning.OnPaymentFailedAsync(subscription.TenantId);
 
             _logger.LogWarning(
-                "Payment failed for subscription {Code}, tenant {TenantId}. Status set to PastDue.",
+                "Payment failed for subscription {Code}, tenant {TenantId}. Dunning initiated.",
                 subscriptionCode, subscription.TenantId);
         }
 
@@ -1127,49 +1239,16 @@ public class PaystackBillingService : IBillingService
         }
     }
 
-    // ── New interface methods (stubs — to be fully implemented) ──────────────
+    // ── Delegated service methods ──────────────────────────────────────────
 
-    public async Task<SeatChangeResult> UpdateSeatCountAsync(Guid tenantId, int newSeatCount)
-    {
-        // TODO: Implement per-seat billing via Paystack quantity updates
-        var subscription = await _coreDb.Subscriptions
-            .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
-            .Include(s => s.Plan)
-            .FirstOrDefaultAsync();
-
-        if (subscription is null)
-            return new SeatChangeResult(false, Error: "No active subscription found");
-
-        if (subscription.Plan.BillingModel != BillingModel.PerSeat && subscription.Plan.BillingModel != BillingModel.Hybrid)
-            return new SeatChangeResult(false, Error: "Plan does not support per-seat billing");
-
-        var previousSeats = subscription.Quantity;
-        subscription.Quantity = newSeatCount;
-        await _coreDb.SaveChangesAsync();
-
-        _logger.LogInformation("Updated seat count for tenant {TenantId} from {Old} to {New}", tenantId, previousSeats, newSeatCount);
-        return new SeatChangeResult(true, PreviousSeats: previousSeats, NewSeats: newSeatCount);
-    }
+    public Task<SeatChangeResult> UpdateSeatCountAsync(Guid tenantId, int newSeatCount)
+        => _seatBilling.UpdateSeatsAsync(tenantId, newSeatCount);
 
     public Task<SeatChangePreview> PreviewSeatChangeAsync(Guid tenantId, int newSeatCount)
-    {
-        // TODO: Implement proration preview for seat changes
-        return Task.FromResult(new SeatChangePreview(
-            IsValid: true,
-            CurrentSeats: 1,
-            NewSeats: newSeatCount,
-            SeatDifference: newSeatCount - 1,
-            PricePerSeat: 0,
-            RemainingDays: 30,
-            TotalCycleDays: 30,
-            ProratedAmount: 0,
-            IsIncrease: newSeatCount > 1
-        ));
-    }
+        => _seatBilling.PreviewSeatChangeAsync(tenantId, newSeatCount);
 
     public async Task<ChargeResult> ChargeOneOffAsync(Guid tenantId, decimal amount, string description)
     {
-        // TODO: Implement one-off charge via Paystack charge authorization
         var subscription = await _coreDb.Subscriptions
             .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
             .FirstOrDefaultAsync();
@@ -1177,19 +1256,116 @@ public class PaystackBillingService : IBillingService
         if (subscription is null || string.IsNullOrEmpty(subscription.PaystackAuthorizationCode))
             return new ChargeResult(false, Error: "No active subscription or stored authorization");
 
-        _logger.LogWarning("ChargeOneOffAsync not yet fully implemented for Paystack. Tenant: {TenantId}, Amount: {Amount}", tenantId, amount);
-        return new ChargeResult(false, Error: "One-off charges via Paystack not yet implemented");
+        // Create invoice first
+        var invoice = await _invoiceEngine.GenerateOneOffInvoiceAsync(tenantId, description, amount);
+
+        try
+        {
+            var chargeRef = $"ONEOFF-{Guid.NewGuid():N}";
+            var result = await _paystack.ChargeAuthorizationAsync(new PaystackChargeAuthorizationRequest
+            {
+                AuthorizationCode = subscription.PaystackAuthorizationCode,
+                Email = subscription.PaystackAuthorizationEmail ?? "",
+                Amount = (int)(amount * 100),
+                Reference = chargeRef,
+                Currency = "ZAR",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["tenant_id"] = tenantId.ToString(),
+                    ["charge_type"] = "one_off",
+                    ["invoice_id"] = invoice.Id.ToString()
+                }
+            });
+
+            if (result is null)
+                return new ChargeResult(false, Error: "Payment gateway error");
+
+            // Handle 2FA pause
+            if (result.Paused && !string.IsNullOrEmpty(result.AuthorizationUrl))
+            {
+                invoice.PaystackReference = chargeRef;
+                await _coreDb.SaveChangesAsync();
+                return new ChargeResult(true, InvoiceId: invoice.Id, PaymentUrl: result.AuthorizationUrl);
+            }
+
+            if (result.Status == "success")
+            {
+                var payment = new Payment
+                {
+                    TenantId = tenantId,
+                    InvoiceId = invoice.Id,
+                    Amount = amount,
+                    Currency = "ZAR",
+                    Status = PaymentStatus.Success,
+                    PaystackReference = chargeRef,
+                    GatewayResponse = result.GatewayResponse,
+                    TransactionDate = DateTime.UtcNow
+                };
+                _coreDb.Payments.Add(payment);
+                invoice.Status = InvoiceStatus.Paid;
+                invoice.PaidDate = DateTime.UtcNow;
+                invoice.PaystackReference = chargeRef;
+                await _coreDb.SaveChangesAsync();
+                return new ChargeResult(true, InvoiceId: invoice.Id, PaymentId: payment.Id);
+            }
+
+            return new ChargeResult(false, Error: result.GatewayResponse ?? "Charge failed");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Failed to charge one-off for tenant {TenantId}", tenantId);
+            return new ChargeResult(false, Error: "Payment gateway error");
+        }
     }
 
     public async Task<RefundResult> IssueRefundAsync(Guid paymentId, decimal? amount = null)
     {
-        // TODO: Implement refund via Paystack Refund API
         var payment = await _coreDb.Payments.FindAsync(paymentId);
         if (payment is null)
             return new RefundResult(false, Error: "Payment not found");
 
-        _logger.LogWarning("IssueRefundAsync not yet fully implemented for Paystack. PaymentId: {PaymentId}", paymentId);
-        return new RefundResult(false, Error: "Refunds via Paystack not yet implemented");
+        if (string.IsNullOrEmpty(payment.PaystackReference))
+            return new RefundResult(false, Error: "No Paystack reference for this payment");
+
+        try
+        {
+            var request = new PaystackRefundRequest
+            {
+                Transaction = payment.PaystackReference,
+                Amount = amount.HasValue ? (int)(amount.Value * 100) : null
+            };
+
+            var result = await _paystack.CreateRefundAsync(request);
+            if (result is null)
+                return new RefundResult(false, Error: "Refund request failed");
+
+            var refundedAmount = result.Amount / 100m;
+            payment.Status = amount.HasValue && amount < payment.Amount
+                ? PaymentStatus.PartiallyRefunded
+                : PaymentStatus.Refunded;
+
+            // Update invoice status
+            if (payment.InvoiceId.HasValue)
+            {
+                var invoice = await _coreDb.Invoices.FindAsync(payment.InvoiceId.Value);
+                if (invoice is not null)
+                {
+                    invoice.Status = payment.Status == PaymentStatus.PartiallyRefunded
+                        ? InvoiceStatus.PartiallyRefunded
+                        : InvoiceStatus.Refunded;
+                }
+            }
+
+            await _coreDb.SaveChangesAsync();
+
+            _logger.LogInformation("Refund processed for payment {PaymentId}: {Amount}", paymentId, refundedAmount);
+            return new RefundResult(true, AmountRefunded: refundedAmount, PaystackRefundReference: result.Id.ToString());
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Failed to process refund for payment {PaymentId}", paymentId);
+            return new RefundResult(false, Error: "Refund gateway error");
+        }
     }
 
     public async Task<DiscountResult> ApplyDiscountAsync(Guid tenantId, string discountCode)
@@ -1224,11 +1400,7 @@ public class PaystackBillingService : IBillingService
     }
 
     public Task<UsageBillingResult> ProcessUsageBillingAsync(Guid tenantId)
-    {
-        // TODO: Implement usage-based billing cycle processing
-        _logger.LogWarning("ProcessUsageBillingAsync not yet fully implemented for Paystack. Tenant: {TenantId}", tenantId);
-        return Task.FromResult(new UsageBillingResult(false, Error: "Usage billing via Paystack not yet implemented"));
-    }
+        => _usageBilling.ProcessEndOfPeriodAsync(tenantId);
 
     public async Task<BillingDashboard> GetBillingDashboardAsync(Guid tenantId)
     {

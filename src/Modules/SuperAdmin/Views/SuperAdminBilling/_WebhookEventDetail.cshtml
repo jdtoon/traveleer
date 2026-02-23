@@ -1,0 +1,55 @@
+@model WebhookEvent
+
+<dialog class="modal modal-open">
+    <div class="modal-box max-w-3xl">
+        <h3 class="font-bold text-lg mb-4">Webhook Event Detail</h3>
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div>
+                <span class="text-xs text-base-content/50">Event Type</span>
+                <p class="font-mono text-sm">@Model.PaystackEventType</p>
+            </div>
+            <div>
+                <span class="text-xs text-base-content/50">Reference</span>
+                <p class="font-mono text-sm">@Model.PaystackReference</p>
+            </div>
+            <div>
+                <span class="text-xs text-base-content/50">Status</span>
+                <p>
+                    <span class="badge badge-sm @(Model.Status == WebhookEventStatus.Processed ? "badge-success" : Model.Status == WebhookEventStatus.Failed ? "badge-error" : "badge-ghost")">
+                        @Model.Status
+                    </span>
+                </p>
+            </div>
+            <div>
+                <span class="text-xs text-base-content/50">Attempts</span>
+                <p class="text-sm">@Model.Attempts</p>
+            </div>
+            <div>
+                <span class="text-xs text-base-content/50">Received</span>
+                <p class="text-sm">@Model.ReceivedAt.ToString("dd MMM yyyy HH:mm:ss")</p>
+            </div>
+            <div>
+                <span class="text-xs text-base-content/50">Processed</span>
+                <p class="text-sm">@(Model.ProcessedAt?.ToString("dd MMM yyyy HH:mm:ss") ?? "—")</p>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="alert alert-error mb-4">
+                <span class="text-sm">@Model.ErrorMessage</span>
+            </div>
+        }
+
+        <div>
+            <span class="text-xs text-base-content/50">Payload</span>
+            <pre class="bg-base-200 rounded-lg p-3 mt-1 text-xs overflow-x-auto max-h-96 overflow-y-auto"><code>@Model.Payload</code></pre>
+        </div>
+
+        <div class="modal-action">
+            <button type="button" class="btn btn-ghost" onclick="this.closest('dialog').close()">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

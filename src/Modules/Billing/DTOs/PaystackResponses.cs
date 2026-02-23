@@ -78,6 +78,9 @@ public class PaystackTransactionResponse
 
     [JsonPropertyName("customer")]
     public PaystackCustomerResponse? Customer { get; set; }
+
+    [JsonPropertyName("authorization")]
+    public PaystackAuthorizationData? Authorization { get; set; }
 }
 
 public class PaystackSubscriptionResponse
@@ -121,4 +124,109 @@ public class PaystackCustomerResponse
 
     [JsonPropertyName("email")]
     public string Email { get; set; } = string.Empty;
+}
+
+public class PaystackChargeResponse
+{
+    [JsonPropertyName("reference")]
+    public string Reference { get; set; } = string.Empty;
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("amount")]
+    public int Amount { get; set; }
+
+    [JsonPropertyName("gateway_response")]
+    public string? GatewayResponse { get; set; }
+
+    [JsonPropertyName("authorization_url")]
+    public string? AuthorizationUrl { get; set; }
+
+    /// <summary>
+    /// True if the charge is paused (2FA required). User must be redirected to AuthorizationUrl.
+    /// </summary>
+    [JsonPropertyName("paused")]
+    public bool Paused { get; set; }
+
+    [JsonPropertyName("authorization")]
+    public PaystackAuthorizationData? Authorization { get; set; }
+}
+
+public class PaystackAuthorizationData
+{
+    [JsonPropertyName("authorization_code")]
+    public string AuthorizationCode { get; set; } = string.Empty;
+
+    [JsonPropertyName("bin")]
+    public string? Bin { get; set; }
+
+    [JsonPropertyName("last4")]
+    public string? Last4 { get; set; }
+
+    [JsonPropertyName("exp_month")]
+    public string? ExpMonth { get; set; }
+
+    [JsonPropertyName("exp_year")]
+    public string? ExpYear { get; set; }
+
+    [JsonPropertyName("card_type")]
+    public string? CardType { get; set; }
+
+    [JsonPropertyName("bank")]
+    public string? Bank { get; set; }
+
+    [JsonPropertyName("reusable")]
+    public bool Reusable { get; set; }
+
+    [JsonPropertyName("country_code")]
+    public string? CountryCode { get; set; }
+
+    [JsonPropertyName("account_name")]
+    public string? AccountName { get; set; }
+}
+
+public class PaystackRefundResponse
+{
+    [JsonPropertyName("id")]
+    public long Id { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("amount")]
+    public int Amount { get; set; }
+
+    [JsonPropertyName("transaction")]
+    public PaystackRefundTransactionRef? Transaction { get; set; }
+}
+
+public class PaystackRefundTransactionRef
+{
+    [JsonPropertyName("reference")]
+    public string Reference { get; set; } = string.Empty;
+}
+
+public class PaystackCustomerDetailResponse
+{
+    [JsonPropertyName("customer_code")]
+    public string CustomerCode { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("first_name")]
+    public string? FirstName { get; set; }
+
+    [JsonPropertyName("last_name")]
+    public string? LastName { get; set; }
+
+    [JsonPropertyName("authorizations")]
+    public List<PaystackAuthorizationData>? Authorizations { get; set; }
+}
+
+public class PaystackManageLinkResponse
+{
+    [JsonPropertyName("link")]
+    public string Link { get; set; } = string.Empty;
 }

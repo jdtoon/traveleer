@@ -1,0 +1,155 @@
+@model InvoiceDetailViewModel
+@{
+    var inv = Model.Invoice;
+}
+
+<dialog class="modal modal-open">
+    <div class="modal-box max-w-2xl">
+        <h3 class="font-bold text-lg mb-1">Invoice @inv.InvoiceNumber</h3>
+        <p class="text-sm opacity-60 mb-4">Issued @inv.IssuedDate.ToString("dd MMMM yyyy")</p>
+
+        <!-- Company Details -->
+        @if (!string.IsNullOrEmpty(inv.CompanyName))
+        {
+            <div class="text-sm mb-4 p-3 bg-base-200 rounded-lg">
+                <p class="font-semibold">@inv.CompanyName</p>
+                @if (!string.IsNullOrEmpty(inv.CompanyAddress))
+                {
+                    <p class="opacity-70 whitespace-pre-line">@inv.CompanyAddress</p>
+                }
+                @if (!string.IsNullOrEmpty(inv.CompanyVatNumber))
+                {
+                    <p class="opacity-70">VAT: @inv.CompanyVatNumber</p>
+                }
+            </div>
+        }
+
+        <!-- Line Items -->
+        <div class="overflow-x-auto mb-4">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="text-right">Qty</th>
+                        <th class="text-right">Unit Price</th>
+                        <th class="text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in Model.LineItems.OrderBy(l => l.SortOrder))
+                    {
+                        <tr>
+                            <td>
+                                @line.Description
+                                <span class="badge badge-ghost badge-xs ml-1">@line.Type</span>
+                            </td>
+                            <td class="text-right">@line.Quantity</td>
+                            <td class="text-right">@(line.UnitPrice > 0 ? $"R{line.UnitPrice:N2}" : "—")</td>
+                            <td class="text-right font-mono">
+                                @if (line.Amount < 0)
+                                {
+                                    <span class="text-success">-R@(Math.Abs(line.Amount).ToString("N2"))</span>
+                                }
+                                else
+                                {
+                                    <span>R@line.Amount.ToString("N2")</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Totals -->
+        <div class="space-y-1 text-sm border-t border-base-300 pt-3">
+            <div class="flex justify-between">
+                <span class="opacity-70">Subtotal</span>
+                <span>R@inv.Subtotal.ToString("N2")</span>
+            </div>
+            @if (inv.DiscountAmount > 0)
+            {
+                <div class="flex justify-between text-success">
+                    <span>Discount</span>
+                    <span>-R@inv.DiscountAmount.ToString("N2")</span>
+                </div>
+            }
+            @if (inv.CreditApplied > 0)
+            {
+                <div class="flex justify-between text-success">
+                    <span>Credits Applied</span>
+                    <span>-R@inv.CreditApplied.ToString("N2")</span>
+                </div>
+            }
+            @if (inv.TaxAmount > 0)
+            {
+                <div class="flex justify-between">
+                    <span class="opacity-70">Tax (@(inv.TaxRate)%)</span>
+                    <span>R@inv.TaxAmount.ToString("N2")</span>
+                </div>
+            }
+            <div class="flex justify-between text-lg font-bold pt-2 border-t border-base-300">
+                <span>Total</span>
+                <span>@inv.Currency R@inv.Total.ToString("N2")</span>
+            </div>
+        </div>
+
+        <!-- Payment History -->
+        @if (Model.Payments.Count > 0)
+        {
+            <h4 class="font-semibold mt-4 mb-2">Payments</h4>
+            <div class="overflow-x-auto">
+                <table class="table table-xs">
+                    <thead>
+                        <tr><th>Date</th><th>Amount</th><th>Status</th><th>Reference</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var pmt in Model.Payments)
+                        {
+                            <tr>
+                                <td>@pmt.TransactionDate.ToString("dd MMM yyyy HH:mm")</td>
+                                <td>R@pmt.Amount.ToString("N2")</td>
+                                <td>
+                                    @{
+                                        var pmtClass = pmt.Status switch
+                                        {
+                                            PaymentStatus.Success => "badge-success",
+                                            PaymentStatus.Failed => "badge-error",
+                                            PaymentStatus.Refunded => "badge-info",
+                                            PaymentStatus.PartiallyRefunded => "badge-info",
+                                            _ => "badge-ghost"
+                                        };
+                                    }
+                                    <span class="badge @pmtClass badge-xs">@pmt.Status</span>
+                                </td>
+                                <td class="font-mono text-xs opacity-50">@(pmt.PaystackReference ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <!-- Status & Dates -->
+        <div class="flex items-center justify-between mt-4 pt-3 border-t border-base-300">
+            <div>
+                @{
+                    var sClass = inv.Status switch
+                    {
+                        InvoiceStatus.Paid => "badge-success",
+                        InvoiceStatus.Overdue => "badge-error",
+                        InvoiceStatus.Issued => "badge-warning",
+                        _ => "badge-ghost"
+                    };
+                }
+                <span class="badge @sClass">@inv.Status</span>
+                @if (inv.PaidDate.HasValue)
+                {
+                    <span class="text-xs opacity-50 ml-2">Paid @inv.PaidDate.Value.ToString("dd MMM yyyy")</span>
+                }
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('dialog').close()">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

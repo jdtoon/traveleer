@@ -78,6 +78,24 @@ public static class SchedulingExtensions
             Cron.Daily(3, 0), // 3 AM daily
             new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
+        RecurringJob.AddOrUpdate<Jobs.DunningJob>(
+            "dunning-retry",
+            job => job.ExecuteAsync(CancellationToken.None),
+            Cron.Hourly(), // Every hour
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+        RecurringJob.AddOrUpdate<Jobs.UsageBillingJob>(
+            "usage-billing",
+            job => job.ExecuteAsync(CancellationToken.None),
+            Cron.Daily(1, 0), // 1 AM daily
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+        RecurringJob.AddOrUpdate<Jobs.DiscountExpiryJob>(
+            "discount-expiry",
+            job => job.ExecuteAsync(CancellationToken.None),
+            Cron.Daily(4, 0), // 4 AM daily
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
         return app;
     }
 }

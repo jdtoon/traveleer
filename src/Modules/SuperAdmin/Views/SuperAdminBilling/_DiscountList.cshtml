@@ -1,0 +1,58 @@
+@model List<Discount>
+
+<div class="overflow-x-auto">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Value</th>
+                <th>Duration</th>
+                <th>Max Uses</th>
+                <th>Valid Until</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr>
+                    <td colspan="9" class="text-center opacity-60 py-8">No discounts created yet</td>
+                </tr>
+            }
+            @foreach (var d in Model)
+            {
+                <tr class="hover">
+                    <td class="font-mono font-bold">@d.Code</td>
+                    <td>@d.Name</td>
+                    <td><span class="badge badge-ghost badge-sm">@d.Type</span></td>
+                    <td>@(d.Type == DiscountType.Percentage ? $"{d.Value}%" : $"R{d.Value:N0}")</td>
+                    <td>@(d.DurationInCycles.HasValue ? $"{d.DurationInCycles} cycles" : "Forever")</td>
+                    <td>@(d.MaxRedemptions.HasValue ? d.MaxRedemptions.ToString() : "Unlimited")</td>
+                    <td>@(d.ValidUntil.HasValue ? d.ValidUntil.Value.ToString("dd MMM yyyy") : "—")</td>
+                    <td>
+                        <span class="badge @(d.IsActive ? "badge-success" : "badge-ghost") badge-sm">
+                            @(d.IsActive ? "Active" : "Inactive")
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-ghost btn-xs"
+                                hx-get="/super-admin/discounts/edit?id=@d.Id"
+                                hx-target="#modal-container">
+                            Edit
+                        </button>
+                        @if (d.IsActive)
+                        {
+                            <form class="inline" hx-post="/super-admin/discounts/delete" hx-swap="none" hx-confirm="Deactivate this discount?">
+                                <input type="hidden" name="id" value="@d.Id" />
+                                <button type="submit" class="btn btn-ghost btn-xs text-error">Deactivate</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

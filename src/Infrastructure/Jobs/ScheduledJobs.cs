@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Core;
 using saas.Modules.Auth.Entities;
+using saas.Modules.Billing.Entities;
+using saas.Modules.Billing.Services;
 using saas.Modules.TenantAdmin.Services;
 
 namespace saas.Infrastructure.Jobs;
@@ -186,5 +188,146 @@ public class TenantDeletionJob
         }
 
         _logger.LogInformation("Tenant deletion check done — deleted {Count} tenants", toDelete.Count);
+    }
+}
+
+/// <summary>
+/// Hourly dunning job — retries failed charges and suspends tenants past grace period.
+/// </summary>
+public class DunningJob
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<DunningJob> _logger;
+
+    public DunningJob(IServiceScopeFactory scopeFactory, ILogger<DunningJob> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
+
+    public async Task ExecuteAsync(CancellationToken ct)
+    {
+        _logger.LogInformation("Starting dunning job");
+
+        using var scope = _scopeFactory.CreateScope();
+        var dunning = scope.ServiceProvider.GetRequiredService<IDunningService>();
+        await dunning.ProcessGracePeriodsAsync();
+
+        _logger.LogInformation("Dunning job completed");
+    }
+}
+
+/// <summary>
+/// Daily usage billing job — processes end-of-period usage charges for all active tenants with usage-based plans.
+/// </summary>
+public class UsageBillingJob
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<UsageBillingJob> _logger;
+
+    public UsageBillingJob(IServiceScopeFactory scopeFactory, ILogger<UsageBillingJob> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
+
+    public async Task ExecuteAsync(CancellationToken ct)
+    {
+        _logger.LogInformation("Starting usage billing job");
+
+        using var scope = _scopeFactory.CreateScope();
+        var coreDb = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
+        var usageBilling = scope.ServiceProvider.GetRequiredService<IUsageBillingService>();
+
+        // Find tenants with usage-based or hybrid plans whose billing period ended
+        var now = DateTime.UtcNow;
+        var eligibleTenants = await coreDb.Subscriptions
+            .Include(s => s.Plan)
+            .Where(s => s.Status == SubscriptionStatus.Active
+                && (s.Plan.BillingModel == BillingModel.UsageBased || s.Plan.BillingModel == BillingModel.Hybrid)
+                && s.NextBillingDate <= now)
+            .Select(s => s.TenantId)
+            .ToListAsync(ct);
+
+        var processed = 0;
+        foreach (var tenantId in eligibleTenants)
+        {
+            try
+            {
+                var result = await usageBilling.ProcessEndOfPeriodAsync(tenantId);
+                if (result.Success) processed++;
+                else _logger.LogWarning("Usage billing failed for tenant {TenantId}: {Error}", tenantId, result.Error);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Usage billing error for tenant {TenantId}", tenantId);
+            }
+        }
+
+        _logger.LogInformation("Usage billing job completed — processed {Count}/{Total} tenants", processed, eligibleTenants.Count);
+    }
+}
+
+/// <summary>
+/// Daily discount and trial expiry job — deactivates expired discounts and decrements billing-cycle counters.
+/// </summary>
+public class DiscountExpiryJob
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<DiscountExpiryJob> _logger;
+
+    public DiscountExpiryJob(IServiceScopeFactory scopeFactory, ILogger<DiscountExpiryJob> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
+
+    public async Task ExecuteAsync(CancellationToken ct)
+    {
+        _logger.LogInformation("Starting discount expiry job");
+
+        using var scope = _scopeFactory.CreateScope();
+        var coreDb = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
+        var discountService = scope.ServiceProvider.GetRequiredService<IDiscountService>();
+
+        var now = DateTime.UtcNow;
+
+        // Deactivate global discounts past their ValidUntil date
+        var expiredDiscounts = await coreDb.Discounts
+            .Where(d => d.IsActive && d.ValidUntil.HasValue && d.ValidUntil < now)
+            .ToListAsync(ct);
+
+        foreach (var discount in expiredDiscounts)
+        {
+            discount.IsActive = false;
+            _logger.LogInformation("Deactivated expired discount: {Code}", discount.Code);
+        }
+
+        // Remove tenant discounts that have expired
+        var expiredTenantDiscounts = await coreDb.TenantDiscounts
+            .Where(td => td.IsActive && td.ExpiresAt.HasValue && td.ExpiresAt < now)
+            .ToListAsync(ct);
+
+        foreach (var td in expiredTenantDiscounts)
+        {
+            td.IsActive = false;
+            _logger.LogInformation("Deactivated expired tenant discount {Id} for tenant {TenantId}", td.Id, td.TenantId);
+        }
+
+        // Decrement remaining cycles for tenant discounts that are per-billing-cycle
+        var cycleDiscounts = await coreDb.TenantDiscounts
+            .Where(td => td.IsActive && td.RemainingCycles.HasValue && td.RemainingCycles > 0)
+            .ToListAsync(ct);
+
+        foreach (var td in cycleDiscounts)
+        {
+            await discountService.DecrementCyclesAsync(td.Id);
+        }
+
+        if (expiredDiscounts.Count > 0 || expiredTenantDiscounts.Count > 0)
+            await coreDb.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Discount expiry job completed — deactivated {Global} global, {Tenant} tenant discounts",
+            expiredDiscounts.Count, expiredTenantDiscounts.Count);
     }
 }

@@ -1,10 +1,21 @@
 # Billing Engine — Architecture & Implementation Plan
 
-> **Status**: Planning  
+> **Status**: Complete — All 7 Phases ✅  
 > **Date**: 2026-02-22  
 > **Payment Gateway**: Paystack (exclusive)  
 > **Currency**: ZAR (South African Rand)  
 > **Tax**: 15% VAT (configurable)
+>
+> ### Progress Tracker
+> | Phase | Status | Notes |
+> |-------|--------|-------|
+> | 1. Foundation (Entities + Config) | ✅ Done | All 14 entities, EF configs, migration, IBillingService (17 methods), MockBillingService, BillingOptions |
+> | 2. Core Services | ✅ Done | CreditService, DiscountService, InvoiceEngine, SeatBillingService, UsageBillingService, DunningService, AddOnService — all registered in DI |
+> | 3. Paystack Integration | ✅ Done | PaystackClient 6 new endpoints, PaystackBillingService full overhaul (5 stubs replaced), webhook idempotency, authorization storage, annual sync |
+> | 4. Background Services | ✅ Done | DunningJob (hourly), UsageBillingJob (daily 1AM), DiscountExpiryJob (daily 4AM) — all registered in Hangfire |
+> | 5. Tenant Portal | ✅ Done | Seat management, add-on subscriptions, discount codes, invoice detail, enhanced billing content |
+> | 6. Super Admin | ✅ Done | Discount CRUD, Add-on CRUD, tenant billing detail, credit/refund ops, webhook event viewer, nav links |
+> | 7. Testing & Polish | ✅ Done | 60 new tests across 6 files: CreditService (10), DiscountService (13), DunningService (7), AddOnService (11), SeatBillingService (9), InvoiceEngine (10) — 272 total tests passing |
 
 ---
 

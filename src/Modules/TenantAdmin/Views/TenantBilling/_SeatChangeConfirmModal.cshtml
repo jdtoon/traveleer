@@ -1,0 +1,53 @@
+@model SeatChangeConfirmViewModel
+@inject ITenantContext TenantContext
+@{
+    var slug = TenantContext.Slug;
+    var p = Model.Preview;
+}
+
+<dialog class="modal modal-open">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Confirm Seat Change</h3>
+        <div class="space-y-2 mb-4">
+            <div class="flex justify-between">
+                <span class="opacity-70">Current seats</span>
+                <span class="font-semibold">@p.CurrentSeats</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="opacity-70">New seats</span>
+                <span class="font-semibold">@p.NewSeats</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="opacity-70">Change</span>
+                <span class="font-semibold @(p.IsIncrease ? "text-warning" : "text-success")">
+                    @(p.IsIncrease ? "+" : "")@p.SeatDifference seats
+                </span>
+            </div>
+            @if (p.PricePerSeat > 0)
+            {
+                <div class="flex justify-between">
+                    <span class="opacity-70">Price per seat</span>
+                    <span>R@p.PricePerSeat.ToString("N2")/mo</span>
+                </div>
+            }
+            <div class="divider my-1"></div>
+            <div class="flex justify-between text-lg">
+                <span class="font-semibold">@(p.IsIncrease ? "Prorated charge" : "Credit")</span>
+                <span class="font-bold @(p.IsIncrease ? "text-warning" : "text-success")">
+                    R@Math.Abs(p.ProratedAmount).ToString("N2")
+                </span>
+            </div>
+            <p class="text-xs opacity-50">
+                @(p.IsIncrease ? "A prorated charge for the remaining" : "A credit for the remaining") @p.RemainingDays of @p.TotalCycleDays days in this billing period.
+            </p>
+        </div>
+        <form hx-post="@Url.Action("UpdateSeats", "TenantBilling", new { slug })" hx-swap="none">
+            <input type="hidden" name="seatCount" value="@Model.NewSeatCount" />
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('dialog').close()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Confirm Change</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Core;
+using saas.Modules.Billing.Entities;
+using saas.Modules.Billing.Services;
 using saas.Modules.TenantAdmin.Models;
 using saas.Shared;
 using Swap.Htmx;
@@ -15,15 +17,21 @@ public class TenantBillingController : SwapController
     private readonly CoreDbContext _coreDb;
     private readonly IBillingService _billingService;
     private readonly ITenantContext _tenantContext;
+    private readonly IAddOnService _addOnService;
+    private readonly ICreditService _creditService;
 
     public TenantBillingController(
         CoreDbContext coreDb,
         IBillingService billingService,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        IAddOnService addOnService,
+        ICreditService creditService)
     {
         _coreDb = coreDb;
         _billingService = billingService;
         _tenantContext = tenantContext;
+        _addOnService = addOnService;
+        _creditService = creditService;
     }
 
     [HttpGet("")]
@@ -199,6 +207,184 @@ public class TenantBillingController : SwapController
         return Ok();
     }
 
+    // ── Seat Management ──────────────────────────────────────────────────
+
+    [HttpGet("seat-change-modal")]
+    public async Task<IActionResult> SeatChangeModal()
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue) return NotFound();
+
+        var sub = await _coreDb.Subscriptions
+            .Include(s => s.Plan)
+            .Where(s => s.TenantId == tenantId.Value && s.Status == SubscriptionStatus.Active)
+            .FirstOrDefaultAsync();
+
+        if (sub is null)
+            return SwapResponse().WithErrorToast("No active subscription").Build();
+
+        return SwapView("_SeatChangeModal", new
+        {
+            CurrentSeats = sub.Quantity,
+            MaxSeats = sub.Plan.MaxUsers,
+            PerSeatPrice = sub.Plan.PerSeatMonthlyPrice ?? 0m,
+            Currency = sub.Plan.Currency ?? "ZAR"
+        });
+    }
+
+    [HttpPost("preview-seat-change")]
+    public async Task<IActionResult> PreviewSeatChange([FromForm] int seatCount)
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue) return NotFound();
+
+        var preview = await _billingService.PreviewSeatChangeAsync(tenantId.Value, seatCount);
+        if (!preview.IsValid)
+        {
+            return SwapResponse()
+                .WithErrorToast(preview.Error ?? "Invalid seat count")
+                .Build();
+        }
+
+        return SwapView("_SeatChangeConfirmModal", new SeatChangeConfirmViewModel
+        {
+            Preview = preview,
+            NewSeatCount = seatCount
+        });
+    }
+
+    [HttpPost("update-seats")]
+    public async Task<IActionResult> UpdateSeats([FromForm] int seatCount)
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue) return NotFound();
+
+        var result = await _billingService.UpdateSeatCountAsync(tenantId.Value, seatCount);
+        if (!result.Success)
+        {
+            return SwapResponse()
+                .WithErrorToast(result.Error ?? "Failed to update seats")
+                .Build();
+        }
+
+        var model = await GetBillingModelAsync();
+        return SwapResponse()
+            .WithView(SwapViews.TenantBilling._ModalClose)
+            .AlsoUpdate(SwapElements.BillingContent, SwapViews.TenantBilling._BillingContent, model)
+            .WithSuccessToast($"Seats updated to {seatCount}")
+            .Build();
+    }
+
+    // ── Discount Code ────────────────────────────────────────────────────
+
+    [HttpPost("apply-discount")]
+    public async Task<IActionResult> ApplyDiscount([FromForm] string code)
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue) return NotFound();
+
+        if (string.IsNullOrWhiteSpace(code))
+            return SwapResponse().WithErrorToast("Please enter a discount code").Build();
+
+        var result = await _billingService.ApplyDiscountAsync(tenantId.Value, code.Trim());
+        if (!result.Success)
+        {
+            return SwapResponse()
+                .WithErrorToast(result.Error ?? "Invalid discount code")
+                .Build();
+        }
+
+        var model = await GetBillingModelAsync();
+        return SwapResponse()
+            .AlsoUpdate(SwapElements.BillingContent, SwapViews.TenantBilling._BillingContent, model)
+            .WithSuccessToast($"Discount applied: {result.DiscountName}")
+            .Build();
+    }
+
+    // ── Invoice Detail ───────────────────────────────────────────────────
+
+    [HttpGet("invoice/{invoiceId:guid}")]
+    public async Task<IActionResult> InvoiceDetail(Guid invoiceId)
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue) return NotFound();
+
+        var invoice = await _coreDb.Invoices
+            .Include(i => i.LineItems)
+            .FirstOrDefaultAsync(i => i.Id == invoiceId && i.TenantId == tenantId.Value);
+
+        if (invoice is null) return NotFound();
+
+        var payments = await _coreDb.Payments
+            .Where(p => p.InvoiceId == invoiceId)
+            .OrderByDescending(p => p.TransactionDate)
+            .ToListAsync();
+
+        return SwapView("_InvoiceDetail", new InvoiceDetailViewModel
+        {
+            Invoice = invoice,
+            LineItems = invoice.LineItems?.ToList() ?? [],
+            Payments = payments
+        });
+    }
+
+    // ── Add-ons ──────────────────────────────────────────────────────────
+
+    [HttpGet("addons")]
+    public async Task<IActionResult> AddOns()
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue) return NotFound();
+
+        var available = await _addOnService.ListAvailableAsync(tenantId.Value);
+        var active = await _addOnService.ListActiveAsync(tenantId.Value);
+
+        return SwapView("_AddOns", new AddOnViewModel
+        {
+            AvailableAddOns = available,
+            ActiveAddOns = active
+        });
+    }
+
+    [HttpPost("subscribe-addon")]
+    public async Task<IActionResult> SubscribeAddOn([FromForm] Guid addOnId)
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue) return NotFound();
+
+        try
+        {
+            await _addOnService.SubscribeAsync(tenantId.Value, addOnId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return SwapResponse()
+                .WithErrorToast(ex.Message)
+                .Build();
+        }
+
+        var model = await GetBillingModelAsync();
+        return SwapResponse()
+            .AlsoUpdate(SwapElements.BillingContent, SwapViews.TenantBilling._BillingContent, model)
+            .WithSuccessToast("Add-on activated")
+            .Build();
+    }
+
+    [HttpPost("unsubscribe-addon")]
+    public async Task<IActionResult> UnsubscribeAddOn([FromForm] Guid addOnId)
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue) return NotFound();
+
+        await _addOnService.UnsubscribeAsync(tenantId.Value, addOnId);
+
+        var model = await GetBillingModelAsync();
+        return SwapResponse()
+            .AlsoUpdate(SwapElements.BillingContent, SwapViews.TenantBilling._BillingContent, model)
+            .WithWarningToast("Add-on removed")
+            .Build();
+    }
+
     private async Task<BillingViewModel?> GetBillingModelAsync()
     {
         var tenantId = _tenantContext.TenantId;
@@ -217,18 +403,45 @@ public class TenantBillingController : SwapController
             .Take(10)
             .ToListAsync();
 
+        var activeAddOns = await _coreDb.TenantAddOns
+            .Include(ta => ta.AddOn)
+            .Where(ta => ta.TenantId == tenantId.Value && ta.DeactivatedAt == null)
+            .ToListAsync();
+
+        var activeDiscounts = await _coreDb.TenantDiscounts
+            .Include(td => td.Discount)
+            .Where(td => td.TenantId == tenantId.Value && td.IsActive)
+            .ToListAsync();
+
+        var creditBalance = await _creditService.GetBalanceAsync(tenantId.Value);
+
+        var availableAddOns = await _coreDb.AddOns
+            .Where(a => a.IsActive)
+            .OrderBy(a => a.Name)
+            .ToListAsync();
+
         return new BillingViewModel
         {
             PlanName = tenant.Plan.Name,
             PlanId = tenant.PlanId,
             MonthlyPrice = tenant.Plan.MonthlyPrice,
-            Currency = tenant.Plan.Currency,
+            AnnualPrice = tenant.Plan.AnnualPrice,
+            Currency = tenant.Plan.Currency ?? "ZAR",
             SubscriptionStatus = tenant.ActiveSubscription?.Status,
             BillingCycle = tenant.ActiveSubscription?.BillingCycle,
             NextBillingDate = tenant.ActiveSubscription?.NextBillingDate,
             CancelledAt = tenant.ActiveSubscription?.CancelledAt,
+            TrialEndsAt = tenant.ActiveSubscription?.TrialEndsAt,
             HasPaystackSubscription = !string.IsNullOrEmpty(tenant.ActiveSubscription?.PaystackSubscriptionCode),
-            Invoices = invoices
+            Invoices = invoices,
+            BillingModel = tenant.Plan.BillingModel,
+            CurrentSeats = tenant.ActiveSubscription?.Quantity ?? 1,
+            MaxSeats = tenant.Plan.MaxUsers ?? 0,
+            PerSeatPrice = tenant.Plan.PerSeatMonthlyPrice ?? 0m,
+            ActiveAddOns = activeAddOns,
+            AvailableAddOns = availableAddOns,
+            ActiveDiscounts = activeDiscounts,
+            CreditBalance = creditBalance
         };
     }
 }

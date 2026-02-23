@@ -1,0 +1,21 @@
+@model List<AddOn>
+@{
+    ViewBag.Title = "Add-ons";
+    ViewBag.ActiveLink = "addons";
+}
+
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-bold">Add-ons</h1>
+        <p class="opacity-70 text-sm">Manage add-on products for tenant subscriptions</p>
+    </div>
+    <button class="btn btn-primary btn-sm"
+            hx-get="/super-admin/addons/edit"
+            hx-target="#modal-container">
+        New Add-on
+    </button>
+</div>
+
+<div swap-id="addon-list">
+    @await Html.PartialAsync("_AddOnList", Model)
+</div>

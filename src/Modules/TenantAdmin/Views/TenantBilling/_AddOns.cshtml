@@ -1,0 +1,66 @@
+@model AddOnViewModel
+@inject ITenantContext TenantContext
+@{
+    var slug = TenantContext.Slug;
+    var activeIds = Model.ActiveAddOns.Select(a => a.AddOnId).ToHashSet();
+}
+
+<dialog class="modal modal-open">
+    <div class="modal-box max-w-2xl">
+        <h3 class="font-bold text-lg mb-4">Add-ons</h3>
+
+        @if (Model.AvailableAddOns.Count == 0)
+        {
+            <p class="opacity-60 text-center py-8">No add-ons available yet.</p>
+        }
+        else
+        {
+            <div class="grid gap-4">
+                @foreach (var addon in Model.AvailableAddOns)
+                {
+                    var isActive = activeIds.Contains(addon.Id);
+                    <div class="card bg-base-200 border border-base-300">
+                        <div class="card-body p-4">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <h4 class="font-semibold">@addon.Name</h4>
+                                    @if (!string.IsNullOrEmpty(addon.Description))
+                                    {
+                                        <p class="text-sm opacity-70 mt-1">@addon.Description</p>
+                                    }
+                                    <p class="text-sm mt-1">
+                                        <span class="font-mono font-bold">@(addon.Currency ?? "ZAR") @addon.Price.ToString("N0")</span>
+                                        @switch (addon.BillingInterval)
+                                        {
+                                            case AddOnInterval.Monthly: <span class="opacity-60">/month</span> break;
+                                            case AddOnInterval.Annual: <span class="opacity-60">/year</span> break;
+                                            case AddOnInterval.OneOff: <span class="opacity-60">(one-time)</span> break;
+                                        }
+                                    </p>
+                                </div>
+                                <div>
+                                    @if (isActive)
+                                    {
+                                        <span class="badge badge-success badge-sm">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <form hx-post="@Url.Action("SubscribeAddOn", "TenantBilling", new { slug })" hx-swap="none">
+                                            <input type="hidden" name="addOnId" value="@addon.Id" />
+                                            <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                                        </form>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="modal-action">
+            <button type="button" class="btn btn-ghost" onclick="this.closest('dialog').close()">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

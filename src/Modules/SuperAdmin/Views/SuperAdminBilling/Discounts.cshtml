@@ -1,0 +1,21 @@
+@model List<Discount>
+@{
+    ViewBag.Title = "Discounts";
+    ViewBag.ActiveLink = "discounts";
+}
+
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-bold">Discount Codes</h1>
+        <p class="opacity-70 text-sm">Manage promotional and discount codes</p>
+    </div>
+    <button class="btn btn-primary btn-sm"
+            hx-get="/super-admin/discounts/edit"
+            hx-target="#modal-container">
+        New Discount
+    </button>
+</div>
+
+<div swap-id="discount-list">
+    @await Html.PartialAsync("_DiscountList", Model)
+</div>

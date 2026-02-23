@@ -48,6 +48,9 @@ public class PaystackWebhookData
 
     [JsonPropertyName("customer")]
     public PaystackWebhookCustomer? Customer { get; set; }
+
+    [JsonPropertyName("authorization")]
+    public PaystackAuthorizationData? Authorization { get; set; }
 }
 
 public class PaystackWebhookSubscription

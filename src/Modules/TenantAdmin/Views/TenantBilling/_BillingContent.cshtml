@@ -12,7 +12,14 @@
                 <h2 class="card-title text-lg">Current Plan</h2>
                 <div class="flex items-center gap-3 mt-2">
                     <span class="text-2xl font-bold">@Model.PlanName</span>
-                    <span class="text-lg opacity-70">@Model.Currency @Model.MonthlyPrice.ToString("N0")/mo</span>
+                    @if (Model.BillingCycle == BillingCycle.Annual && Model.AnnualPrice.HasValue)
+                    {
+                        <span class="text-lg opacity-70">@Model.Currency @Model.AnnualPrice.Value.ToString("N0")/yr</span>
+                    }
+                    else
+                    {
+                        <span class="text-lg opacity-70">@Model.Currency @Model.MonthlyPrice.ToString("N0")/mo</span>
+                    }
                 </div>
                 @if (Model.SubscriptionStatus.HasValue)
                 {
@@ -35,6 +42,10 @@
                             <span class="badge badge-outline badge-sm">@Model.BillingCycle</span>
                         }
                     </div>
+                    @if (Model.TrialEndsAt.HasValue && Model.SubscriptionStatus == SubscriptionStatus.Trialing)
+                    {
+                        <p class="text-sm text-info mt-1">Trial ends: @Model.TrialEndsAt.Value.ToString("dd MMMM yyyy")</p>
+                    }
                     @if (Model.NextBillingDate.HasValue)
                     {
                         <p class="text-sm opacity-60 mt-1">Next billing: @Model.NextBillingDate.Value.ToString("dd MMMM yyyy")</p>
@@ -86,6 +97,138 @@
     </div>
 </div>
 
+<!-- Seat Management (for per-seat / hybrid plans) -->
+@if (Model.BillingModel == BillingModel.PerSeat || Model.BillingModel == BillingModel.Hybrid)
+{
+<div class="card bg-base-100 shadow-sm border border-base-300 mb-6">
+    <div class="card-body">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="card-title text-lg">Seats</h2>
+                <div class="flex items-center gap-4 mt-2">
+                    <span class="text-xl font-bold">@Model.CurrentSeats</span>
+                    <span class="text-sm opacity-60">of @(Model.MaxSeats > 0 ? Model.MaxSeats.ToString() : "unlimited")</span>
+                    @if (Model.PerSeatPrice > 0)
+                    {
+                        <span class="text-sm opacity-60">(@Model.Currency @Model.PerSeatPrice.ToString("N0")/seat/mo)</span>
+                    }
+                </div>
+            </div>
+            <button class="btn btn-outline btn-sm"
+                    hx-get="@Url.Action("SeatChangeModal", "TenantBilling", new { slug })"
+                    hx-target="#modal-container">
+                Change Seats
+            </button>
+        </div>
+    </div>
+</div>
+}
+
+<!-- Active Add-Ons & Available -->
+@if (Model.ActiveAddOns.Count > 0 || Model.AvailableAddOns.Count > 0)
+{
+<div class="card bg-base-100 shadow-sm border border-base-300 mb-6">
+    <div class="card-body">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="card-title text-lg">Add-ons</h2>
+            @if (Model.AvailableAddOns.Count > 0)
+            {
+                <button class="btn btn-outline btn-sm"
+                        hx-get="@Url.Action("AddOns", "TenantBilling", new { slug })"
+                        hx-target="#modal-container">
+                    Browse Add-ons
+                </button>
+            }
+        </div>
+        @if (Model.ActiveAddOns.Count > 0)
+        {
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead>
+                    <tr><th>Name</th><th>Price</th><th>Since</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var addon in Model.ActiveAddOns)
+                    {
+                        <tr class="hover">
+                            <td>@addon.AddOn.Name</td>
+                            <td>@(addon.AddOn.Currency ?? "ZAR") @addon.AddOn.Price.ToString("N0")@(addon.AddOn.BillingInterval == AddOnInterval.Monthly ? "/mo" : addon.AddOn.BillingInterval == AddOnInterval.Annual ? "/yr" : "")</td>
+                            <td>@addon.ActivatedAt.ToString("dd MMM yyyy")</td>
+                            <td class="text-end">
+                                <form hx-post="@Url.Action("UnsubscribeAddOn", "TenantBilling", new { slug })" hx-swap="none">
+                                    <input type="hidden" name="addOnId" value="@addon.AddOnId" />
+                                    <button type="submit" class="btn btn-ghost btn-xs text-error" hx-confirm="Remove this add-on?">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        }
+        else
+        {
+            <p class="opacity-60 text-sm">No active add-ons</p>
+        }
+    </div>
+</div>
+}
+
+<!-- Discounts & Credits -->
+@if (Model.ActiveDiscounts.Count > 0 || Model.CreditBalance > 0)
+{
+<div class="card bg-base-100 shadow-sm border border-base-300 mb-6">
+    <div class="card-body">
+        <h2 class="card-title text-lg mb-3">Discounts & Credits</h2>
+        @if (Model.ActiveDiscounts.Count > 0)
+        {
+            <div class="mb-3">
+                @foreach (var td in Model.ActiveDiscounts)
+                {
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="badge badge-accent badge-sm">@td.Discount.Code</span>
+                        <span class="text-sm">
+                            @if (td.Discount.Type == DiscountType.Percentage)
+                            {
+                                @($"{td.Discount.Value}% off")
+                            }
+                            else
+                            {
+                                @($"R{td.Discount.Value:N0} off")
+                            }
+                        </span>
+                        @if (td.RemainingCycles.HasValue)
+                        {
+                            <span class="text-xs opacity-50">(@td.RemainingCycles cycles left)</span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        @if (Model.CreditBalance > 0)
+        {
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold">Credit Balance:</span>
+                <span class="text-sm text-success">@Model.Currency @Model.CreditBalance.ToString("N2")</span>
+            </div>
+        }
+    </div>
+</div>
+}
+
+<!-- Discount Code Input -->
+<div class="card bg-base-100 shadow-sm border border-base-300 mb-6">
+    <div class="card-body">
+        <h2 class="card-title text-lg mb-3">Apply Discount Code</h2>
+        <form class="flex gap-2"
+              hx-post="@Url.Action("ApplyDiscount", "TenantBilling", new { slug })"
+              hx-swap="none">
+            <input type="text" name="code" class="input input-bordered input-sm flex-1" placeholder="Enter discount code" />
+            <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+        </form>
+    </div>
+</div>
+
 <!-- Invoice List -->
 <div class="card bg-base-100 shadow-sm border border-base-300">
     <div class="card-body">
@@ -99,13 +242,14 @@
                         <th>Amount</th>
                         <th>Status</th>
                         <th>Description</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (Model.Invoices.Count == 0)
                     {
                         <tr>
-                            <td colspan="5" class="text-center opacity-60 py-8">No invoices yet</td>
+                            <td colspan="6" class="text-center opacity-60 py-8">No invoices yet</td>
                         </tr>
                     }
                     @foreach (var invoice in Model.Invoices)
@@ -113,20 +257,30 @@
                         <tr class="hover">
                             <td class="font-mono text-sm">@invoice.InvoiceNumber</td>
                             <td>@invoice.IssuedDate.ToString("dd MMM yyyy")</td>
-                            <td>@invoice.Currency @invoice.Amount.ToString("N2")</td>
+                            <td>@invoice.Currency @invoice.Total.ToString("N2")</td>
                             <td>
                                 @{
                                     var invClass = invoice.Status switch
                                     {
                                         InvoiceStatus.Paid => "badge-success",
                                         InvoiceStatus.Overdue => "badge-error",
-                                        InvoiceStatus.Issued => "badge-warning",
+                                    InvoiceStatus.Issued => "badge-warning",
+                                    InvoiceStatus.Refunded => "badge-info",
+                                    InvoiceStatus.PartiallyRefunded => "badge-info",
+                                    InvoiceStatus.Cancelled => "badge-ghost",
                                         _ => "badge-ghost"
                                     };
                                 }
                                 <span class="badge @invClass badge-sm">@invoice.Status</span>
                             </td>
-                            <td class="opacity-70">@(invoice.Description ?? "—")</td>
+                            <td class="opacity-70 max-w-48 truncate">@(invoice.Description ?? "—")</td>
+                            <td>
+                                <button class="btn btn-ghost btn-xs"
+                                        hx-get="@Url.Action("InvoiceDetail", "TenantBilling", new { slug, invoiceId = invoice.Id })"
+                                        hx-target="#modal-container">
+                                    View
+                                </button>
+                            </td>
                         </tr>
                     }
                 </tbody>

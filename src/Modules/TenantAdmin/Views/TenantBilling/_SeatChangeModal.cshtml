@@ -1,0 +1,39 @@
+@inject ITenantContext TenantContext
+@{
+    var slug = TenantContext.Slug;
+    var currentSeats = (int)ViewData.Model!.GetType().GetProperty("CurrentSeats")!.GetValue(ViewData.Model)!;
+    var maxSeats = (int?)ViewData.Model!.GetType().GetProperty("MaxSeats")!.GetValue(ViewData.Model);
+    var perSeatPrice = (decimal)ViewData.Model!.GetType().GetProperty("PerSeatPrice")!.GetValue(ViewData.Model)!;
+    var currency = (string)ViewData.Model!.GetType().GetProperty("Currency")!.GetValue(ViewData.Model)!;
+}
+
+<dialog class="modal modal-open">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Change Seat Count</h3>
+        <div class="text-sm opacity-70 mb-4">
+            Current seats: <strong>@currentSeats</strong>
+            @if (perSeatPrice > 0)
+            {
+                <span> &middot; @currency @perSeatPrice.ToString("N0")/seat/month</span>
+            }
+        </div>
+        <form hx-post="@Url.Action("PreviewSeatChange", "TenantBilling", new { slug })"
+              hx-target="#modal-container">
+            <div class="form-control mb-4">
+                <label class="label"><span class="label-text">New seat count</span></label>
+                <input type="number" name="seatCount" value="@currentSeats" min="1"
+                       max="@(maxSeats > 0 ? maxSeats : 9999)"
+                       class="input input-bordered w-full" required />
+                @if (maxSeats > 0)
+                {
+                    <label class="label"><span class="label-text-alt">Maximum: @maxSeats seats</span></label>
+                }
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('dialog').close()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Preview Change</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

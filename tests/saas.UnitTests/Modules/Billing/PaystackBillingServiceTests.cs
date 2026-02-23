@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using saas.Data.Audit;
 using saas.Data.Core;
 using saas.Modules.Billing.DTOs;
+using saas.Modules.Billing.Entities;
 using saas.Modules.Billing.Models;
 using saas.Modules.Billing.Services;
 using saas.Shared;
@@ -21,6 +22,11 @@ public class PaystackBillingServiceTests : IAsyncDisposable
     private readonly PaystackOptions _options;
     private readonly StubAuditWriter _auditWriter;
     private readonly StubEmailService _emailService;
+    private readonly StubSeatBillingService _seatBilling;
+    private readonly StubInvoiceEngine _invoiceEngine;
+    private readonly StubUsageBillingService _usageBilling;
+    private readonly StubDunningService _dunning;
+    private readonly StubCreditService _creditService;
 
     // Test data
     private readonly Guid _tenantId = Guid.NewGuid();
@@ -49,6 +55,11 @@ public class PaystackBillingServiceTests : IAsyncDisposable
         };
         _auditWriter = new StubAuditWriter();
         _emailService = new StubEmailService();
+        _seatBilling = new StubSeatBillingService();
+        _invoiceEngine = new StubInvoiceEngine();
+        _usageBilling = new StubUsageBillingService();
+        _dunning = new StubDunningService(_db);
+        _creditService = new StubCreditService();
 
         SeedTestData();
     }
@@ -99,6 +110,11 @@ public class PaystackBillingServiceTests : IAsyncDisposable
             client,
             _db,
             _invoiceGenerator,
+            _seatBilling,
+            _invoiceEngine,
+            _usageBilling,
+            _dunning,
+            _creditService,
             Options.Create(_options),
             _auditWriter,
             _emailService,
@@ -1087,5 +1103,57 @@ public class PaystackBillingServiceTests : IAsyncDisposable
                     System.Text.Encoding.UTF8, "application/json")
             });
         }
+    }
+
+    // Stub implementations for new billing service dependencies
+
+    private class StubSeatBillingService : ISeatBillingService
+    {
+        public Task<SeatChangeResult> UpdateSeatsAsync(Guid tenantId, int newSeatCount)
+            => Task.FromResult(new SeatChangeResult(true, PreviousSeats: 1, NewSeats: newSeatCount));
+        public Task<SeatChangePreview> PreviewSeatChangeAsync(Guid tenantId, int newSeatCount)
+            => Task.FromResult(new SeatChangePreview(true, 1, newSeatCount, newSeatCount - 1, 0, 30, 30, 0, newSeatCount > 1));
+    }
+
+    private class StubInvoiceEngine : IInvoiceEngine
+    {
+        public Task<Invoice> GenerateSubscriptionInvoiceAsync(Guid tenantId, DateTime? periodStart = null, DateTime? periodEnd = null) => Task.FromResult(new Invoice { Id = Guid.NewGuid(), TenantId = tenantId, Status = InvoiceStatus.Draft, InvoiceNumber = "INV-TEST", Currency = "ZAR" });
+        public Task<Invoice> GenerateOneOffInvoiceAsync(Guid tenantId, string description, decimal amount) => Task.FromResult(new Invoice { Id = Guid.NewGuid(), TenantId = tenantId, Subtotal = amount, Total = amount, Status = InvoiceStatus.Draft, InvoiceNumber = "INV-TEST", Currency = "ZAR" });
+        public Task<Invoice> GenerateProrationInvoiceAsync(Guid tenantId, string description, List<InvoiceLineItem> lineItems) => Task.FromResult(new Invoice { Id = Guid.NewGuid(), TenantId = tenantId, Status = InvoiceStatus.Draft, InvoiceNumber = "INV-TEST", Currency = "ZAR" });
+        public Task FinalizeInvoiceAsync(Guid invoiceId) => Task.CompletedTask;
+        public Task VoidInvoiceAsync(Guid invoiceId) => Task.CompletedTask;
+        public Task<string> GenerateInvoiceNumberAsync() => Task.FromResult("INV-2025-00001");
+    }
+
+    private class StubUsageBillingService : IUsageBillingService
+    {
+        public Task RecordUsageAsync(Guid tenantId, string metric, long quantity = 1) => Task.CompletedTask;
+        public Task<long> GetCurrentPeriodUsageAsync(Guid tenantId, string metric) => Task.FromResult(0L);
+        public Task<List<UsageSummary>> GetUsageSummaryAsync(Guid tenantId, DateTime? from = null, DateTime? to = null) => Task.FromResult(new List<UsageSummary>());
+        public Task<Dictionary<string, UsageChargeLine>> CalculateUsageChargesAsync(Guid tenantId, DateTime periodStart, DateTime periodEnd) => Task.FromResult(new Dictionary<string, UsageChargeLine>());
+        public Task<UsageBillingResult> ProcessEndOfPeriodAsync(Guid tenantId) => Task.FromResult(new UsageBillingResult(true));
+    }
+
+    private class StubDunningService : IDunningService
+    {
+        private readonly CoreDbContext _db;
+        public StubDunningService(CoreDbContext db) => _db = db;
+        public async Task OnPaymentFailedAsync(Guid tenantId, Guid? invoiceId = null)
+        {
+            var sub = await _db.Subscriptions.FirstOrDefaultAsync(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active);
+            if (sub is not null) sub.Status = SubscriptionStatus.PastDue;
+            await _db.SaveChangesAsync();
+        }
+        public Task<bool> RetryChargeAsync(Guid tenantId) => Task.FromResult(false);
+        public Task ProcessGracePeriodsAsync() => Task.CompletedTask;
+        public Task ReactivateAsync(Guid tenantId) => Task.CompletedTask;
+    }
+
+    private class StubCreditService : ICreditService
+    {
+        public Task<TenantCredit> AddCreditAsync(Guid tenantId, decimal amount, CreditReason reason, string? description = null) => Task.FromResult(new TenantCredit { Id = Guid.NewGuid(), TenantId = tenantId, Amount = amount, Reason = reason });
+        public Task<decimal> ApplyCreditsToInvoiceAsync(Guid tenantId, Invoice invoice) => Task.FromResult(0m);
+        public Task<decimal> GetBalanceAsync(Guid tenantId) => Task.FromResult(0m);
+        public Task<List<TenantCredit>> GetLedgerAsync(Guid tenantId) => Task.FromResult(new List<TenantCredit>());
     }
 }

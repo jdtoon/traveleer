@@ -1,0 +1,54 @@
+@model List<WebhookEvent>
+
+<div class="max-w-5xl mx-auto">
+    <h2 class="text-xl font-bold mb-4">Webhook Events</h2>
+
+    <div class="overflow-x-auto">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Received</th>
+                    <th>Event Type</th>
+                    <th>Reference</th>
+                    <th>Status</th>
+                    <th>Attempts</th>
+                    <th>Processed</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var evt in Model)
+                {
+                    <tr>
+                        <td class="text-xs">@evt.ReceivedAt.ToString("dd MMM yyyy HH:mm:ss")</td>
+                        <td>
+                            <span class="font-mono text-xs">@evt.PaystackEventType</span>
+                        </td>
+                        <td class="font-mono text-xs">@evt.PaystackReference</td>
+                        <td>
+                            <span class="badge badge-xs @(evt.Status == WebhookEventStatus.Processed ? "badge-success" : evt.Status == WebhookEventStatus.Failed ? "badge-error" : evt.Status == WebhookEventStatus.Processing ? "badge-warning" : "badge-ghost")">
+                                @evt.Status
+                            </span>
+                        </td>
+                        <td>@evt.Attempts</td>
+                        <td class="text-xs">@evt.ProcessedAt?.ToString("HH:mm:ss")</td>
+                        <td>
+                            <button class="btn btn-xs btn-ghost"
+                                    hx-get="/super-admin/webhooks/@evt.Id"
+                                    hx-target="#modal-container">
+                                View
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-8 text-base-content/50">
+            <p>No webhook events recorded yet.</p>
+        </div>
+    }
+</div>

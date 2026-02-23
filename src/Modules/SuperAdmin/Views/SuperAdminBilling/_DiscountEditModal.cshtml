@@ -1,0 +1,72 @@
+@model saas.Modules.SuperAdmin.Controllers.DiscountEditModel
+
+<dialog class="modal modal-open">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">@(Model.Id.HasValue ? "Edit" : "New") Discount</h3>
+        <form hx-post="/super-admin/discounts" hx-target="#modal-container" class="space-y-3">
+            @if (Model.Id.HasValue)
+            {
+                <input type="hidden" name="Id" value="@Model.Id" />
+            }
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Name</span></label>
+                <input type="text" name="Name" value="@Model.Name" class="input input-bordered input-sm w-full" required placeholder="e.g. Summer Sale" />
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Code</span></label>
+                <input type="text" name="Code" value="@Model.Code" class="input input-bordered input-sm w-full font-mono uppercase" required placeholder="e.g. SUMMER20" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Type</span></label>
+                    <select name="Type" class="select select-bordered select-sm w-full">
+                        <option value="Percentage" selected="@(Model.Type == DiscountType.Percentage)">Percentage</option>
+                        <option value="FixedAmount" selected="@(Model.Type == DiscountType.FixedAmount)">Fixed Amount</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Value</span></label>
+                    <input type="number" name="Value" value="@Model.Value" step="0.01" min="0" class="input input-bordered input-sm w-full" required />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Duration (cycles)</span></label>
+                    <input type="number" name="DurationInCycles" value="@Model.DurationInCycles" min="1" class="input input-bordered input-sm w-full" placeholder="Empty = forever" />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Max Redemptions</span></label>
+                    <input type="number" name="MaxRedemptions" value="@Model.MaxRedemptions" min="1" class="input input-bordered input-sm w-full" placeholder="Empty = unlimited" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Valid From</span></label>
+                    <input type="date" name="ValidFrom" value="@Model.ValidFrom?.ToString("yyyy-MM-dd")" class="input input-bordered input-sm w-full" />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Valid Until</span></label>
+                    <input type="date" name="ValidUntil" value="@Model.ValidUntil?.ToString("yyyy-MM-dd")" class="input input-bordered input-sm w-full" />
+                </div>
+            </div>
+
+            <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                    <input type="checkbox" name="IsActive" value="true" checked="@Model.IsActive" class="checkbox checkbox-sm" />
+                    <span class="label-text">Active</span>
+                </label>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('dialog').close()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

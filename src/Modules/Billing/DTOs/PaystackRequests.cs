@@ -73,3 +73,36 @@ public class PaystackUpdatePlanRequest
     [JsonPropertyName("currency")]
     public string? Currency { get; set; }
 }
+
+public class PaystackChargeAuthorizationRequest
+{
+    [JsonPropertyName("authorization_code")]
+    public string AuthorizationCode { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("amount")]
+    public int Amount { get; set; }
+
+    [JsonPropertyName("reference")]
+    public string? Reference { get; set; }
+
+    [JsonPropertyName("currency")]
+    public string Currency { get; set; } = "ZAR";
+
+    [JsonPropertyName("metadata")]
+    public Dictionary<string, object>? Metadata { get; set; }
+
+    [JsonPropertyName("queue")]
+    public bool Queue { get; set; }
+}
+
+public class PaystackRefundRequest
+{
+    [JsonPropertyName("transaction")]
+    public string Transaction { get; set; } = string.Empty;
+
+    [JsonPropertyName("amount")]
+    public int? Amount { get; set; }
+}

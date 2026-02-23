@@ -1,0 +1,228 @@
+@model saas.Modules.SuperAdmin.Controllers.TenantBillingAdminModel
+
+<dialog class="modal modal-open">
+    <div class="modal-box max-w-4xl">
+        <h3 class="font-bold text-lg mb-4">
+            Billing — @Model.TenantName
+        </h3>
+
+        @* Summary *@
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="stat bg-base-200 rounded-lg p-3">
+                <div class="stat-title text-xs">Plan</div>
+                <div class="stat-value text-sm">@Model.PlanName</div>
+            </div>
+            <div class="stat bg-base-200 rounded-lg p-3">
+                <div class="stat-title text-xs">Subscription</div>
+                <div class="stat-value text-sm">
+                    @if (Model.SubscriptionStatus.HasValue)
+                    {
+                        <span class="badge @(Model.SubscriptionStatus == SubscriptionStatus.Active ? "badge-success" : Model.SubscriptionStatus == SubscriptionStatus.PastDue ? "badge-warning" : "badge-ghost") badge-sm">
+                            @Model.SubscriptionStatus
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="text-base-content/50">None</span>
+                    }
+                </div>
+            </div>
+            <div class="stat bg-base-200 rounded-lg p-3">
+                <div class="stat-title text-xs">Credit Balance</div>
+                <div class="stat-value text-sm">R@Model.CreditBalance.ToString("N2")</div>
+            </div>
+        </div>
+
+        @* Add Credit *@
+        <div class="collapse collapse-arrow bg-base-200 mb-4">
+            <input type="checkbox" />
+            <div class="collapse-title font-medium text-sm">Add Credit</div>
+            <div class="collapse-content">
+                <form hx-post="/super-admin/tenants/@Model.TenantId/add-credit" class="flex items-end gap-3">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text text-xs">Amount (ZAR)</span></label>
+                        <input type="number" name="amount" step="0.01" min="0.01" class="input input-bordered input-sm w-32" required />
+                    </div>
+                    <div class="form-control flex-1">
+                        <label class="label"><span class="label-text text-xs">Reason</span></label>
+                        <input type="text" name="reason" class="input input-bordered input-sm w-full" placeholder="Optional note" />
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary">Add</button>
+                </form>
+            </div>
+        </div>
+
+        @* Invoices *@
+        <div class="mb-4">
+            <h4 class="font-semibold text-sm mb-2">Invoices (@Model.Invoices.Count)</h4>
+            @if (Model.Invoices.Any())
+            {
+                <div class="overflow-x-auto">
+                    <table class="table table-xs">
+                        <thead>
+                            <tr>
+                                <th>Number</th>
+                                <th>Date</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var inv in Model.Invoices)
+                            {
+                                <tr>
+                                    <td class="font-mono text-xs">@inv.InvoiceNumber</td>
+                                    <td>@inv.IssuedDate.ToString("dd MMM yyyy")</td>
+                                    <td>@inv.Currency @inv.Total.ToString("N2")</td>
+                                    <td>
+                                        <span class="badge badge-xs @(inv.Status == InvoiceStatus.Paid ? "badge-success" : inv.Status == InvoiceStatus.Overdue ? "badge-error" : "badge-ghost")">
+                                            @inv.Status
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-sm text-base-content/50">No invoices</p>
+            }
+        </div>
+
+        @* Payments *@
+        <div class="mb-4">
+            <h4 class="font-semibold text-sm mb-2">Payments (@Model.Payments.Count)</h4>
+            @if (Model.Payments.Any())
+            {
+                <div class="overflow-x-auto">
+                    <table class="table table-xs">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Reference</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model.Payments)
+                            {
+                                <tr>
+                                    <td>@p.TransactionDate.ToString("dd MMM yyyy HH:mm")</td>
+                                    <td>@p.Currency @p.Amount.ToString("N2")</td>
+                                    <td>
+                                        <span class="badge badge-xs @(p.Status == PaymentStatus.Success ? "badge-success" : p.Status == PaymentStatus.Failed ? "badge-error" : "badge-ghost")">
+                                            @p.Status
+                                        </span>
+                                    </td>
+                                    <td class="font-mono text-xs">@p.PaystackReference</td>
+                                    <td>
+                                        @if (p.Status == PaymentStatus.Success && p.Status != PaymentStatus.Refunded)
+                                        {
+                                            <form hx-post="/super-admin/tenants/@Model.TenantId/refund"
+                                                  hx-confirm="Refund this payment?"
+                                                  class="inline">
+                                                <input type="hidden" name="paymentId" value="@p.Id" />
+                                                <button type="submit" class="btn btn-xs btn-ghost text-error">Refund</button>
+                                            </form>
+                                        }
+                                        @if (p.Status == PaymentStatus.Refunded || p.Status == PaymentStatus.PartiallyRefunded)
+                                        {
+                                            <span class="text-xs text-warning">Refunded</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-sm text-base-content/50">No payments</p>
+            }
+        </div>
+
+        @* Credits *@
+        <div class="mb-4">
+            <h4 class="font-semibold text-sm mb-2">Credit Ledger (@Model.Credits.Count)</h4>
+            @if (Model.Credits.Any())
+            {
+                <div class="overflow-x-auto max-h-48 overflow-y-auto">
+                    <table class="table table-xs">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Remaining</th>
+                                <th>Reason</th>
+                                <th>Note</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in Model.Credits)
+                            {
+                                <tr>
+                                    <td>@c.CreatedAt.ToString("dd MMM yyyy")</td>
+                                    <td>R@c.Amount.ToString("N2")</td>
+                                    <td>R@c.RemainingAmount.ToString("N2")</td>
+                                    <td><span class="badge badge-xs badge-ghost">@c.Reason</span></td>
+                                    <td class="text-xs">@c.Description</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-sm text-base-content/50">No credits</p>
+            }
+        </div>
+
+        @* Active Discounts *@
+        @if (Model.Discounts.Any())
+        {
+            <div class="mb-4">
+                <h4 class="font-semibold text-sm mb-2">Active Discounts</h4>
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var d in Model.Discounts)
+                    {
+                        <div class="badge badge-outline gap-1 @(d.IsActive ? "" : "opacity-50")">
+                            @d.Discount.Code
+                            @if (d.RemainingCycles.HasValue)
+                            {
+                                <span class="text-xs">(@d.RemainingCycles cycles left)</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @* Active Add-Ons *@
+        @if (Model.AddOns.Any())
+        {
+            <div class="mb-4">
+                <h4 class="font-semibold text-sm mb-2">Active Add-ons</h4>
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var a in Model.AddOns)
+                    {
+                        <div class="badge badge-info badge-outline gap-1">
+                            @a.AddOn.Name
+                            <span class="text-xs">(@a.AddOn.Currency @a.AddOn.Price.ToString("N2")/@a.AddOn.BillingInterval)</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="modal-action">
+            <button type="button" class="btn btn-ghost" onclick="this.closest('dialog').close()">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

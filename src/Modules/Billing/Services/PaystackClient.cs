@@ -144,4 +144,75 @@ public class PaystackClient
             .ReadFromJsonAsync<PaystackApiResponse<PaystackCustomerResponse>>();
         return result?.Data;
     }
+
+    // ── Charge Authorization (recurring charges) ───────────────────
+
+    public async Task<PaystackChargeResponse?> ChargeAuthorizationAsync(
+        PaystackChargeAuthorizationRequest request)
+    {
+        _logger.LogInformation("Charging authorization for {Email}, amount: {Amount}", request.Email, request.Amount);
+        var response = await _httpClient.PostAsJsonAsync("transaction/charge_authorization", request);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content
+            .ReadFromJsonAsync<PaystackApiResponse<PaystackChargeResponse>>();
+        return result?.Data;
+    }
+
+    // ── Refunds ────────────────────────────────────────────────────
+
+    public async Task<PaystackRefundResponse?> CreateRefundAsync(PaystackRefundRequest request)
+    {
+        _logger.LogInformation("Creating refund for transaction: {Transaction}", request.Transaction);
+        var response = await _httpClient.PostAsJsonAsync("refund", request);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content
+            .ReadFromJsonAsync<PaystackApiResponse<PaystackRefundResponse>>();
+        return result?.Data;
+    }
+
+    public async Task<PaystackRefundResponse?> FetchRefundAsync(string refundId)
+    {
+        var response = await _httpClient.GetAsync($"refund/{Uri.EscapeDataString(refundId)}");
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content
+            .ReadFromJsonAsync<PaystackApiResponse<PaystackRefundResponse>>();
+        return result?.Data;
+    }
+
+    // ── Customer Details ───────────────────────────────────────────
+
+    public async Task<PaystackCustomerDetailResponse?> FetchCustomerAsync(string emailOrCode)
+    {
+        _logger.LogInformation("Fetching Paystack customer: {EmailOrCode}", emailOrCode);
+        var response = await _httpClient.GetAsync($"customer/{Uri.EscapeDataString(emailOrCode)}");
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content
+            .ReadFromJsonAsync<PaystackApiResponse<PaystackCustomerDetailResponse>>();
+        return result?.Data;
+    }
+
+    public async Task<bool> DeactivateAuthorizationAsync(string authorizationCode)
+    {
+        _logger.LogInformation("Deactivating authorization: {Code}", authorizationCode);
+        var response = await _httpClient.PostAsJsonAsync("customer/deactivate_authorization", new
+        {
+            authorization_code = authorizationCode
+        });
+        return response.IsSuccessStatusCode;
+    }
+
+    // ── Subscription Management Link ───────────────────────────────
+
+    public async Task<string?> GenerateManageLinkAsync(string subscriptionCode)
+    {
+        _logger.LogInformation("Generating manage link for subscription: {Code}", subscriptionCode);
+        var response = await _httpClient.GetAsync($"subscription/{Uri.EscapeDataString(subscriptionCode)}/manage/link");
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        var result = await response.Content
+            .ReadFromJsonAsync<PaystackApiResponse<PaystackManageLinkResponse>>();
+        return result?.Data?.Link;
+    }
 }

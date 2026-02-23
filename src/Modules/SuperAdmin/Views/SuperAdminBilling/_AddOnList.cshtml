@@ -1,0 +1,45 @@
+@model List<AddOn>
+
+<div class="overflow-x-auto">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Slug</th>
+                <th>Price</th>
+                <th>Interval</th>
+                <th>Active</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr>
+                    <td colspan="6" class="text-center opacity-60 py-8">No add-ons created yet</td>
+                </tr>
+            }
+            @foreach (var a in Model)
+            {
+                <tr class="hover">
+                    <td class="font-semibold">@a.Name</td>
+                    <td class="font-mono text-sm opacity-70">@a.Slug</td>
+                    <td>@a.Currency @a.Price.ToString("N0")</td>
+                    <td><span class="badge badge-ghost badge-sm">@a.BillingInterval</span></td>
+                    <td>
+                        <span class="badge @(a.IsActive ? "badge-success" : "badge-ghost") badge-sm">
+                            @(a.IsActive ? "Active" : "Inactive")
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-ghost btn-xs"
+                                hx-get="/super-admin/addons/edit?id=@a.Id"
+                                hx-target="#modal-container">
+                            Edit
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

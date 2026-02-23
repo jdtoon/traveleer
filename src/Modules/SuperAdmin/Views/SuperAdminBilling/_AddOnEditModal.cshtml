@@ -1,0 +1,67 @@
+@model saas.Modules.SuperAdmin.Controllers.AddOnEditModel
+
+<dialog class="modal modal-open">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">@(Model.Id.HasValue ? "Edit" : "New") Add-on</h3>
+        <form hx-post="/super-admin/addons" hx-target="#modal-container" class="space-y-3">
+            @if (Model.Id.HasValue)
+            {
+                <input type="hidden" name="Id" value="@Model.Id" />
+            }
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Name</span></label>
+                <input type="text" name="Name" value="@Model.Name" class="input input-bordered input-sm w-full" required />
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Slug</span></label>
+                <input type="text" name="Slug" value="@Model.Slug" class="input input-bordered input-sm w-full font-mono" required />
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Description</span></label>
+                <textarea name="Description" class="textarea textarea-bordered textarea-sm w-full" rows="2">@Model.Description</textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Price</span></label>
+                    <input type="number" name="Price" value="@Model.Price" step="0.01" min="0" class="input input-bordered input-sm w-full" required />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Currency</span></label>
+                    <input type="text" name="Currency" value="@Model.Currency" class="input input-bordered input-sm w-full" maxlength="3" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Billing Interval</span></label>
+                    <select name="BillingInterval" class="select select-bordered select-sm w-full">
+                        <option value="Monthly" selected="@(Model.BillingInterval == AddOnInterval.Monthly)">Monthly</option>
+                        <option value="Annual" selected="@(Model.BillingInterval == AddOnInterval.Annual)">Annual</option>
+                        <option value="OneOff" selected="@(Model.BillingInterval == AddOnInterval.OneOff)">One-off</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Sort Order</span></label>
+                    <input type="number" name="SortOrder" value="@Model.SortOrder" min="0" class="input input-bordered input-sm w-full" />
+                </div>
+            </div>
+
+            <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                    <input type="checkbox" name="IsActive" value="true" checked="@Model.IsActive" class="checkbox checkbox-sm" />
+                    <span class="label-text">Active</span>
+                </label>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('dialog').close()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
