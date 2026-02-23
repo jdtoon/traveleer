@@ -1,0 +1,32 @@
+@{
+    ViewData["Title"] = "Two-Factor Authentication";
+}
+
+<div class="max-w-lg mx-auto space-y-6">
+    <div class="flex items-center gap-2">
+        <a href="/super-admin/admins" class="btn btn-ghost btn-sm">← Back</a>
+        <h1 class="text-2xl font-bold">Two-Factor Authentication</h1>
+    </div>
+
+    <div class="card bg-base-200">
+        <div class="card-body">
+            <div class="flex items-center gap-3">
+                <span class="badge badge-success badge-lg">Enabled</span>
+                <span class="text-sm text-base-content/60">Your super admin account is protected with 2FA</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <p class="text-sm text-base-content/60">
+                If you need to disable two-factor authentication, click below.
+                This will make your account less secure.
+            </p>
+
+            <button hx-post="/super-admin/two-factor/disable" hx-target="#main-content"
+                    hx-confirm="Are you sure? This will disable 2FA on your super admin account."
+                    class="btn btn-error btn-outline w-full">
+                Disable 2FA
+            </button>
+        </div>
+    </div>
+</div>

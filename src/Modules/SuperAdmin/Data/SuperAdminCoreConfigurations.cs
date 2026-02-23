@@ -12,6 +12,8 @@ public class SuperAdminConfiguration : IEntityTypeConfiguration<Entities.SuperAd
         builder.Property(e => e.Email).IsRequired().HasMaxLength(256);
         builder.HasIndex(e => e.Email).IsUnique();
         builder.Property(e => e.DisplayName).HasMaxLength(200);
+        builder.Property(e => e.TwoFactorSecret).HasMaxLength(200);
+        builder.Property(e => e.TwoFactorRecoveryCodes).HasMaxLength(500);
     }
 }
 

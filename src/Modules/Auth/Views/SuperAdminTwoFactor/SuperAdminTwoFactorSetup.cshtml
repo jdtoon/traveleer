@@ -1,15 +1,12 @@
-@model saas.Modules.Auth.Entities.AppUser
-@inject saas.Shared.ITenantContext TenantContext
 @{
     ViewData["Title"] = "Set Up Two-Factor Authentication";
-    var slug = TenantContext.Slug;
     var secret = ViewData["Secret"] as string;
     var otpUri = ViewData["OtpUri"] as string;
 }
 
 <div class="max-w-lg mx-auto space-y-6">
     <div class="flex items-center gap-2">
-        <a href="/@slug/profile" class="btn btn-ghost btn-sm">← Back</a>
+        <a href="/super-admin/admins" class="btn btn-ghost btn-sm">← Back</a>
         <h1 class="text-2xl font-bold">Set Up 2FA</h1>
     </div>
 
@@ -27,7 +24,6 @@
                 Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
             </p>
 
-            <!-- QR Code -->
             <div class="flex justify-center my-4">
                 <div id="qrcode" class="bg-white p-4 rounded-lg"></div>
             </div>
@@ -52,7 +48,7 @@
                 Enter the 6-digit code from your authenticator app to verify setup.
             </p>
 
-            <form hx-post="/@slug/profile/two-factor/verify" hx-target="#main-content">
+            <form hx-post="/super-admin/two-factor/verify" hx-target="#main-content">
                 <div class="form-control w-full mb-4">
                     <label class="label"><span class="label-text">Verification Code</span></label>
                     <input type="text" name="code" class="input input-bordered w-full text-center text-2xl tracking-widest"
@@ -81,7 +77,6 @@
             });
         }
     });
-    // Also fire immediately for HTMX partial swaps
     (function() {
         var el = document.getElementById("qrcode");
         if (el && typeof QRCode !== "undefined") {

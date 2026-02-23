@@ -10,6 +10,11 @@ public class SuperAdmin : IAuditableEntity
     public bool IsActive { get; set; } = true;
     public DateTime? LastLoginAt { get; set; }
 
+    // Two-Factor Authentication
+    public string? TwoFactorSecret { get; set; }
+    public string? TwoFactorRecoveryCodes { get; set; }
+    public bool IsTwoFactorEnabled { get; set; }
+
     // IAuditableEntity
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

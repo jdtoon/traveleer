@@ -19,6 +19,7 @@ public class AuthModule : IModule
         ["SuperAdminAuth"] = "Auth",
         ["Profile"] = "Auth",
         ["TwoFactor"] = "Auth",
+        ["SuperAdminTwoFactor"] = "Auth",
         ["Session"] = "Auth"
     };
 
@@ -37,6 +38,7 @@ public class AuthModule : IModule
         services.AddScoped<MagicLinkService>();
         services.AddScoped<EmailVerificationService>();
         services.AddScoped<TwoFactorService>();
+        services.AddScoped<SuperAdminTwoFactorService>();
         services.TryAddScoped<ICurrentUser, CurrentUser>();
         services.AddHostedService<MagicLinkCleanupService>();
 

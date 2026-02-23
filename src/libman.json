@@ -9,6 +9,14 @@
       "files": [
         "dist/htmx.min.js"
       ]
+    },
+    {
+      "provider": "jsdelivr",
+      "library": "qrcodejs@1.0.0",
+      "destination": "wwwroot/lib/qrcode",
+      "files": [
+        "qrcode.min.js"
+      ]
     }
   ]
 }
