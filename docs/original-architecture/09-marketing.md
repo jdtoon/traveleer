@@ -402,7 +402,7 @@ The pricing page reads plans from `CoreDbContext` so it's always in sync with th
                             else
                             {
                                 <span class="text-4xl font-bold">
-                                    R@plan.MonthlyPrice.ToString("N0")
+                                    R @plan.MonthlyPrice.ToString("N0")
                                 </span>
                                 <span class="opacity-60">/month</span>
                             }
@@ -417,7 +417,7 @@ The pricing page reads plans from `CoreDbContext` so it's always in sync with th
                             else if (plan.AnnualPrice.HasValue)
                             {
                                 <span class="text-4xl font-bold">
-                                    R@plan.AnnualPrice.Value.ToString("N0")
+                                    R @plan.AnnualPrice.Value.ToString("N0")
                                 </span>
                                 <span class="opacity-60">/year</span>
                             }

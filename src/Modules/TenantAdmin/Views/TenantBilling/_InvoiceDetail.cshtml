@@ -48,11 +48,11 @@
                             <td class="text-right font-mono">
                                 @if (line.Amount < 0)
                                 {
-                                    <span class="text-success">-R@(Math.Abs(line.Amount).ToString("N2"))</span>
+                                    <span class="text-success">-R @(Math.Abs(line.Amount).ToString("N2"))</span>
                                 }
                                 else
                                 {
-                                    <span>R@line.Amount.ToString("N2")</span>
+                                    <span>R @line.Amount.ToString("N2")</span>
                                 }
                             </td>
                         </tr>
@@ -65,27 +65,27 @@
         <div class="space-y-1 text-sm border-t border-base-300 pt-3">
             <div class="flex justify-between">
                 <span class="opacity-70">Subtotal</span>
-                <span>R@inv.Subtotal.ToString("N2")</span>
+                <span>R @inv.Subtotal.ToString("N2")</span>
             </div>
             @if (inv.DiscountAmount > 0)
             {
                 <div class="flex justify-between text-success">
                     <span>Discount</span>
-                    <span>-R@inv.DiscountAmount.ToString("N2")</span>
+                    <span>-R @inv.DiscountAmount.ToString("N2")</span>
                 </div>
             }
             @if (inv.CreditApplied > 0)
             {
                 <div class="flex justify-between text-success">
                     <span>Credits Applied</span>
-                    <span>-R@inv.CreditApplied.ToString("N2")</span>
+                    <span>-R @inv.CreditApplied.ToString("N2")</span>
                 </div>
             }
             @if (inv.TaxAmount > 0)
             {
                 <div class="flex justify-between">
                     <span class="opacity-70">Tax (@(inv.TaxRate)%)</span>
-                    <span>R@inv.TaxAmount.ToString("N2")</span>
+                    <span>R @inv.TaxAmount.ToString("N2")</span>
                 </div>
             }
             <div class="flex justify-between text-lg font-bold pt-2 border-t border-base-300">
@@ -108,7 +108,7 @@
                         {
                             <tr>
                                 <td>@pmt.TransactionDate.ToString("dd MMM yyyy HH:mm")</td>
-                                <td>R@pmt.Amount.ToString("N2")</td>
+                                <td>R @pmt.Amount.ToString("N2")</td>
                                 <td>
                                     @{
                                         var pmtClass = pmt.Status switch
