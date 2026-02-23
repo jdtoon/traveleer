@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-
 namespace saas.Shared;
 
 /// <summary>
@@ -87,10 +85,4 @@ public interface IModule
     /// Called during Configure, after global middleware is registered.
     /// </summary>
     void RegisterMiddleware(IApplicationBuilder app) { }
-
-    /// <summary>
-    /// Register MVC-related configuration: partial view paths, view location mappings.
-    /// Called during AddControllersWithViews configuration.
-    /// </summary>
-    void RegisterMvc(MvcOptions mvcOptions, IMvcBuilder mvcBuilder) { }
 }

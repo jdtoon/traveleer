@@ -52,56 +52,83 @@ public class CreditService : ICreditService
         if (invoice.Total <= 0)
             return 0;
 
-        var credits = await _db.TenantCredits
-            .Where(c => c.TenantId == tenantId && c.RemainingAmount > 0)
-            .OrderBy(c => c.CreatedAt)
-            .ToListAsync();
-
-        if (credits.Count == 0)
-            return 0;
-
-        var remaining = invoice.Total;
-        decimal totalApplied = 0;
-
-        foreach (var credit in credits)
+        // Retry loop handles optimistic concurrency conflicts on TenantCredit.ConcurrencyStamp
+        const int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++)
         {
-            if (remaining <= 0) break;
+            var credits = await _db.TenantCredits
+                .Where(c => c.TenantId == tenantId && c.RemainingAmount > 0)
+                .OrderBy(c => c.CreatedAt)
+                .ToListAsync();
 
-            var toApply = Math.Min(credit.RemainingAmount, remaining);
-            credit.RemainingAmount -= toApply;
-            remaining -= toApply;
-            totalApplied += toApply;
+            if (credits.Count == 0)
+                return 0;
 
-            if (credit.RemainingAmount == 0)
+            var remaining = invoice.Total;
+            decimal totalApplied = 0;
+
+            foreach (var credit in credits)
             {
-                credit.ConsumedAt = DateTime.UtcNow;
-                credit.ConsumedByInvoiceId = invoice.Id;
+                if (remaining <= 0) break;
+
+                var toApply = Math.Min(credit.RemainingAmount, remaining);
+                credit.RemainingAmount -= toApply;
+                remaining -= toApply;
+                totalApplied += toApply;
+
+                if (credit.RemainingAmount == 0)
+                {
+                    credit.ConsumedAt = DateTime.UtcNow;
+                    credit.ConsumedByInvoiceId = invoice.Id;
+                }
+
+                // Update concurrency stamp for optimistic locking
+                credit.ConcurrencyStamp = Guid.NewGuid();
             }
-        }
 
-        if (totalApplied > 0)
-        {
-            invoice.CreditApplied = totalApplied;
-            invoice.Total -= totalApplied;
-
-            // Add credit line item
-            _db.InvoiceLineItems.Add(new InvoiceLineItem
+            if (totalApplied > 0)
             {
-                Id = Guid.NewGuid(),
-                InvoiceId = invoice.Id,
-                Type = LineItemType.Credit,
-                Description = "Credit applied",
-                Quantity = 1,
-                UnitPrice = -totalApplied,
-                Amount = -totalApplied,
-                SortOrder = 900
-            });
+                invoice.CreditApplied = totalApplied;
+                invoice.Total -= totalApplied;
 
-            _logger.LogInformation("Applied {Amount} credits to invoice {InvoiceId} for tenant {TenantId}",
-                totalApplied, invoice.Id, tenantId);
+                // Add credit line item
+                _db.InvoiceLineItems.Add(new InvoiceLineItem
+                {
+                    Id = Guid.NewGuid(),
+                    InvoiceId = invoice.Id,
+                    Type = LineItemType.Credit,
+                    Description = "Credit applied",
+                    Quantity = 1,
+                    UnitPrice = -totalApplied,
+                    Amount = -totalApplied,
+                    SortOrder = 900
+                });
+
+                try
+                {
+                    await _db.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException) when (attempt < maxRetries - 1)
+                {
+                    // Another request modified the credits — reload and retry
+                    _logger.LogWarning("Credit concurrency conflict for tenant {TenantId}, retrying (attempt {Attempt})",
+                        tenantId, attempt + 1);
+
+                    // Detach all modified entries and retry
+                    foreach (var entry in _db.ChangeTracker.Entries())
+                        entry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+
+                    continue;
+                }
+
+                _logger.LogInformation("Applied {Amount} credits to invoice {InvoiceId} for tenant {TenantId}",
+                    totalApplied, invoice.Id, tenantId);
+            }
+
+            return totalApplied;
         }
 
-        return totalApplied;
+        return 0;
     }
 
     public async Task<decimal> GetBalanceAsync(Guid tenantId)

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
 using saas.Modules.SuperAdmin.Services;
 using saas.Shared;
 
@@ -32,10 +31,6 @@ public class SuperAdminModule : IModule
     }
 
     public void RegisterMiddleware(IApplicationBuilder app)
-    {
-    }
-
-    public void RegisterMvc(MvcOptions mvcOptions, IMvcBuilder mvcBuilder)
     {
     }
 }

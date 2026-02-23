@@ -12,8 +12,14 @@ public class HomeController : SwapController
 
     [Route("/Home/Error")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public IActionResult Error()
+    public IActionResult Error([FromQuery] int? statusCode)
     {
+        if (statusCode == 404)
+        {
+            Response.StatusCode = 404;
+            return View("NotFound");
+        }
+
         return View();
     }
 }

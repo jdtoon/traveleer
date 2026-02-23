@@ -38,6 +38,9 @@ public class Subscription : IAuditableEntity
     public DateTime? UpdatedAt { get; set; }
     public string? CreatedBy { get; set; }
     public string? UpdatedBy { get; set; }
+
+    // Optimistic concurrency
+    public Guid ConcurrencyStamp { get; set; } = Guid.NewGuid();
 }
 
 public enum SubscriptionStatus
@@ -47,7 +50,8 @@ public enum SubscriptionStatus
     Cancelled,
     Expired,
     Trialing,
-    NonRenewing
+    NonRenewing,
+    PendingPayment
 }
 
 public enum BillingCycle

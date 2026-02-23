@@ -21,6 +21,13 @@ public class PlanConfiguration : IEntityTypeConfiguration<Plan>, ICoreEntityConf
         builder.Property(e => e.PaystackAnnualPlanCode).HasMaxLength(100);
         builder.Ignore(e => e.IsFreePlan);
 
+        // Decimal precision for monetary columns
+        builder.Property(e => e.MonthlyPrice).HasPrecision(18, 2);
+        builder.Property(e => e.AnnualPrice).HasPrecision(18, 2);
+        builder.Property(e => e.PerSeatMonthlyPrice).HasPrecision(18, 2);
+        builder.Property(e => e.PerSeatAnnualPrice).HasPrecision(18, 2);
+        builder.Property(e => e.SetupFee).HasPrecision(18, 2);
+
         builder.HasMany(e => e.PricingTiers).WithOne(t => t.Plan).HasForeignKey(t => t.PlanId);
     }
 }
@@ -47,6 +54,8 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>,
         builder.Property(e => e.PaystackAuthorizationEmail).HasMaxLength(200);
 
         builder.HasOne(e => e.Plan).WithMany().HasForeignKey(e => e.PlanId);
+
+        builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
     }
 }
 
@@ -68,6 +77,14 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>, ICoreEnti
         builder.Property(e => e.TenantBillingAddress).HasMaxLength(500);
         builder.Property(e => e.TenantVatNumber).HasMaxLength(50);
         builder.Ignore(e => e.Amount);
+
+        // Decimal precision for monetary columns
+        builder.Property(e => e.Subtotal).HasPrecision(18, 2);
+        builder.Property(e => e.DiscountAmount).HasPrecision(18, 2);
+        builder.Property(e => e.TaxAmount).HasPrecision(18, 2);
+        builder.Property(e => e.TaxRate).HasPrecision(18, 4);
+        builder.Property(e => e.CreditApplied).HasPrecision(18, 2);
+        builder.Property(e => e.Total).HasPrecision(18, 2);
 
         builder.HasOne(e => e.Subscription).WithMany().HasForeignKey(e => e.SubscriptionId);
         builder.HasOne(e => e.Payment).WithOne(p => p.Invoice).HasForeignKey<Payment>(p => p.InvoiceId);
@@ -94,8 +111,12 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>, ICoreEnti
         builder.Property(e => e.Currency).HasMaxLength(10);
         builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
         builder.Property(e => e.PaystackReference).HasMaxLength(200);
+        builder.HasIndex(e => e.PaystackReference).IsUnique().HasFilter("PaystackReference IS NOT NULL");
         builder.Property(e => e.PaystackTransactionId).HasMaxLength(200);
         builder.Property(e => e.GatewayResponse).HasMaxLength(4000);
+
+        // Decimal precision for monetary columns
+        builder.Property(e => e.Amount).HasPrecision(18, 2);
     }
 }
 
@@ -121,6 +142,9 @@ public class AddOnConfiguration : IEntityTypeConfiguration<AddOn>, ICoreEntityCo
         builder.Property(e => e.Currency).HasMaxLength(10);
         builder.Property(e => e.BillingInterval).HasConversion<string>().HasMaxLength(20);
         builder.Property(e => e.PaystackPlanCode).HasMaxLength(100);
+
+        // Decimal precision for monetary columns
+        builder.Property(e => e.Price).HasPrecision(18, 2);
     }
 }
 
@@ -146,6 +170,11 @@ public class DiscountConfiguration : IEntityTypeConfiguration<Discount>, ICoreEn
         builder.Property(e => e.Type).HasConversion<string>().HasMaxLength(20);
         builder.Property(e => e.Currency).HasMaxLength(10);
         builder.Property(e => e.ApplicablePlanSlugs).HasMaxLength(500);
+
+        builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
+
+        // Decimal precision for monetary columns
+        builder.Property(e => e.Value).HasPrecision(18, 2);
     }
 }
 
@@ -167,6 +196,12 @@ public class TenantCreditConfiguration : IEntityTypeConfiguration<TenantCredit>,
         builder.Property(e => e.Reason).HasConversion<string>().HasMaxLength(20);
         builder.Property(e => e.Description).HasMaxLength(500);
         builder.HasOne(e => e.ConsumedByInvoice).WithMany().HasForeignKey(e => e.ConsumedByInvoiceId);
+
+        builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
+
+        // Decimal precision for monetary columns
+        builder.Property(e => e.Amount).HasPrecision(18, 2);
+        builder.Property(e => e.RemainingAmount).HasPrecision(18, 2);
     }
 }
 
@@ -195,6 +230,6 @@ public class WebhookEventConfiguration : IEntityTypeConfiguration<WebhookEvent>,
         builder.Property(e => e.PaystackReference).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
         builder.Property(e => e.ErrorMessage).HasMaxLength(2000);
-        builder.HasIndex(e => new { e.PaystackEventType, e.PaystackReference });
+        builder.HasIndex(e => new { e.PaystackEventType, e.PaystackReference }).IsUnique();
     }
 }

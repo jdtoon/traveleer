@@ -317,7 +317,13 @@ public class RegistrationController : SwapController
 
         // Verify the transaction and link the real subscription code (SUB_xxx)
         // before provisioning, so cancellation works later
-        await _billingService.VerifyAndLinkSubscriptionAsync(ref_);
+        var verified = await _billingService.VerifyAndLinkSubscriptionAsync(ref_);
+        if (!verified)
+        {
+            _logger.LogWarning("Payment verification failed for tenant {Slug}, reference {Reference}", tenant.Slug, ref_);
+            return SwapView(SwapViews.Registration.Callback, new { Success = false, Slug = (string?)null, Email = (string?)null,
+                ErrorMessage = "Payment verification failed. If you completed the payment, please wait a moment and try again, or contact support." });
+        }
 
         // If tenant is still pending setup, provision now
         if (tenant.Status == TenantStatus.PendingSetup)

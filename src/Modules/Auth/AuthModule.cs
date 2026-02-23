@@ -55,12 +55,18 @@ public class AuthModule : IModule
                 options.LoginPath = "/super-admin/login";
                 options.SlidingExpiration = true;
                 options.ExpireTimeSpan = TimeSpan.FromHours(24);
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
             })
             .AddCookie(AuthSchemes.Tenant, options =>
             {
                 options.Cookie.Name = ".Tenant.Auth";
                 options.SlidingExpiration = true;
                 options.ExpireTimeSpan = TimeSpan.FromHours(12);
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
 
                 // LoginPath is not used directly — we handle redirects dynamically
                 // to inject the actual tenant slug from the request URL.
@@ -126,10 +132,6 @@ public class AuthModule : IModule
     }
 
     public void RegisterMiddleware(IApplicationBuilder app)
-    {
-    }
-
-    public void RegisterMvc(MvcOptions mvcOptions, IMvcBuilder mvcBuilder)
     {
     }
 

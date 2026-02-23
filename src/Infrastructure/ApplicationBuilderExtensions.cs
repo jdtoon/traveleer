@@ -252,6 +252,8 @@ public static class ApplicationBuilderExtensions
             app.UseHsts();
         }
 
+        app.UseStatusCodePagesWithReExecute("/Home/Error", "?statusCode={0}");
+
         app.UseHttpsRedirection();
         app.UseWebOptimizer();
         app.UseStaticFiles();

@@ -63,11 +63,17 @@ public static class ServiceCollectionExtensions
         var walInterceptor = new WalModeInterceptor();
 
         // CoreDbContext — fixed connection string
-        services.AddDbContext<CoreDbContext>(options =>
+        services.AddDbContext<CoreDbContext>((serviceProvider, options) =>
+        {
             options.UseSqlite(
                 configuration.GetConnectionString("CoreDatabase") ?? $"Data Source={Path.Combine(dataPath, "core.db")}",
                 sql => sql.MigrationsAssembly(typeof(CoreDbContext).Assembly.FullName)
-            ).AddInterceptors(walInterceptor));
+            ).AddInterceptors(walInterceptor);
+
+            var auditInterceptor = serviceProvider.GetService<AuditSaveChangesInterceptor>();
+            if (auditInterceptor is not null)
+                options.AddInterceptors(auditInterceptor);
+        });
 
         // AuditDbContext — fixed connection string
         services.AddDbContext<AuditDbContext>(options =>

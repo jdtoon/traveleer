@@ -42,7 +42,7 @@ public class SuperAdminAuthController : SwapController
 
         var admin = await _coreDb.SuperAdmins.FirstOrDefaultAsync(a => a.Email == email && a.IsActive);
         if (admin is null)
-            return SwapView(SwapViews.SuperAdminAuth.SuperAdminLogin, model: "Email not found.");
+            return SwapView(SwapViews.SuperAdminAuth.SuperAdminLogin, model: "Invalid credentials.");
 
         var token = await _magicLinks.GenerateTokenAsync(email);
         var callbackUrl = Url.Action("Verify", "SuperAdminAuth", new { token = token.Token }, Request.Scheme) ?? "/";

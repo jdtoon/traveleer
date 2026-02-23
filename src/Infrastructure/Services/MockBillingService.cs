@@ -364,10 +364,10 @@ public class MockBillingService : IBillingService
         return Task.FromResult(new WebhookResult(true));
     }
 
-    public Task VerifyAndLinkSubscriptionAsync(string reference)
+    public Task<bool> VerifyAndLinkSubscriptionAsync(string reference)
     {
         _logger.LogInformation("[MOCK BILLING] VerifyAndLinkSubscription reference={Reference}", reference);
-        return Task.CompletedTask;
+        return Task.FromResult(true);
     }
 
     public Task<bool> UpdatePlanInGatewayAsync(Guid planId)

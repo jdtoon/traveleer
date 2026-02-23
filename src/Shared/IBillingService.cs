@@ -37,7 +37,7 @@ public interface IBillingService
 
     // Webhooks
     Task<WebhookResult> ProcessWebhookAsync(string payload, string signature);
-    Task VerifyAndLinkSubscriptionAsync(string reference);
+    Task<bool> VerifyAndLinkSubscriptionAsync(string reference);
 
     // Customer portal
     Task<string?> GetManageLinkAsync(Guid tenantId);

@@ -20,6 +20,9 @@ public class TenantCredit
 
     // Partial consumption tracking
     public decimal RemainingAmount { get; set; }
+
+    // Optimistic concurrency
+    public Guid ConcurrencyStamp { get; set; } = Guid.NewGuid();
 }
 
 public enum CreditReason

@@ -115,7 +115,16 @@ public class SeatBillingService : ISeatBillingService
         }
 
         sub.Quantity = newCount;
-        await _db.SaveChangesAsync();
+        sub.ConcurrencyStamp = Guid.NewGuid();
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return new SeatChangeResult(false, Error: "Seat count was modified concurrently. Please try again.");
+        }
 
         _logger.LogInformation("Seat count changed for tenant {TenantId}: {Old} → {New}", tenantId, previousSeats, newCount);
         return new SeatChangeResult(true, PreviousSeats: previousSeats, NewSeats: newCount,

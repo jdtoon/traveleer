@@ -34,6 +34,9 @@ public class Discount : IAuditableEntity
     public DateTime? UpdatedAt { get; set; }
     public string? CreatedBy { get; set; }
     public string? UpdatedBy { get; set; }
+
+    // Optimistic concurrency
+    public Guid ConcurrencyStamp { get; set; } = Guid.NewGuid();
 }
 
 public enum DiscountType

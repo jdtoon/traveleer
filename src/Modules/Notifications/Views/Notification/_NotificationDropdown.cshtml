@@ -47,7 +47,7 @@
                              @if (!n.IsRead) {
                                  <text>hx-post="/@slug/notifications/@n.Id/read" hx-swap="none"</text>
                              }
-                             @if (!string.IsNullOrEmpty(n.Url)) {
+                             @if (!string.IsNullOrEmpty(n.Url) && (n.Url.StartsWith("/") || n.Url.StartsWith("https://"))) {
                                  <text>onclick="window.location='@n.Url'"</text>
                              }>
                             <div class="flex items-start gap-2">

@@ -951,7 +951,7 @@ public class PaystackBillingServiceTests : IAsyncDisposable
             .FirstOrDefaultAsync(s => s.TenantId == _tenantId);
         Assert.NotNull(sub);
         Assert.Equal(_proPlanId, sub.PlanId);
-        Assert.Equal(SubscriptionStatus.Active, sub.Status);
+        Assert.Equal(SubscriptionStatus.PendingPayment, sub.Status);
         Assert.Equal("ref_change_123", sub.PaystackSubscriptionCode);
 
         // Tenant's PlanId should be updated

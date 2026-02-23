@@ -299,9 +299,21 @@ public partial class TenantProvisionerService : ITenantProvisioner
                 _logger.LogError("Failed to create admin user: {Errors}", 
                     string.Join(", ", result.Errors.Select(e => e.Description)));
                 
-                // Clean up - delete tenant record
+                // Clean up — remove subscription, tenant, and database file
+                var orphanedSubs = await _coreDb.Subscriptions
+                    .Where(s => s.TenantId == tenant.Id).ToListAsync();
+                _coreDb.Subscriptions.RemoveRange(orphanedSubs);
                 _coreDb.Tenants.Remove(tenant);
                 await _coreDb.SaveChangesAsync();
+
+                var orphanedDb = Path.Combine(_tenantDbBasePath, $"{tenant.Slug}.db");
+                if (File.Exists(orphanedDb))
+                {
+                    File.Delete(orphanedDb);
+                    var wal = orphanedDb + "-wal"; var shm = orphanedDb + "-shm";
+                    if (File.Exists(wal)) File.Delete(wal);
+                    if (File.Exists(shm)) File.Delete(shm);
+                }
                 
                 return new TenantProvisioningResult(false, 
                     ErrorMessage: $"Failed to create admin user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
@@ -334,6 +346,51 @@ public partial class TenantProvisionerService : ITenantProvisioner
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error provisioning tenant {Slug}", slug);
+
+            // Best-effort cleanup to avoid orphaned resources
+            try
+            {
+                // Remove subscription created during this provisioning attempt
+                var tenantIdToClean = existingTenant?.Id ?? Guid.Empty;
+                var orphanedSubs = await _coreDb.Subscriptions
+                    .Where(s => s.TenantId == tenantIdToClean)
+                    .ToListAsync();
+                if (orphanedSubs.Count > 0)
+                {
+                    _coreDb.Subscriptions.RemoveRange(orphanedSubs);
+                }
+
+                // Remove tenant record only if we created it (free-plan flow)
+                if (existingTenant is null)
+                {
+                    var createdTenant = await _coreDb.Tenants
+                        .FirstOrDefaultAsync(t => t.Slug == slug.ToLowerInvariant());
+                    if (createdTenant is not null)
+                    {
+                        _coreDb.Tenants.Remove(createdTenant);
+                    }
+                }
+
+                await _coreDb.SaveChangesAsync();
+
+                // Delete the tenant SQLite database file if it was created
+                var orphanedDbPath = Path.Combine(_tenantDbBasePath, $"{slug.ToLowerInvariant()}.db");
+                if (File.Exists(orphanedDbPath))
+                {
+                    File.Delete(orphanedDbPath);
+                    // Also remove WAL/SHM files
+                    var walPath = orphanedDbPath + "-wal";
+                    var shmPath = orphanedDbPath + "-shm";
+                    if (File.Exists(walPath)) File.Delete(walPath);
+                    if (File.Exists(shmPath)) File.Delete(shmPath);
+                    _logger.LogInformation("Cleaned up orphaned tenant database: {DbPath}", orphanedDbPath);
+                }
+            }
+            catch (Exception cleanupEx)
+            {
+                _logger.LogError(cleanupEx, "Failed to clean up after failed provisioning of tenant {Slug}", slug);
+            }
+
             return new TenantProvisioningResult(false, ErrorMessage: "An error occurred during provisioning");
         }
     }

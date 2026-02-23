@@ -81,7 +81,7 @@ public class PaystackBillingService : IBillingService
             var paystackResult = await _paystack.InitializeTransactionAsync(new PaystackInitializeRequest
             {
                 Email = request.Email,
-                Amount = (int)amount,
+                Amount = (int)Math.Round(amount),
                 Currency = plan.Currency ?? "ZAR",
                 CallbackUrl = callbackUrl,
                 Plan = plan.PaystackMonthlyPlanCode,
@@ -101,7 +101,7 @@ public class PaystackBillingService : IBillingService
             {
                 TenantId = request.TenantId,
                 PlanId = request.PlanId,
-                Status = SubscriptionStatus.Active,
+                Status = SubscriptionStatus.PendingPayment,
                 BillingCycle = request.BillingCycle,
                 StartDate = DateTime.UtcNow,
                 PaystackSubscriptionCode = paystackResult.Reference
@@ -292,7 +292,7 @@ public class PaystackBillingService : IBillingService
             var paystackResult = await _paystack.InitializeTransactionAsync(new PaystackInitializeRequest
             {
                 Email = tenant.ContactEmail,
-                Amount = (int)chargeAmount,
+                Amount = (int)Math.Round(chargeAmount),
                 Currency = plan.Currency ?? "ZAR",
                 CallbackUrl = callbackUrl,
                 Plan = plan.PaystackMonthlyPlanCode,
@@ -311,7 +311,7 @@ public class PaystackBillingService : IBillingService
             if (existingSub is not null)
             {
                 existingSub.PlanId = newPlanId;
-                existingSub.Status = SubscriptionStatus.Active;
+                existingSub.Status = SubscriptionStatus.PendingPayment;
                 existingSub.PaystackSubscriptionCode = paystackResult.Reference;
                 existingSub.StartDate = DateTime.UtcNow;
                 existingSub.EndDate = null;
@@ -323,7 +323,7 @@ public class PaystackBillingService : IBillingService
                 {
                     TenantId = tenantId,
                     PlanId = newPlanId,
-                    Status = SubscriptionStatus.Active,
+                    Status = SubscriptionStatus.PendingPayment,
                     BillingCycle = BillingCycle.Monthly,
                     StartDate = DateTime.UtcNow,
                     PaystackSubscriptionCode = paystackResult.Reference
@@ -519,17 +519,26 @@ public class PaystackBillingService : IBillingService
 
             if (existing is null)
             {
-                _coreDb.WebhookEvents.Add(new WebhookEvent
+                try
                 {
-                    Id = Guid.NewGuid(),
-                    PaystackEventType = eventType,
-                    PaystackReference = webhookRef,
-                    Payload = payload,
-                    Status = WebhookEventStatus.Processing,
-                    Attempts = 1,
-                    ReceivedAt = DateTime.UtcNow
-                });
-                await _coreDb.SaveChangesAsync();
+                    _coreDb.WebhookEvents.Add(new WebhookEvent
+                    {
+                        Id = Guid.NewGuid(),
+                        PaystackEventType = eventType,
+                        PaystackReference = webhookRef,
+                        Payload = payload,
+                        Status = WebhookEventStatus.Processing,
+                        Attempts = 1,
+                        ReceivedAt = DateTime.UtcNow
+                    });
+                    await _coreDb.SaveChangesAsync();
+                }
+                catch (DbUpdateException)
+                {
+                    // Unique constraint violation — concurrent duplicate webhook, let the other one handle it
+                    _logger.LogInformation("Concurrent duplicate webhook detected: {Event} {Reference}", eventType, webhookRef);
+                    return new WebhookResult(true);
+                }
             }
         }
 
@@ -605,19 +614,30 @@ public class PaystackBillingService : IBillingService
         };
         _coreDb.Payments.Add(payment);
 
-        // Store authorization code if reusable
-        if (data.Authorization is not null && data.Authorization.Reusable)
+        // Store authorization code if reusable and activate pending subscriptions
         {
             var sub = await _coreDb.Subscriptions
-                .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+                .Where(s => s.TenantId == tenantId
+                    && (s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.PendingPayment))
                 .OrderByDescending(s => s.StartDate)
                 .FirstOrDefaultAsync();
 
             if (sub is not null)
             {
-                sub.PaystackAuthorizationCode = data.Authorization.AuthorizationCode;
-                sub.PaystackAuthorizationEmail = data.Customer?.Email;
-                _logger.LogInformation("Saved reusable authorization for tenant {TenantId}", tenantId);
+                // Activate subscription on successful payment
+                if (sub.Status == SubscriptionStatus.PendingPayment)
+                {
+                    sub.Status = SubscriptionStatus.Active;
+                    sub.StartDate = DateTime.UtcNow;
+                    _logger.LogInformation("Subscription activated after payment for tenant {TenantId}", tenantId);
+                }
+
+                if (data.Authorization is not null && data.Authorization.Reusable)
+                {
+                    sub.PaystackAuthorizationCode = data.Authorization.AuthorizationCode;
+                    sub.PaystackAuthorizationEmail = data.Customer?.Email;
+                    _logger.LogInformation("Saved reusable authorization for tenant {TenantId}", tenantId);
+                }
             }
         }
 
@@ -642,7 +662,16 @@ public class PaystackBillingService : IBillingService
         // This serves as a belt-and-suspenders with the subscription.create webhook
         await TryLinkSubscriptionFromReferenceAsync(reference, tenantId);
 
-        await _coreDb.SaveChangesAsync();
+        try
+        {
+            await _coreDb.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Unique constraint on Payment.PaystackReference — concurrent duplicate, safe to ignore
+            _logger.LogInformation("Duplicate payment detected for reference {Reference}, skipping", reference);
+            return new WebhookResult(true);
+        }
 
         await _audit.WriteAsync(new AuditEntry
         {
@@ -962,7 +991,7 @@ public class PaystackBillingService : IBillingService
     /// Verify a transaction and link the real SUB_ subscription code.
     /// Called from the payment callback to ensure we have correct data even before webhooks arrive.
     /// </summary>
-    public async Task VerifyAndLinkSubscriptionAsync(string reference)
+    public async Task<bool> VerifyAndLinkSubscriptionAsync(string reference)
     {
         try
         {
@@ -970,7 +999,7 @@ public class PaystackBillingService : IBillingService
             if (verification is null || verification.Status != "success")
             {
                 _logger.LogWarning("Transaction verification failed for {Reference}", reference);
-                return;
+                return false;
             }
 
             // Find the subscription that has this transaction reference
@@ -985,14 +1014,15 @@ public class PaystackBillingService : IBillingService
                     && Guid.TryParse(tidObj.ToString(), out var tid))
                 {
                     subscription = await _coreDb.Subscriptions
-                        .Where(s => s.TenantId == tid && s.Status == SubscriptionStatus.Active
+                        .Where(s => s.TenantId == tid
+                            && (s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.PendingPayment)
                             && (s.PaystackSubscriptionCode == null || s.PaystackSubscriptionCode == ""))
                         .OrderByDescending(s => s.StartDate)
                         .FirstOrDefaultAsync();
                 }
             }
 
-            if (subscription is null) return;
+            if (subscription is null) return false;
 
             // Now fetch subscription list for this customer to find the real subscription code
             if (verification.Customer is not null && !string.IsNullOrEmpty(verification.Customer.CustomerCode))
@@ -1024,11 +1054,20 @@ public class PaystackBillingService : IBillingService
                 }
             }
 
+            // Activate subscription on verified payment
+            if (subscription.Status == SubscriptionStatus.PendingPayment)
+            {
+                subscription.Status = SubscriptionStatus.Active;
+                subscription.StartDate = DateTime.UtcNow;
+            }
+
             await _coreDb.SaveChangesAsync();
+            return true;
         }
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "Transaction verification failed for {Reference}", reference);
+            return false;
         }
     }
 

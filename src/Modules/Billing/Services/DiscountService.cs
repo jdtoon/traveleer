@@ -94,7 +94,16 @@ public class DiscountService : IDiscountService
 
         _db.TenantDiscounts.Add(tenantDiscount);
         discount.CurrentRedemptions++;
-        await _db.SaveChangesAsync();
+        discount.ConcurrencyStamp = Guid.NewGuid();
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException("Discount was modified concurrently. Please try again.");
+        }
 
         _logger.LogInformation("Applied discount {Code} to tenant {TenantId}", code, tenantId);
         return tenantDiscount;
