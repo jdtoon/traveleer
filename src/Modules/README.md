@@ -2,6 +2,39 @@
 
 Self-contained vertical-slice feature modules. Each module owns its entities, services, views, permissions, and features.
 
+## Framework vs App Modules
+
+Modules are split into two categories in `Program.cs`:
+
+### Framework Modules (SaaS engine — do not modify)
+
+These form the reusable SaaS platform. When pulling upstream updates, these should merge cleanly because you haven't touched them.
+
+| Module | Description |
+|--------|-------------|
+| **Tenancy** | Tenant entity, resolution middleware, reserved slugs, route prefixes |
+| **Auth** | Magic link auth, Identity, cookie schemes, 2FA (tenant + SuperAdmin) |
+| **Registration** | Tenant signup flow, email verification |
+| **Billing** | Paystack integration, plans, subscriptions, invoices, credits |
+| **SuperAdmin** | Platform administration dashboard |
+| **FeatureFlags** | Plan-gated feature flags |
+| **Dashboard** | Tenant dashboard |
+| **TenantAdmin** | User, role, and settings management |
+| **Audit** | Change tracking via EF interceptor |
+| **Notifications** | In-app notification system |
+| **Marketing** | Public marketing pages (landing, pricing, contact) |
+| **Litestream** | SQLite backup/restore with Litestream |
+
+### App Modules (your project — customize freely)
+
+These are project-specific. Replace or extend them for your own domain.
+
+| Module | Description |
+|--------|-------------|
+| **Notes** | Example module — demonstrates CRUD, features, permissions, role mappings, events |
+
+> **When starting a new project:** Delete the Notes module, create your own modules in `Modules/YourModule/`, and register them in the "App modules" section of `Program.cs`.
+
 ## Module Contract (`IModule`)
 
 Every module implements `IModule` from `Shared/`. The contract provides:
@@ -41,17 +74,4 @@ Every module implements `IModule` from `Shared/`. The contract provides:
 
 ## Current Modules
 
-| Module | Features | Permissions | Description |
-|--------|----------|-------------|-------------|
-| Tenancy | — | — | Tenant entity, roles, reserved slugs, route prefixes |
-| Notes | notes | 4 (CRUD) | Example tenant module with full CRUD |
-| TenantAdmin | custom_roles | 10 (users/roles/settings) | User, role, and settings management |
-| Audit | audit_log | — | Change tracking via EF interceptor |
-| Auth | sso | — | Magic link auth, Identity, cookie schemes |
-| Billing | — | — | Paystack integration, plans, subscriptions |
-| Marketing | — | — | Public marketing pages |
-| SuperAdmin | — | — | Platform administration |
-| Registration | — | — | Tenant signup flow |
-| Dashboard | — | — | Tenant dashboard |
-| FeatureFlags | — | — | Feature flag service |
-| Litestream | — | — | Litestream backup config sync, restore, key backup |
+See [Framework vs App Modules](#framework-vs-app-modules) above.

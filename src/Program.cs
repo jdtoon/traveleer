@@ -69,19 +69,22 @@ builder.Services.AddSingleton<saas.Infrastructure.Services.IEmailTemplateService
 
 var modules = new IModule[]
 {
+    // --- Framework modules (SaaS engine — do not modify) ----------------------
     new saas.Modules.Tenancy.TenancyModule(),
-    new saas.Modules.Billing.BillingModule(),
-    new saas.Modules.Marketing.MarketingModule(),
     new saas.Modules.Auth.AuthModule(),
-    new saas.Modules.SuperAdmin.SuperAdminModule(),
     new saas.Modules.Registration.RegistrationModule(),
+    new saas.Modules.Billing.BillingModule(),
+    new saas.Modules.SuperAdmin.SuperAdminModule(),
     new saas.Modules.FeatureFlags.FeatureFlagsModule(),
     new saas.Modules.Dashboard.DashboardModule(),
-    new saas.Modules.Notes.NotesModule(),
-    new saas.Modules.Audit.AuditModule(),
     new saas.Modules.TenantAdmin.TenantAdminModule(),
+    new saas.Modules.Audit.AuditModule(),
+    new saas.Modules.Notifications.NotificationsModule(),
+    new saas.Modules.Marketing.MarketingModule(),
     new saas.Modules.Litestream.LitestreamModule(),
-    new saas.Modules.Notifications.NotificationsModule()
+
+    // --- App modules (your project — add, remove, or customize freely) --------
+    new saas.Modules.Notes.NotesModule(),       // Example module — replace with your own
 };
 
 foreach (var module in modules)

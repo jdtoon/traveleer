@@ -75,6 +75,7 @@
                                 Dashboard
                             </swap-nav>
                         </li>
+                        @* ── App modules (customize this section) ──────── *@
                         @if (notesEnabled)
                         {
                         <li>
@@ -86,6 +87,7 @@
                             </swap-nav>
                         </li>
                         }
+                        @* ── End app modules ──────────────────────────── *@
                         <li class="menu-title mt-2"><span>Account</span></li>
                         <li>
                             <swap-nav to="/@slug/Profile" class="@(controller == "Profile" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">

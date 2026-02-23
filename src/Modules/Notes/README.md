@@ -1,6 +1,16 @@
-# Notes Module
+# Notes Module (Example — Replace With Your Own)
 
-Example tenant module demonstrating the full vertical-slice pattern with CRUD operations.
+> **This is a sample module** included to demonstrate the full vertical-slice pattern. When starting a new project, delete this module and create your own domain modules using the same structure.
+
+## What This Demonstrates
+
+- **IModule implementation** — features, permissions, default role mappings, view paths
+- **Tenant-scoped entities** — `Note` entity stored in per-tenant SQLite DB
+- **EF configuration** — `ITenantEntityConfiguration` marker for auto-discovery
+- **Plan-gated feature** — `notes` feature requires the `starter` plan
+- **Granular permissions** — 4 CRUD permissions with role-based defaults
+- **Domain events** — MassTransit events for note creation
+- **Swap.Htmx views** — Full CRUD with HTMX partial swaps and modals
 
 ## Structure
 

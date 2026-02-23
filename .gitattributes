@@ -8,3 +8,16 @@ Dockerfile text eol=lf
 # YAML configs
 *.yml text eol=lf
 *.yaml text eol=lf
+
+# =============================================================================
+# Merge strategies for upstream framework pulls
+# =============================================================================
+# Program.cs has framework + app module sections — union merge avoids conflicts
+# when both sides add modules to their respective sections
+src/Program.cs merge=union
+
+# Local settings should never be overwritten by upstream
+src/appsettings.local.json merge=ours
+
+# App modules are project-specific — upstream never touches these
+src/Modules/Notes/** merge=ours
