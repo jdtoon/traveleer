@@ -37,10 +37,34 @@ services:
       - SuperAdmin__Email=${SuperAdmin__Email:-admin@localhost}
       # ── Billing (Paystack) ──────────────────────────────────
       - Billing__Provider=${Billing__Provider:-Mock}
+      - Billing__Currency=${Billing__Currency:-ZAR}
       - Billing__Paystack__SecretKey=${Billing__Paystack__SecretKey:-}
       - Billing__Paystack__PublicKey=${Billing__Paystack__PublicKey:-}
       - Billing__Paystack__WebhookSecret=${Billing__Paystack__WebhookSecret:-}
       - Billing__Paystack__CallbackBaseUrl=${Billing__Paystack__CallbackBaseUrl:-http://localhost:8080}
+      # ── Billing (Tax) ───────────────────────────────────────
+      - Billing__Tax__Rate=${Billing__Tax__Rate:-0.15}
+      - Billing__Tax__Label=${Billing__Tax__Label:-VAT}
+      - Billing__Tax__Included=${Billing__Tax__Included:-true}
+      # ── Billing (Company — for invoices) ────────────────────
+      - Billing__Company__Name=${Billing__Company__Name:-}
+      - Billing__Company__Address=${Billing__Company__Address:-}
+      - Billing__Company__VatNumber=${Billing__Company__VatNumber:-}
+      # ── Billing (Invoice) ───────────────────────────────────
+      - Billing__Invoice__Prefix=${Billing__Invoice__Prefix:-INV}
+      - Billing__Invoice__PaymentTermDays=${Billing__Invoice__PaymentTermDays:-7}
+      # ── Billing (Trial & Grace Period) ──────────────────────
+      - Billing__Trial__DefaultDays=${Billing__Trial__DefaultDays:-14}
+      - Billing__GracePeriod__Days=${Billing__GracePeriod__Days:-3}
+      - Billing__GracePeriod__DunningAttempts=${Billing__GracePeriod__DunningAttempts:-3}
+      - Billing__GracePeriod__DunningIntervalHours=${Billing__GracePeriod__DunningIntervalHours:-72}
+      # ── Billing (Feature Toggles) ───────────────────────────
+      - Billing__Features__AnnualBilling=${Billing__Features__AnnualBilling:-true}
+      - Billing__Features__PerSeatBilling=${Billing__Features__PerSeatBilling:-false}
+      - Billing__Features__UsageBilling=${Billing__Features__UsageBilling:-false}
+      - Billing__Features__AddOns=${Billing__Features__AddOns:-false}
+      - Billing__Features__Discounts=${Billing__Features__Discounts:-true}
+      - Billing__Features__SetupFees=${Billing__Features__SetupFees:-false}
       # ── Email ────────────────────────────────────────────────
       - Email__Provider=${Email__Provider:-Console}
       - Email__FromAddress=${Email__FromAddress:-no-reply@localhost}
