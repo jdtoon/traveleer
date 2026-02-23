@@ -66,33 +66,28 @@
     </div>
 </div>
 
-<script src="/lib/qrcode/qrcode.min.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var el = document.getElementById("qrcode");
-        if (el && typeof QRCode !== "undefined") {
-            new QRCode(el, {
-                text: "@Html.Raw(otpUri)",
-                width: 200,
-                height: 200,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.M
-            });
-        }
-    });
-    // Also fire immediately for HTMX partial swaps
     (function() {
-        var el = document.getElementById("qrcode");
-        if (el && typeof QRCode !== "undefined") {
-            new QRCode(el, {
-                text: "@Html.Raw(otpUri)",
-                width: 200,
-                height: 200,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.M
-            });
+        function renderQR() {
+            var el = document.getElementById("qrcode");
+            if (el && el.children.length === 0 && typeof QRCode !== "undefined") {
+                new QRCode(el, {
+                    text: "@Html.Raw(otpUri)",
+                    width: 200,
+                    height: 200,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            }
+        }
+        if (typeof QRCode !== "undefined") {
+            renderQR();
+        } else {
+            var s = document.createElement("script");
+            s.src = "/lib/qrcode/qrcode.min.js";
+            s.onload = renderQR;
+            document.head.appendChild(s);
         }
     })();
 </script>
