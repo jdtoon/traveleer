@@ -134,7 +134,8 @@ public static class ApplicationBuilderExtensions
 
     /// <summary>
     /// Sync module-defined permissions to all existing tenant databases.
-    /// Adds any new permissions that don't exist yet (idempotent by Key).
+    /// Adds any new permissions that don't exist yet (idempotent by Key)
+    /// and ensures role-permission mappings match module defaults for system roles.
     /// </summary>
     private static async Task SyncPermissionsToTenantsAsync(IReadOnlyList<IModule> modules, ILogger logger)
     {
@@ -156,6 +157,8 @@ public static class ApplicationBuilderExtensions
                     .Options;
 
                 await using var tenantDb = new TenantDbContext(options);
+
+                // ── 1. Sync Permission rows ──────────────────────────────
                 var existingKeys = await tenantDb.Permissions
                     .Select(p => p.Key)
                     .ToListAsync();
@@ -181,6 +184,59 @@ public static class ApplicationBuilderExtensions
                     logger.LogInformation(
                         "Synced {Count} new permissions to tenant DB {DbFile}",
                         newPermissions.Count, Path.GetFileName(dbFile));
+                }
+
+                // ── 2. Sync role-permission mappings (system roles only) ─
+                var allPermissions = await tenantDb.Permissions.ToListAsync();
+                var permissionByKey = allPermissions.ToDictionary(p => p.Key, StringComparer.OrdinalIgnoreCase);
+
+                var systemRoles = await tenantDb.Roles
+                    .Where(r => r.IsSystemRole)
+                    .ToListAsync();
+                var roleByName = systemRoles.ToDictionary(r => r.Name!, StringComparer.OrdinalIgnoreCase);
+
+                var existingRolePerms = await tenantDb.RolePermissions
+                    .Select(rp => new { rp.RoleId, rp.PermissionId })
+                    .ToListAsync();
+                var existingRolePermSet = new HashSet<(string RoleId, Guid PermissionId)>(
+                    existingRolePerms.Select(rp => (rp.RoleId, rp.PermissionId)));
+
+                var pending = new HashSet<(string RoleId, Guid PermissionId)>(existingRolePermSet);
+
+                // Admin system role gets every permission
+                if (roleByName.TryGetValue("Admin", out var adminRole))
+                {
+                    foreach (var perm in allPermissions)
+                        pending.Add((adminRole.Id, perm.Id));
+                }
+
+                // Module-declared mappings for other system roles (e.g. Member)
+                var roleMappings = modules.SelectMany(m => m.DefaultRolePermissions).ToList();
+                foreach (var mapping in roleMappings)
+                {
+                    if (roleByName.TryGetValue(mapping.RoleName, out var role) &&
+                        permissionByKey.TryGetValue(mapping.PermissionKey, out var perm))
+                    {
+                        pending.Add((role.Id, perm.Id));
+                    }
+                }
+
+                // Only insert rows that don't already exist
+                var toInsert = pending.Except(existingRolePermSet)
+                    .Select(x => new saas.Modules.Auth.Entities.RolePermission
+                    {
+                        RoleId = x.RoleId,
+                        PermissionId = x.PermissionId
+                    })
+                    .ToList();
+
+                if (toInsert.Count > 0)
+                {
+                    tenantDb.RolePermissions.AddRange(toInsert);
+                    await tenantDb.SaveChangesAsync();
+                    logger.LogInformation(
+                        "Synced {Count} role-permission mappings to tenant DB {DbFile}",
+                        toInsert.Count, Path.GetFileName(dbFile));
                 }
             }
             catch (Exception ex)

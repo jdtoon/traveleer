@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using saas.Shared;
@@ -19,7 +20,21 @@ public class HasPermissionAttribute : Attribute, IAsyncAuthorizationFilter
         var currentUser = context.HttpContext.RequestServices.GetRequiredService<ICurrentUser>();
         if (!currentUser.HasAnyPermission(_permissions))
         {
-            context.Result = new ForbidResult();
+            var isHtmx = context.HttpContext.Request.Headers.ContainsKey("HX-Request");
+            if (isHtmx)
+            {
+                context.HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
+                context.Result = new ContentResult
+                {
+                    StatusCode = StatusCodes.Status403Forbidden,
+                    Content = "<div class=\"alert alert-error\"><span>You don't have permission to access this resource.</span></div>",
+                    ContentType = "text/html"
+                };
+            }
+            else
+            {
+                context.Result = new ForbidResult(AuthSchemes.Tenant);
+            }
             return Task.CompletedTask;
         }
 
