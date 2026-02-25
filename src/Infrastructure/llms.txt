@@ -1,0 +1,270 @@
+# Infrastructure — LLM Context
+
+> Complete context for the cross-cutting infrastructure layer: middleware, services, provisioning, messaging, jobs, and health checks.
+
+## Overview
+
+The `src/Infrastructure/` directory contains all cross-cutting concerns: startup extensions, middleware, background jobs, health checks, messaging, provisioning, and shared services. These are not modules — they're the platform plumbing that modules depend on.
+
+## File Structure
+
+```
+src/Infrastructure/
+├── ApplicationBuilderExtensions.cs   # Pipeline config, DB init, migrations
+├── CachingExtensions.cs              # IDistributedCache (Memory/Redis)
+├── ErrorPages.cs                     # Custom error page rendering
+├── InvariantDecimalModelBinder.cs    # Culture-invariant decimal binding
+├── LoggingExtensions.cs              # Serilog configuration
+├── ModuleViewLocationExpander.cs     # Maps controllers → module view folders
+├── MvcExtensions.cs                  # Swap.Htmx + MVC setup
+├── SchedulingExtensions.cs           # Hangfire (InMemory/SQLite)
+├── ServiceCollectionExtensions.cs    # Core DI registrations
+├── WebOptimizerExtensions.cs         # CSS/JS bundling
+├── HealthChecks/
+│   ├── DiskSpaceHealthCheck.cs
+│   ├── HangfireHealthCheck.cs
+│   ├── LitestreamReadinessHealthCheck.cs
+│   ├── RabbitMqHealthCheck.cs
+│   ├── RedisHealthCheck.cs
+│   ├── SeqHealthCheck.cs
+│   └── TenantDirectoryHealthCheck.cs
+├── Jobs/
+│   ├── BillingReconciliationJob.cs
+│   ├── DiscountExpiryJob.cs
+│   ├── DunningJob.cs
+│   ├── ExpiredTrialJob.cs
+│   ├── StaleSessionCleanupJob.cs
+│   ├── TenantDeletionJob.cs
+│   └── UsageBillingJob.cs
+├── Messaging/
+│   ├── MessagingExtensions.cs        # MassTransit (InMemory/RabbitMQ)
+│   └── Consumers/
+│       └── DomainEventConsumers.cs
+├── Middleware/
+│   ├── CurrentUserMiddleware.cs
+│   ├── SecurityHeadersMiddleware.cs
+│   ├── TenantContext.cs              # ITenantContext implementation
+│   └── TenantResolutionMiddleware.cs
+├── Provisioning/
+│   ├── ITenantProvisioner.cs
+│   └── TenantProvisionerService.cs
+└── Services/
+    └── (Various infrastructure services)
+```
+
+## Startup Pipeline
+
+### ServiceCollectionExtensions.cs
+
+Key registration methods called from `Program.cs`:
+
+| Method | Registers |
+|--------|-----------|
+| `AddDataProtectionConfig` | DataProtection keys in `db/keys/` |
+| `AddCompressionConfig` | Brotli + Gzip response compression |
+| `AddDatabaseConfig` | CoreDbContext, AuditDbContext, TenantDbContext (dynamic routing) |
+| `AddCoreServices` | ITenantContext, SiteSettings, rate limiters |
+
+### Database Registration Pattern
+
+```csharp
+// TenantDbContext — dynamic connection string per request
+services.AddDbContext<TenantDbContext>((sp, options) => {
+    var tenant = sp.GetRequiredService<ITenantContext>();
+    if (tenant.IsTenantRequest && tenant.Slug is not null)
+        options.UseSqlite($"Data Source=db/tenants/{tenant.Slug}.db");
+    else
+        options.UseSqlite("Data Source=:memory:");
+});
+```
+
+Both CoreDbContext and TenantDbContext have `AuditSaveChangesInterceptor` and `WalModeInterceptor` (enables WAL mode for SQLite concurrency).
+
+### ApplicationBuilderExtensions.cs
+
+Two-phase startup:
+
+**Phase 1 — Database Init** (`InitializeDatabaseAsync`):
+1. Apply CoreDbContext migrations
+2. Apply AuditDbContext migrations
+3. Apply TenantDbContext migrations for all existing tenant DBs
+4. Seed core data (features from modules, plans, super admin)
+5. Sync permissions to all existing tenants
+6. DevSeed demo data (if enabled)
+
+**Phase 2 — Pipeline** (`ConfigurePipeline`):
+```
+ResponseCompression → ForwardedHeaders → Serilog → SecurityHeaders
+→ ExceptionHandler (prod) → StatusCodePages → HTTPS → WebOptimizer
+→ StaticFiles → Routing → TenantResolution → RateLimiter
+→ Authentication → SwapHtmx → Authorization → CurrentUser
+```
+
+## Middleware
+
+### TenantResolutionMiddleware
+- Extracts first URL segment as potential tenant slug
+- Skips public route prefixes (collected from all `IModule.PublicRoutePrefixes`)
+- Looks up tenant in CoreDbContext (cached via IDistributedCache, configurable TTL)
+- Sets `ITenantContext.Slug`, `TenantId`, `TenantName`, `IsTenantRequest`
+- Returns 404 for invalid slugs, redirects suspended/deleted tenants
+
+### ITenantContext
+```csharp
+public interface ITenantContext
+{
+    bool IsTenantRequest { get; }
+    string? Slug { get; }
+    int? TenantId { get; }
+    string? TenantName { get; }
+}
+```
+
+### CurrentUserMiddleware
+Runs after authentication. Populates `ICurrentUser` from `ClaimsPrincipal` claims.
+
+### SecurityHeadersMiddleware
+Sets CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy headers.
+
+## Provisioning
+
+### ITenantProvisioner
+```csharp
+Task<TenantProvisionResult> ProvisionTenantAsync(string slug, string adminEmail, int planId);
+Task<SlugValidationResult> ValidateSlugAsync(string slug);
+```
+
+### TenantProvisionerService (457 lines)
+Full 12-step provisioning:
+1. Validate slug (format, reserved, uniqueness)
+2. Create `Tenant` record in core DB (or activate existing PendingSetup)
+3. Create `Subscription` (trialing, configurable trial days)
+4. Create SQLite file at `db/tenants/{slug}.db`, run migrations
+5. Sync Litestream config (touch sentinel file)
+6. Create Identity roles (from all `IModule.DefaultRoles`, deduplicated)
+7. Seed permissions (from all `IModule.Permissions`)
+8. Map permissions to roles (Admin gets all; others per `DefaultRolePermissions`)
+9. Call `SeedTenantAsync()` on each module
+10. Create admin `AppUser` with Admin role
+11. Publish `TenantCreatedEvent` via MassTransit
+12. Full cleanup on failure (removes subscription, tenant, DB files)
+
+## Messaging (MassTransit)
+
+### Configuration
+- `InMemory` (default/dev) — in-process transport
+- `RabbitMQ` (prod) — real message broker
+- Auto-discovers `IConsumer<T>` implementations in assembly
+- Retry: 1s, 5s, 15s, 30s intervals
+
+### Built-in Consumers
+| Consumer | Event | Action |
+|----------|-------|--------|
+| `TenantCreatedConsumer` | `TenantCreatedEvent` | Sends welcome email |
+| `TenantPlanChangedConsumer` | `TenantPlanChangedEvent` | Logs plan change |
+| `SendEmailConsumer` | `SendEmailCommand` | Async email delivery |
+
+### Publishing Events
+```csharp
+// Inject IPublishEndpoint
+await bus.Publish(new TenantCreatedEvent(tenantId, slug, adminEmail));
+```
+
+## Background Jobs (Hangfire)
+
+### Configuration
+- `InMemory` (default/dev) — jobs lost on restart
+- `SQLite` (prod) — persistent at `db/hangfire.db`
+- Dashboard: `/super-admin/hangfire` (SuperAdmin auth)
+- Three queues: `default`, `emails`, `maintenance`
+- Worker count: configurable (default 2)
+
+### Recurring Jobs
+| Job | Schedule | Queue | Purpose |
+|-----|----------|-------|---------|
+| `BillingReconciliationJob` | Daily 2 AM | default | Reconcile Paystack subscription state |
+| `UsageBillingJob` | Daily 1 AM | default | Process metered usage charges |
+| `DunningJob` | Hourly | default | Retry failed payments |
+| `ExpiredTrialJob` | Daily 6 AM | default | Handle expired trial subscriptions |
+| `DiscountExpiryJob` | Daily 4 AM | default | Expire past-due discount codes |
+| `TenantDeletionJob` | Daily 3 AM | maintenance | Clean up soft-deleted tenants |
+| `StaleSessionCleanupJob` | Daily 3:30 AM | maintenance | Remove expired user sessions |
+
+## Health Checks
+
+Two endpoints:
+- `/health` — core checks only (Docker HEALTHCHECK)
+- `/health/full` — all checks (SuperAdmin dashboard)
+
+| Check | Class | Tags |
+|-------|-------|------|
+| `core-database` | Built-in DbContext check | — |
+| `tenant-directory` | `TenantDirectoryHealthCheck` | — |
+| `litestream-readiness` | `LitestreamReadinessHealthCheck` | — |
+| `redis` | `RedisHealthCheck` | infrastructure |
+| `rabbitmq` | `RabbitMqHealthCheck` | infrastructure |
+| `seq` | `SeqHealthCheck` | infrastructure |
+| `disk-space` | `DiskSpaceHealthCheck` | infrastructure |
+| `hangfire` | `HangfireHealthCheck` | infrastructure |
+
+Pattern: implement `IHealthCheck`, use optional DI (`IService?` param) so checks return Healthy("Not configured") when the service isn't registered.
+
+## Caching
+
+### Configuration
+- `Memory` (default) — `IMemoryCache` wrapped as `IDistributedCache`
+- `Redis` (prod) — real distributed cache
+- Size limit configurable via `Caching:MemoryCacheSizeLimit`
+
+### TTL Settings
+| Key | Default | Used By |
+|-----|---------|---------|
+| `TenantResolutionMinutes` | 3 | TenantResolutionMiddleware |
+| `FeatureDefinitionsMinutes` | 5 | DatabaseFeatureDefinitionProvider |
+| `TenantOverridesMinutes` | 5 | TenantPlanFeatureFilter |
+| `TenantPlanMinutes` | 10 | TenantPlanFeatureFilter |
+| `RateLimitPlanMinutes` | 5 | Rate limiter |
+
+## Rate Limiting
+
+Three policies registered in `ServiceCollectionExtensions`:
+
+| Policy | Config | Purpose |
+|--------|--------|---------|
+| `global` | `RateLimiting:GlobalPerMinute` | Default for all routes |
+| `strict` | `RateLimiting:StrictPerMinute` | Sensitive ops (login, registration) |
+| `tenant` | Plan's `MaxRequestsPerMinute` | Per-tenant from plan config |
+
+Additional fixed-window policies for registration, contact form, and webhooks.
+
+## MVC / View Resolution
+
+### ModuleViewLocationExpander
+Custom `IViewLocationExpander` that reads `ControllerViewPaths` from all modules:
+```
+Controller "Notes" → module "Notes" → /Modules/Notes/Views/Notes/{view}.cshtml
+                                    → /Modules/Notes/Views/Shared/{view}.cshtml
+```
+
+### MvcExtensions
+- Registers Swap.Htmx with auto-layout suppression for HTMX requests
+- Sets `#main-content` as default navigation target
+- Registers `InvariantDecimalModelBinder` for decimal inputs
+- Auto-discovers `ISwapEventConfiguration` implementations
+
+## Logging (Serilog)
+
+Configured in `LoggingExtensions.cs`:
+- Console sink (structured, always enabled)
+- Seq sink (when `Infrastructure:SeqUrl` is set)
+- Request logging with enrichers (client IP, request ID)
+- Minimum level: Information (Debug in Development)
+
+## Key Extension Points
+
+To add infrastructure capabilities:
+- **New health check**: Implement `IHealthCheck`, register in `Program.cs`
+- **New recurring job**: Create job class, register in `SchedulingExtensions.RegisterRecurringJobs`
+- **New domain event**: Define record, publish via `IPublishEndpoint`, create `IConsumer<T>`
+- **New middleware**: Create middleware class, register in `ConfigurePipeline` or module's `RegisterMiddleware`
+- **New rate limit policy**: Add in `ServiceCollectionExtensions.AddCoreServices`

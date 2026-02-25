@@ -1,0 +1,137 @@
+# SaaS Starter Kit — LLM Context
+
+> This file provides a structured overview of the entire solution for LLM consumption.
+
+## Solution Identity
+
+- **Framework**: ASP.NET Core .NET 10 modular monolith
+- **UI**: Swap.Htmx (server-driven HTMX) + DaisyUI 5 + Tailwind CSS v4
+- **Database**: SQLite (3-database model) with EF Core
+- **Payments**: Paystack (ZAR, 15% VAT inclusive)
+- **Auth**: Passwordless magic link + optional TOTP 2FA
+- **Solution file**: `saas.sln`, single project at `src/`
+
+## Architecture
+
+Multi-tenant SaaS platform using tenant-per-database isolation with SQLite. Each tenant gets their own database file at `db/tenants/{slug}.db`. Shared platform data lives in `db/core.db`. Audit trail in `db/audit.db`.
+
+Requests to `/{slug}/...` are resolved by `TenantResolutionMiddleware` which sets `ITenantContext` for the request scope. `TenantDbContext` dynamically routes to the correct SQLite file based on the resolved slug.
+
+## Module Inventory
+
+13 modules in `src/Modules/`, each implementing `IModule`:
+
+| Module | Purpose | Key Services |
+|--------|---------|-------------|
+| Tenancy | Tenant entity, lifecycle, status management | ITenantLifecycleService |
+| Auth | Magic link auth, 2FA, sessions, permissions | MagicLinkService, ICurrentUser, TwoFactorService |
+| Registration | Tenant signup (free + paid paths) | PendingRegistration, slug validation |
+| Billing | Subscriptions, invoicing, payments, usage | IBillingService, PaystackBillingService, VariableChargeService |
+| SuperAdmin | Platform admin dashboard | ISuperAdminService, IInfrastructureService |
+| FeatureFlags | Plan-gated features via Microsoft.FeatureManagement | IFeatureService, TenantPlanFeatureFilter |
+| Dashboard | Tenant landing page | — |
+| TenantAdmin | Tenant settings, team, roles, billing | ITenantAdminService |
+| Audit | Entity change tracking | IAuditWriter, AuditSaveChangesInterceptor |
+| Notifications | In-app notification system | INotificationService |
+| Marketing | Public pages, pricing, contact, SEO | — |
+| Litestream | SQLite backup to Cloudflare R2 | ILitestreamStatusService |
+| Notes | **Example app module** — full CRUD reference | INotesService |
+
+## Shared Interfaces (src/Shared/)
+
+Provider-switching interfaces — implementations selected by config:
+
+| Interface | Config Key | Providers |
+|-----------|-----------|-----------|
+| `IEmailService` | `Email:Provider` | Console, Smtp, MailerSend |
+| `IBillingService` | `Billing:Provider` | Mock, Paystack |
+| `IBotProtection` | `Turnstile:Provider` | Mock, Cloudflare |
+| `IStorageService` | `Storage:Provider` | Local, R2 |
+| `IDistributedCache` | `Caching:Provider` | Memory, Redis |
+| MassTransit | `Messaging:Provider` | InMemory, RabbitMQ |
+| Hangfire | `Hangfire:Storage` | InMemory, SQLite |
+
+Other key interfaces: `ICurrentUser`, `IFeatureService`, `IAuditWriter`, `ILitestreamStatusService`, `IModule`.
+
+## Database Contexts
+
+| Context | Database | Marker Interface | Content |
+|---------|----------|-----------------|---------|
+| `CoreDbContext` | `db/core.db` | `ICoreEntityConfiguration` | Tenants, Plans, Subscriptions, Invoices, Payments, Features, SuperAdmins |
+| `AuditDbContext` | `db/audit.db` | — | AuditEntry (auto-tracked entity changes) |
+| `TenantDbContext` | `db/tenants/{slug}.db` | `ITenantEntityConfiguration` | Identity (AppUser/AppRole), Permissions, Notes, Notifications, Sessions |
+
+## Request Pipeline
+
+```
+Request → Compression → ForwardedHeaders → Serilog → SecurityHeaders
+  → HTTPS → WebOptimizer → StaticFiles → Routing
+  → TenantResolution → RateLimiter → Authentication → SwapHtmx
+  → Authorization → CurrentUser → Controller
+```
+
+## Auth System
+
+Dual cookie schemes: `TenantAuth` (`.Tenant.Auth`, 12h) and `SuperAdminAuth` (`.SuperAdmin.Auth`, 24h).
+
+Policies: `"TenantUser"` (has `tenant_slug` claim), `"TenantAdmin"` (+ Admin role), `"SuperAdmin"` (has `is_super_admin` claim).
+
+Controller attributes: `[Authorize(Policy)]`, `[RequireFeature("slug")]`, `[HasPermission("slug")]`.
+
+View tag helpers: `<has-permission>`, `<feature>`.
+
+## Billing Flow
+
+Registration → Plan Selection → Paystack Checkout → Webhook confirms → Subscription active.
+
+Recurring: Paystack manages subscription billing. Webhooks update Invoice/Payment records.
+
+Variable charges: `VariableChargeService` calculates seat + usage overage, generates invoice, calls `charge_authorization` on stored card. Handles 2FA challenge, success, failure → dunning.
+
+## Tenant Provisioning
+
+12-step process: validate slug → create Tenant → create Subscription → create SQLite DB → migrate → sync Litestream → create roles → seed permissions → map role permissions → SeedTenantAsync per module → create admin user → publish TenantCreatedEvent. Full rollback on failure.
+
+## Configuration
+
+All config in `appsettings.json` with environment overrides. Key sections: Site, ConnectionStrings, SuperAdmin, Tenancy, Email, Billing (with Paystack, Tax, Company, Invoice, Trial, GracePeriod, Features, UsageMetrics), Turnstile, Litestream, Storage, Messaging, Caching (with TTL), Hangfire, RateLimiting, Infrastructure, DevSeed.
+
+See `docs/CONFIGURATION-REFERENCE.md` for complete reference.
+
+## File Structure Convention
+
+```
+src/Modules/{Module}/
+├── {Module}Module.cs        # IModule implementation
+├── Controllers/             # MVC controllers (SwapController base)
+├── Data/                    # EF configurations (marker interfaces)
+├── Entities/                # Domain entities
+├── Events/                  # SwapEventSource + domain events
+├── Services/                # Interface + implementation
+└── Views/                   # Razor views (HTMX partials)
+```
+
+## Key Patterns
+
+- **SwapController** — base class with `SwapView()` and `SwapResponse()` builders for HTMX
+- **Source-generated events** — `[SwapEventSource]` generates type-safe event constants
+- **PaginatedList<T>** — standard pagination via `.ToPaginatedListAsync(page, size)`
+- **IAuditableEntity** — auto-tracked `CreatedAt`, `UpdatedAt`, `CreatedBy`, `UpdatedBy`
+- **[AuditIgnore]** — opt-out property from audit trail
+- **ModuleFeature** — `(slug, name, description, minPlanSlug)` for feature gating
+- **ModulePermission** — `(slug, group, description)` for RBAC
+
+## Testing
+
+- Unit tests: `tests/saas.UnitTests/` — xUnit, in-memory SQLite, private nested stubs
+- Integration tests: `tests/saas.IntegrationTests/` — WebApplicationFactory
+- Pattern: services tested against real DB; controllers via service stubs
+
+## Documentation Index
+
+- `docs/ARCHITECTURE-OVERVIEW.md` — Full architecture with diagrams
+- `docs/CONFIGURATION-REFERENCE.md` — Every config section documented
+- `docs/DEVELOPMENT-GUIDE.md` — How to add modules, entities, jobs, events
+- `docs/BILLING-ENGINE.md` — Billing system deep dive
+- `docs/BILLING-IMPLEMENTATION-GUIDE.md` — Medical practice billing example
+- Each module has a `README.md` in its directory

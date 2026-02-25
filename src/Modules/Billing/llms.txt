@@ -1,0 +1,170 @@
+# Billing Module — LLM Context
+
+> Complete context for the billing system. For integration patterns see `docs/BILLING-ENGINE.md`.
+
+## Overview
+
+Hybrid billing via Paystack: recurring subscriptions + variable per-usage charges. Currency: ZAR, 15% VAT inclusive. Provider switchable: Mock (dev) or Paystack (prod) via `Billing:Provider` config.
+
+## File Structure
+
+```
+src/Modules/Billing/
+├── BillingModule.cs
+├── Controllers/
+│   └── PaystackWebhookController.cs
+├── DTOs/
+│   ├── PaystackRequests.cs
+│   ├── PaystackResponses.cs
+│   └── PaystackWebhookPayload.cs
+├── Entities/
+│   ├── AddOn.cs, BillingProfile.cs, Discount.cs, Invoice.cs
+│   ├── InvoiceLineItem.cs, Payment.cs, Plan.cs, PlanPricingTier.cs
+│   ├── Subscription.cs, TenantAddOn.cs, TenantCredit.cs
+│   ├── TenantDiscount.cs, UsageRecord.cs, WebhookEvent.cs
+├── Models/
+│   └── PaystackOptions.cs
+└── Services/
+    ├── AddOnService.cs, CreditService.cs, DiscountService.cs
+    ├── DunningService.cs, InvoiceEngine.cs, InvoiceGenerator.cs
+    ├── PaystackBillingService.cs, PaystackClient.cs
+    ├── PaystackPlanSyncService.cs, PaystackSubscriptionSyncService.cs
+    ├── SeatBillingService.cs, UsageBillingService.cs
+    ├── UsageMeteringService.cs, VariableChargeService.cs
+    └── WebhookSignatureValidator.cs
+```
+
+## Core Entities
+
+### Plan
+`Id`, `Name`, `Slug`, `Description`, `MonthlyPrice`, `AnnualPrice`, `Currency`("ZAR"), `BillingModel`(FlatRate/PerSeat/UsageBased/Hybrid), `IncludedSeats`, `PerSeatMonthlyPrice`, `PerSeatAnnualPrice`, `SetupFee`, `TrialDays`, `MaxUsers`, `MaxRequestsPerMinute`, `IsActive`, `SortOrder`, `PaystackMonthlyPlanCode`, `PaystackAnnualPlanCode`. Nav: `PlanFeatures`, `PricingTiers`, `Tenants`. Computed: `IsFreePlan`.
+
+### Subscription
+`Id`, `TenantId`, `PlanId`, `Status`(Active/PastDue/Cancelled/Expired/Trialing/NonRenewing/PendingPayment), `BillingCycle`(Monthly/Annual), `StartDate`, `EndDate`, `NextBillingDate`, `CancelledAt`, `TrialEndsAt`, `GracePeriodEndsAt`, `Quantity`(seats), `PaystackSubscriptionCode`, `PaystackCustomerCode`, `PaystackAuthorizationCode`, `PaystackEmailToken`, `PaystackAuthorizationEmail`, `ConcurrencyStamp`.
+
+### Invoice
+`Id`, `TenantId`, `SubscriptionId`, `InvoiceNumber`, `Status`(Draft/Issued/Paid/Overdue/Cancelled/Refunded/PartiallyRefunded), `Subtotal`, `DiscountAmount`, `TaxAmount`, `TaxRate`, `CreditApplied`, `Total`, `Currency`, `IssuedDate`, `DueDate`, `PaidDate`, `BillingPeriodStart`, `BillingPeriodEnd`, company snapshots, `Description`, `PaystackReference`. Nav: `LineItems`, `Payment`.
+
+### InvoiceLineItem
+`Id`, `InvoiceId`, `Type`(Subscription/Seat/UsageCharge/AddOn/SetupFee/OneOff/Discount/Credit/Tax/Proration), `Description`, `Quantity`, `UnitPrice`, `Amount`, `AddOnId`, `UsageMetric`, `SortOrder`.
+
+### Payment
+`Id`, `TenantId`, `InvoiceId`, `Amount`, `Currency`, `Status`(Pending/Success/Failed/Refunded/PartiallyRefunded), `PaystackReference`, `PaystackTransactionId`, `GatewayResponse`, `TransactionDate`.
+
+### BillingProfile
+`TenantId`, `CompanyName`, `BillingAddress`, `City`, `Province`, `PostalCode`, `Country`("ZA"), `VatNumber`, `BillingEmail`.
+
+### UsageRecord
+`Id`, `TenantId`, `Metric`, `Quantity`, `PeriodStart`, `PeriodEnd`.
+
+### Other Entities
+- `AddOn` — purchasable add-ons (OneOff/Monthly/Annual billing)
+- `TenantAddOn` — tenant ↔ add-on binding
+- `Discount` — percentage or fixed amount codes with expiry/redemption limits
+- `TenantDiscount` — applied discount with remaining cycles
+- `TenantCredit` — credits (PlanChangeCredit/Refund/Manual/Promotional)
+- `WebhookEvent` — idempotent webhook processing log
+- `PlanPricingTier` — tiered pricing (min/max units, price per unit)
+
+## IBillingService Interface
+
+Primary service interface (in `src/Shared/IBillingService.cs`):
+
+| Category | Methods |
+|----------|---------|
+| Subscriptions | `InitializeSubscriptionAsync`, `GetSubscriptionStatusAsync`, `CancelSubscriptionAsync`, `ChangePlanAsync`, `PreviewPlanChangeAsync` |
+| Seats | `UpdateSeatCountAsync`, `PreviewSeatChangeAsync` |
+| Charges | `ChargeOneOffAsync`, `ChargeVariableAsync` |
+| Refunds | `IssueRefundAsync` |
+| Discounts | `ApplyDiscountAsync` |
+| Usage | `ProcessUsageBillingAsync` |
+| Gateway Sync | `SyncPlansAsync`, `UpdatePlanInGatewayAsync`, `ReconcileSubscriptionsAsync` |
+| Webhooks | `ProcessWebhookAsync`, `VerifyAndLinkSubscriptionAsync` |
+| Portal | `GetManageLinkAsync`, `GetBillingDashboardAsync` |
+
+## Key Services
+
+### PaystackBillingService (1590 lines)
+Primary billing implementation. Handles subscription init (free path vs Paystack checkout), webhook processing, plan changes with proration, seat updates, cancellation, refunds.
+
+### VariableChargeService
+Orchestrates variable billing at renewal time:
+1. Calculate seat charges (beyond `Plan.IncludedSeats`, tiered pricing via `PlanPricingTier`)
+2. Calculate usage charges (delegates to `IUsageBillingService`)
+3. Generate invoice via `IInvoiceEngine.GenerateProrationInvoiceAsync`
+4. Charge via `PaystackClient.ChargeAuthorizationAsync`
+5. Handle outcomes: success → Payment record; 2FA challenge → redirect URL; failure → dunning
+
+### InvoiceEngine
+Generates invoices with line items, applies discounts and credits, calculates tax.
+
+### DunningService
+Retries failed payments: configurable attempts (default 3), interval (default 72h), grace period tracking.
+
+### UsageBillingService / UsageMeteringService
+Records usage metrics, calculates overage charges per `Billing:UsageMetrics` config.
+
+### PaystackClient
+HTTP client for Paystack API. Key methods: `InitializeTransactionAsync`, `ChargeAuthorizationAsync`, `CreatePlanAsync`, `CreateSubscriptionAsync`, `CancelSubscriptionAsync`, `IssueRefundAsync`. `ChargeAuthorizationAsync` is `virtual` for test overrides.
+
+## Webhook Flow
+
+```
+POST /api/webhooks/paystack
+  → Validate x-paystack-signature (HMAC SHA-512)
+  → Store WebhookEvent (idempotency check)
+  → Route by event type:
+     charge.success    → Create/update Invoice + Payment
+     charge.failed     → Enter grace period, start dunning
+     subscription.disable → Cancel subscription
+     transfer.success  → Process refund
+```
+
+## Subscription Lifecycle
+
+```
+Trialing → Active → PastDue → Suspended → Cancelled
+                  ↘ NonRenewing → Cancelled/Expired
+```
+
+## Background Jobs
+
+| Job | Schedule | Purpose |
+|-----|----------|---------|
+| `BillingReconciliationJob` | Daily 2 AM | Sync Paystack state |
+| `UsageBillingJob` | Daily 1 AM | Process metered usage charges |
+| `DunningJob` | Hourly | Retry failed payments |
+| `ExpiredTrialJob` | Daily 6 AM | Handle expired trials |
+| `DiscountExpiryJob` | Daily 4 AM | Expire past-due discounts |
+
+## Configuration
+
+```json
+{
+  "Billing": {
+    "Provider": "Mock|Paystack",
+    "Currency": "ZAR",
+    "Paystack": { "SecretKey", "PublicKey", "WebhookSecret", "CallbackBaseUrl" },
+    "Tax": { "Rate": 0.15, "Label": "VAT", "Included": true },
+    "Company": { "Name", "Address", "VatNumber" },
+    "Invoice": { "Prefix": "INV", "PaymentTermDays": 7 },
+    "Trial": { "DefaultDays": 14 },
+    "GracePeriod": { "Days": 3, "DunningAttempts": 3, "DunningIntervalHours": 72 },
+    "Features": { "AnnualBilling", "PerSeatBilling", "UsageBilling", "AddOns", "Discounts", "SetupFees" },
+    "UsageMetrics": { "metric_name": { "DisplayName", "OveragePrice", "IncludedByPlan": {} } }
+  }
+}
+```
+
+## Testing
+
+Tests in `tests/saas.UnitTests/Billing/`:
+- `BillingServiceTests.cs` — subscription lifecycle, plan changes
+- `InvoiceEngineTests.cs` — invoice generation, discounts, credits, tax
+- `DunningServiceTests.cs` — payment retry logic
+- `VariableChargeServiceTests.cs` — seat + usage + charge flow
+- `DiscountServiceTests.cs` — discount application
+- `UsageBillingServiceTests.cs` — usage charge calculation
+- `SeatBillingServiceTests.cs` — seat-based billing
+
+Pattern: in-memory SQLite, private stubs for PaystackClient (virtual methods), behavioral flags for failure simulation.
