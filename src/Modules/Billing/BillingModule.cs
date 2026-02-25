@@ -59,6 +59,12 @@ public class BillingModule : IModule
         services.AddScoped<IDunningService, DunningService>();
         services.AddScoped<IAddOnService, AddOnService>();
 
+        // Variable charge orchestrator (seats + usage collection via charge_authorization)
+        services.AddScoped<IVariableChargeService, VariableChargeService>();
+
+        // Lazy<IVariableChargeService> for DunningService (breaks circular dependency)
+        services.AddScoped(sp => new Lazy<IVariableChargeService>(() => sp.GetRequiredService<IVariableChargeService>()));
+
         // Usage metering + billing
         services.AddScoped<IUsageMeteringService, UsageBillingService>();
         services.AddScoped<IUsageBillingService, UsageBillingService>();

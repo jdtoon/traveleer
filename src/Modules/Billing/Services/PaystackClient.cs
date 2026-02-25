@@ -147,7 +147,7 @@ public class PaystackClient
 
     // ── Charge Authorization (recurring charges) ───────────────────
 
-    public async Task<PaystackChargeResponse?> ChargeAuthorizationAsync(
+    public virtual async Task<PaystackChargeResponse?> ChargeAuthorizationAsync(
         PaystackChargeAuthorizationRequest request)
     {
         _logger.LogInformation("Charging authorization for {Email}, amount: {Amount}", request.Email, request.Amount);

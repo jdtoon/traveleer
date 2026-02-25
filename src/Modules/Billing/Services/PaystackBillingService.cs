@@ -24,6 +24,7 @@ public class PaystackBillingService : IBillingService
     private readonly IUsageBillingService _usageBilling;
     private readonly IDunningService _dunning;
     private readonly ICreditService _creditService;
+    private readonly IVariableChargeService _variableCharge;
     private readonly PaystackOptions _options;
     private readonly IAuditWriter _audit;
     private readonly IEmailService _emailService;
@@ -38,6 +39,7 @@ public class PaystackBillingService : IBillingService
         IUsageBillingService usageBilling,
         IDunningService dunning,
         ICreditService creditService,
+        IVariableChargeService variableCharge,
         IOptions<PaystackOptions> options,
         IAuditWriter audit,
         IEmailService emailService,
@@ -51,6 +53,7 @@ public class PaystackBillingService : IBillingService
         _usageBilling = usageBilling;
         _dunning = dunning;
         _creditService = creditService;
+        _variableCharge = variableCharge;
         _options = options.Value;
         _audit = audit;
         _emailService = emailService;
@@ -685,6 +688,44 @@ public class PaystackBillingService : IBillingService
         _logger.LogInformation("Payment recorded for tenant {TenantId}, reference {Reference}",
             tenantId, reference);
 
+        // ── Renewal-time variable charge orchestration ──────────────────
+        // Detect subscription renewals: the subscription was already Active before this payment.
+        // Skip if this charge was itself a variable/one-off/dunning charge (avoid infinite loop).
+        var chargeType = data.Metadata?.TryGetValue("charge_type", out var ct) == true ? ct?.ToString() : null;
+        var isVariableOrOneOff = chargeType is "variable" or "one_off" or "dunning_retry";
+
+        if (!isVariableOrOneOff)
+        {
+            var renewalSub = await _coreDb.Subscriptions
+                .Include(s => s.Plan)
+                .Where(s => s.TenantId == tenantId && s.Status == SubscriptionStatus.Active)
+                .FirstOrDefaultAsync();
+
+            if (renewalSub is not null
+                && (renewalSub.Plan.BillingModel == BillingModel.Hybrid
+                    || renewalSub.Plan.BillingModel == BillingModel.PerSeat
+                    || renewalSub.Plan.BillingModel == BillingModel.UsageBased))
+            {
+                try
+                {
+                    var variableResult = await _variableCharge.ChargeVariableAsync(tenantId);
+                    if (!variableResult.Success)
+                    {
+                        _logger.LogWarning(
+                            "Variable charge failed at renewal for tenant {TenantId}: {Error}",
+                            tenantId, variableResult.Error);
+                    }
+                }
+                catch (Exception vex)
+                {
+                    // Don't fail the webhook — the base charge succeeded.
+                    // Variable charge failure enters dunning independently.
+                    _logger.LogError(vex,
+                        "Error processing variable charges at renewal for tenant {TenantId}", tenantId);
+                }
+            }
+        }
+
         return new WebhookResult(true);
     }
 
@@ -845,14 +886,28 @@ public class PaystackBillingService : IBillingService
 
         if (subscription is not null)
         {
-            var invoice = await _invoiceGenerator.GenerateAsync(
-                subscription.TenantId,
-                subscription.Id,
-                data.Amount / 100m,
-                data.Currency?.ToUpperInvariant() ?? "ZAR");
+            try
+            {
+                // Use the full InvoiceEngine for itemized invoices (base + seats + add-ons + tax)
+                var invoice = await _invoiceEngine.GenerateSubscriptionInvoiceAsync(subscription.TenantId);
+                invoice.PaystackReference = data.Reference;
+                await _coreDb.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "InvoiceEngine failed for tenant {TenantId}, falling back to simple generator",
+                    subscription.TenantId);
 
-            invoice.PaystackReference = data.Reference;
-            await _coreDb.SaveChangesAsync();
+                // Fallback to legacy generator to ensure an invoice always exists
+                var invoice = await _invoiceGenerator.GenerateAsync(
+                    subscription.TenantId,
+                    subscription.Id,
+                    data.Amount / 100m,
+                    data.Currency?.ToUpperInvariant() ?? "ZAR");
+                invoice.PaystackReference = data.Reference;
+                await _coreDb.SaveChangesAsync();
+            }
         }
 
         return new WebhookResult(true);
@@ -1286,6 +1341,9 @@ public class PaystackBillingService : IBillingService
     public Task<SeatChangePreview> PreviewSeatChangeAsync(Guid tenantId, int newSeatCount)
         => _seatBilling.PreviewSeatChangeAsync(tenantId, newSeatCount);
 
+    public Task<ChargeResult> ChargeVariableAsync(Guid tenantId)
+        => _variableCharge.ChargeVariableAsync(tenantId);
+
     public async Task<ChargeResult> ChargeOneOffAsync(Guid tenantId, decimal amount, string description)
     {
         var subscription = await _coreDb.Subscriptions
@@ -1468,6 +1526,7 @@ public class PaystackBillingService : IBillingService
                 NextBillingDate: null, TrialEndsAt: null, IsTrialing: false,
                 CurrentSeats: 0, IncludedSeats: null, MaxSeats: null, PerSeatPrice: null,
                 CreditBalance: creditBalance, EstimatedNextInvoice: 0,
+                EstimatedVariableCharges: 0,
                 UsageSummary: null, ActiveAddOns: null, ActiveDiscounts: null,
                 RecentInvoices: recentInvoices, PaymentMethods: new List<PaymentMethodLine>()
             );
@@ -1476,6 +1535,21 @@ public class PaystackBillingService : IBillingService
         var plan = subscription.Plan;
         var isTrialing = subscription.TrialEndsAt.HasValue && subscription.TrialEndsAt > DateTime.UtcNow;
         var currentPrice = (subscription.BillingCycle == BillingCycle.Annual ? plan.AnnualPrice : null) ?? plan.MonthlyPrice;
+
+        // Calculate estimated variable charges (seats + usage) for the current period
+        decimal estimatedVariable = 0;
+        try
+        {
+            var now = DateTime.UtcNow;
+            var periodStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var periodEnd = periodStart.AddMonths(1).AddTicks(-1);
+            var breakdown = await _variableCharge.CalculateVariableChargesAsync(tenantId, periodStart, periodEnd);
+            estimatedVariable = breakdown.Total;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not calculate variable charge estimate for tenant {TenantId}", tenantId);
+        }
 
         var activeDiscounts = await _coreDb.TenantDiscounts
             .Where(td => td.TenantId == tenantId && (!td.ExpiresAt.HasValue || td.ExpiresAt > DateTime.UtcNow))
@@ -1503,7 +1577,8 @@ public class PaystackBillingService : IBillingService
             MaxSeats: plan.MaxUsers,
             PerSeatPrice: subscription.BillingCycle == BillingCycle.Annual ? plan.PerSeatAnnualPrice : plan.PerSeatMonthlyPrice,
             CreditBalance: creditBalance,
-            EstimatedNextInvoice: currentPrice,
+            EstimatedNextInvoice: currentPrice + estimatedVariable,
+            EstimatedVariableCharges: estimatedVariable,
             UsageSummary: null,
             ActiveAddOns: activeAddOns,
             ActiveDiscounts: activeDiscounts,

@@ -66,6 +66,7 @@ public class DunningServiceTests : IAsyncDisposable
                 GracePeriod = new GracePeriodOptions { Days = graceDays, DunningIntervalHours = 72 }
             }),
             _emailService,
+            new Lazy<IVariableChargeService>(() => new StubVariableChargeService()),
             NullLogger<DunningService>.Instance);
 
     // ── OnPaymentFailedAsync ──────────────────────────────
@@ -265,5 +266,15 @@ public class DunningServiceTests : IAsyncDisposable
         public List<EmailMessage> SentMessages { get; } = [];
         public Task SendAsync(EmailMessage message) { SentMessages.Add(message); return Task.CompletedTask; }
         public Task SendMagicLinkAsync(string to, string magicLinkUrl) => Task.CompletedTask;
+    }
+
+    private class StubVariableChargeService : IVariableChargeService
+    {
+        public Task<VariableChargeBreakdown> CalculateVariableChargesAsync(Guid tenantId, DateTime periodStart, DateTime periodEnd)
+            => Task.FromResult(VariableChargeBreakdown.Empty);
+        public Task<ChargeResult> ChargeVariableAsync(Guid tenantId)
+            => Task.FromResult(new ChargeResult(true));
+        public Task<ChargeResult> ChargeInvoiceAsync(Guid tenantId, Invoice invoice)
+            => Task.FromResult(new ChargeResult(true));
     }
 }

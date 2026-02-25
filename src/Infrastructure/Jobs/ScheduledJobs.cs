@@ -219,6 +219,7 @@ public class DunningJob
 
 /// <summary>
 /// Daily usage billing job — processes end-of-period usage charges for all active tenants with usage-based plans.
+/// After generating usage invoices, charges them via charge_authorization using the VariableChargeService.
 /// </summary>
 public class UsageBillingJob
 {
@@ -238,6 +239,7 @@ public class UsageBillingJob
         using var scope = _scopeFactory.CreateScope();
         var coreDb = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
         var usageBilling = scope.ServiceProvider.GetRequiredService<IUsageBillingService>();
+        var variableCharge = scope.ServiceProvider.GetRequiredService<IVariableChargeService>();
 
         // Find tenants with usage-based or hybrid plans whose billing period ended
         var now = DateTime.UtcNow;
@@ -250,13 +252,39 @@ public class UsageBillingJob
             .ToListAsync(ct);
 
         var processed = 0;
+        var charged = 0;
         foreach (var tenantId in eligibleTenants)
         {
             try
             {
                 var result = await usageBilling.ProcessEndOfPeriodAsync(tenantId);
-                if (result.Success) processed++;
-                else _logger.LogWarning("Usage billing failed for tenant {TenantId}: {Error}", tenantId, result.Error);
+                if (!result.Success)
+                {
+                    _logger.LogWarning("Usage billing failed for tenant {TenantId}: {Error}", tenantId, result.Error);
+                    continue;
+                }
+
+                processed++;
+
+                // If usage charges were generated, charge the invoice via charge_authorization
+                if (result.InvoiceId.HasValue && result.TotalUsageCharge > 0)
+                {
+                    var invoice = await coreDb.Invoices.FindAsync(result.InvoiceId.Value);
+                    if (invoice is not null)
+                    {
+                        var chargeResult = await variableCharge.ChargeInvoiceAsync(tenantId, invoice);
+                        if (chargeResult.Success)
+                        {
+                            charged++;
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "Usage charge collection failed for tenant {TenantId}: {Error}",
+                                tenantId, chargeResult.Error);
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -264,7 +292,9 @@ public class UsageBillingJob
             }
         }
 
-        _logger.LogInformation("Usage billing job completed — processed {Count}/{Total} tenants", processed, eligibleTenants.Count);
+        _logger.LogInformation(
+            "Usage billing job completed — processed {Processed}/{Total} tenants, charged {Charged}",
+            processed, eligibleTenants.Count, charged);
     }
 }
 

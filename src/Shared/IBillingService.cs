@@ -21,6 +21,9 @@ public interface IBillingService
     // One-off charges
     Task<ChargeResult> ChargeOneOffAsync(Guid tenantId, decimal amount, string description);
 
+    // Variable charges (seats + usage — collected via charge_authorization at renewal)
+    Task<ChargeResult> ChargeVariableAsync(Guid tenantId);
+
     // Refunds
     Task<RefundResult> IssueRefundAsync(Guid paymentId, decimal? amount = null);
 
@@ -168,6 +171,7 @@ public record BillingDashboard(
     decimal? PerSeatPrice,
     decimal CreditBalance,
     decimal EstimatedNextInvoice,
+    decimal EstimatedVariableCharges,
     List<UsageSummaryLine>? UsageSummary,
     List<ActiveAddOnLine>? ActiveAddOns,
     List<ActiveDiscountLine>? ActiveDiscounts,

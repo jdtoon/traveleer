@@ -147,6 +147,9 @@ public class TenantBillingTests : IAsyncLifetime
         public Task<ChargeResult> ChargeOneOffAsync(Guid tenantId, decimal amount, string description)
             => Task.FromResult(new ChargeResult(true));
 
+        public Task<ChargeResult> ChargeVariableAsync(Guid tenantId)
+            => Task.FromResult(new ChargeResult(true));
+
         public Task<RefundResult> IssueRefundAsync(Guid paymentId, decimal? amount = null)
             => Task.FromResult(new RefundResult(true));
 
@@ -163,6 +166,7 @@ public class TenantBillingTests : IAsyncLifetime
                 NextBillingDate: null, TrialEndsAt: null, IsTrialing: false,
                 CurrentSeats: 1, IncludedSeats: null, MaxSeats: null, PerSeatPrice: null,
                 CreditBalance: 0, EstimatedNextInvoice: 0,
+                EstimatedVariableCharges: 0,
                 UsageSummary: null, ActiveAddOns: null, ActiveDiscounts: null,
                 RecentInvoices: new List<InvoiceSummaryLine>(),
                 PaymentMethods: new List<PaymentMethodLine>()));

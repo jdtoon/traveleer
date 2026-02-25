@@ -27,6 +27,7 @@ public class PaystackBillingServiceTests : IAsyncDisposable
     private readonly StubUsageBillingService _usageBilling;
     private readonly StubDunningService _dunning;
     private readonly StubCreditService _creditService;
+    private readonly StubVariableChargeService _variableCharge = new();
 
     // Test data
     private readonly Guid _tenantId = Guid.NewGuid();
@@ -56,7 +57,7 @@ public class PaystackBillingServiceTests : IAsyncDisposable
         _auditWriter = new StubAuditWriter();
         _emailService = new StubEmailService();
         _seatBilling = new StubSeatBillingService();
-        _invoiceEngine = new StubInvoiceEngine();
+        _invoiceEngine = new StubInvoiceEngine(_db);
         _usageBilling = new StubUsageBillingService();
         _dunning = new StubDunningService(_db);
         _creditService = new StubCreditService();
@@ -115,6 +116,7 @@ public class PaystackBillingServiceTests : IAsyncDisposable
             _usageBilling,
             _dunning,
             _creditService,
+            _variableCharge,
             Options.Create(_options),
             _auditWriter,
             _emailService,
@@ -336,6 +338,11 @@ public class PaystackBillingServiceTests : IAsyncDisposable
     public async Task ProcessWebhook_InvoiceCreate_LooksUpBySubscriptionCode()
     {
         var subscriptionCode = "SUB_invoice_test";
+
+        // Set tenant to Pro plan so invoice amount matches
+        var tenant = await _db.Tenants.FindAsync(_tenantId);
+        tenant!.PlanId = _proPlanId;
+
         _db.Subscriptions.Add(new Subscription
         {
             TenantId = _tenantId,
@@ -1117,7 +1124,25 @@ public class PaystackBillingServiceTests : IAsyncDisposable
 
     private class StubInvoiceEngine : IInvoiceEngine
     {
-        public Task<Invoice> GenerateSubscriptionInvoiceAsync(Guid tenantId, DateTime? periodStart = null, DateTime? periodEnd = null) => Task.FromResult(new Invoice { Id = Guid.NewGuid(), TenantId = tenantId, Status = InvoiceStatus.Draft, InvoiceNumber = "INV-TEST", Currency = "ZAR" });
+        private readonly CoreDbContext? _db;
+
+        public StubInvoiceEngine() { }
+        public StubInvoiceEngine(CoreDbContext db) => _db = db;
+
+        public async Task<Invoice> GenerateSubscriptionInvoiceAsync(Guid tenantId, DateTime? periodStart = null, DateTime? periodEnd = null)
+        {
+            var invoice = new Invoice { Id = Guid.NewGuid(), TenantId = tenantId, Status = InvoiceStatus.Draft, InvoiceNumber = "INV-TEST", Currency = "ZAR" };
+            if (_db is not null)
+            {
+                // Look up the plan price so the test can verify total
+                var tenant = await _db.Tenants.Include(t => t.Plan).FirstOrDefaultAsync(t => t.Id == tenantId);
+                invoice.Total = tenant?.Plan?.MonthlyPrice ?? 0;
+                invoice.Subtotal = invoice.Total;
+                _db.Invoices.Add(invoice);
+                await _db.SaveChangesAsync();
+            }
+            return invoice;
+        }
         public Task<Invoice> GenerateOneOffInvoiceAsync(Guid tenantId, string description, decimal amount) => Task.FromResult(new Invoice { Id = Guid.NewGuid(), TenantId = tenantId, Subtotal = amount, Total = amount, Status = InvoiceStatus.Draft, InvoiceNumber = "INV-TEST", Currency = "ZAR" });
         public Task<Invoice> GenerateProrationInvoiceAsync(Guid tenantId, string description, List<InvoiceLineItem> lineItems) => Task.FromResult(new Invoice { Id = Guid.NewGuid(), TenantId = tenantId, Status = InvoiceStatus.Draft, InvoiceNumber = "INV-TEST", Currency = "ZAR" });
         public Task FinalizeInvoiceAsync(Guid invoiceId) => Task.CompletedTask;
@@ -1155,5 +1180,15 @@ public class PaystackBillingServiceTests : IAsyncDisposable
         public Task<decimal> ApplyCreditsToInvoiceAsync(Guid tenantId, Invoice invoice) => Task.FromResult(0m);
         public Task<decimal> GetBalanceAsync(Guid tenantId) => Task.FromResult(0m);
         public Task<List<TenantCredit>> GetLedgerAsync(Guid tenantId) => Task.FromResult(new List<TenantCredit>());
+    }
+
+    private class StubVariableChargeService : IVariableChargeService
+    {
+        public Task<VariableChargeBreakdown> CalculateVariableChargesAsync(Guid tenantId, DateTime periodStart, DateTime periodEnd)
+            => Task.FromResult(VariableChargeBreakdown.Empty);
+        public Task<ChargeResult> ChargeVariableAsync(Guid tenantId)
+            => Task.FromResult(new ChargeResult(true));
+        public Task<ChargeResult> ChargeInvoiceAsync(Guid tenantId, Invoice invoice)
+            => Task.FromResult(new ChargeResult(true));
     }
 }

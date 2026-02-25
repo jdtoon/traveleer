@@ -183,6 +183,7 @@ public class TenantLifecycleServiceTests : IAsyncLifetime
         public Task<SeatChangeResult> UpdateSeatCountAsync(Guid tenantId, int newSeatCount) => Task.FromResult(new SeatChangeResult(true));
         public Task<SeatChangePreview> PreviewSeatChangeAsync(Guid tenantId, int newSeatCount) => Task.FromResult(new SeatChangePreview(true));
         public Task<ChargeResult> ChargeOneOffAsync(Guid tenantId, decimal amount, string description) => Task.FromResult(new ChargeResult(true));
+        public Task<ChargeResult> ChargeVariableAsync(Guid tenantId) => Task.FromResult(new ChargeResult(true));
         public Task<RefundResult> IssueRefundAsync(Guid paymentId, decimal? amount = null) => Task.FromResult(new RefundResult(true));
         public Task<DiscountResult> ApplyDiscountAsync(Guid tenantId, string discountCode) => Task.FromResult(new DiscountResult(true));
         public Task<UsageBillingResult> ProcessUsageBillingAsync(Guid tenantId) => Task.FromResult(new UsageBillingResult(true));
@@ -192,6 +193,7 @@ public class TenantLifecycleServiceTests : IAsyncLifetime
             NextBillingDate: null, TrialEndsAt: null, IsTrialing: false,
             CurrentSeats: 1, IncludedSeats: null, MaxSeats: null, PerSeatPrice: null,
             CreditBalance: 0, EstimatedNextInvoice: 0,
+            EstimatedVariableCharges: 0,
             UsageSummary: null, ActiveAddOns: null, ActiveDiscounts: null,
             RecentInvoices: new List<InvoiceSummaryLine>(),
             PaymentMethods: new List<PaymentMethodLine>()));

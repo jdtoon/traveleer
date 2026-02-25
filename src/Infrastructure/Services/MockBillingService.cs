@@ -316,6 +316,12 @@ public class MockBillingService : IBillingService
         return Task.FromResult(new ChargeResult(true));
     }
 
+    public Task<ChargeResult> ChargeVariableAsync(Guid tenantId)
+    {
+        _logger.LogInformation("[MOCK BILLING] ChargeVariable tenant={TenantId}", tenantId);
+        return Task.FromResult(new ChargeResult(true));
+    }
+
     public Task<RefundResult> IssueRefundAsync(Guid paymentId, decimal? amount = null)
     {
         _logger.LogInformation("[MOCK BILLING] IssueRefund payment={PaymentId} amount={Amount}", paymentId, amount);
@@ -402,6 +408,7 @@ public class MockBillingService : IBillingService
                 NextBillingDate: null, TrialEndsAt: null, IsTrialing: false,
                 CurrentSeats: 1, IncludedSeats: null, MaxSeats: null, PerSeatPrice: null,
                 CreditBalance: 0, EstimatedNextInvoice: 0,
+                EstimatedVariableCharges: 0,
                 UsageSummary: null, ActiveAddOns: null, ActiveDiscounts: null,
                 RecentInvoices: [], PaymentMethods: []);
 
@@ -433,6 +440,7 @@ public class MockBillingService : IBillingService
             PerSeatPrice: plan.PerSeatMonthlyPrice,
             CreditBalance: creditBalance,
             EstimatedNextInvoice: plan.MonthlyPrice,
+            EstimatedVariableCharges: 0,
             UsageSummary: null,
             ActiveAddOns: null,
             ActiveDiscounts: null,

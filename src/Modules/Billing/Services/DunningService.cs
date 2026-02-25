@@ -21,15 +21,20 @@ public class DunningService : IDunningService
     private readonly IEmailService _emailService;
     private readonly ILogger<DunningService> _logger;
 
+    // Lazy to avoid circular DI (VariableChargeService depends on IDunningService)
+    private readonly Lazy<IVariableChargeService> _variableCharge;
+
     public DunningService(
         CoreDbContext db,
         IOptions<BillingOptions> options,
         IEmailService emailService,
+        Lazy<IVariableChargeService> variableCharge,
         ILogger<DunningService> logger)
     {
         _db = db;
         _options = options.Value;
         _emailService = emailService;
+        _variableCharge = variableCharge;
         _logger = logger;
     }
 
@@ -97,10 +102,37 @@ public class DunningService : IDunningService
             return false;
         }
 
-        // Note: Actual Paystack charge_authorization would be called here by PaystackBillingService.
-        // For now, mark it as needing external retry via the billing service.
-        _logger.LogInformation("Retry charge requested for tenant {TenantId}", tenantId);
-        return false; // Will be wired to actual Paystack charge in PaystackBillingService
+        // Find the most recent unpaid/overdue invoice to retry
+        var overdueInvoice = await _db.Invoices
+            .Where(i => i.TenantId == tenantId
+                && (i.Status == InvoiceStatus.Overdue || i.Status == InvoiceStatus.Draft || i.Status == InvoiceStatus.Issued))
+            .OrderByDescending(i => i.IssuedDate)
+            .FirstOrDefaultAsync();
+
+        if (overdueInvoice is null)
+        {
+            _logger.LogInformation("No overdue invoice found for tenant {TenantId}, skipping retry", tenantId);
+            return false;
+        }
+
+        try
+        {
+            var result = await _variableCharge.Value.ChargeInvoiceAsync(tenantId, overdueInvoice);
+            if (result.Success)
+            {
+                _logger.LogInformation("Dunning retry succeeded for tenant {TenantId}", tenantId);
+                await ReactivateAsync(tenantId);
+                return true;
+            }
+
+            _logger.LogWarning("Dunning retry failed for tenant {TenantId}: {Error}", tenantId, result.Error);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Dunning retry error for tenant {TenantId}", tenantId);
+            return false;
+        }
     }
 
     public async Task ProcessGracePeriodsAsync()
