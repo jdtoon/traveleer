@@ -1,0 +1,89 @@
+@model saas.Modules.Bookings.DTOs.BookingItemFormDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-3xl">
+        <form hx-post="@Url.Action("CreateItem", "Booking", new { slug, id = Model.BookingId })" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-lg font-bold">Add Service</h3>
+                    <p class="text-sm opacity-70">Attach a sellable inventory item to this booking and start the supplier workflow.</p>
+                </div>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Inventory item</span></label>
+                    <select name="InventoryItemId" class="select select-bordered w-full">
+                        <option value="">Select an inventory item</option>
+                        @foreach (var option in Model.InventoryOptions)
+                        {
+                            if (Model.InventoryItemId == option.Id)
+                            {
+                                <option value="@option.Id" selected>@option.Label</option>
+                            }
+                            else
+                            {
+                                <option value="@option.Id">@option.Label</option>
+                            }
+                        }
+                    </select>
+                    <span asp-validation-for="InventoryItemId" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Service date</span></label>
+                    <input asp-for="ServiceDate" type="date" class="input input-bordered w-full" />
+                    <span asp-validation-for="ServiceDate" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">End date</span></label>
+                    <input asp-for="EndDate" type="date" class="input input-bordered w-full" />
+                    <span asp-validation-for="EndDate" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Quantity</span></label>
+                    <input asp-for="Quantity" class="input input-bordered w-full" />
+                    <span asp-validation-for="Quantity" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Pax</span></label>
+                    <input asp-for="Pax" class="input input-bordered w-full" />
+                    <span asp-validation-for="Pax" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Selling price</span></label>
+                    <input asp-for="SellingPrice" class="input input-bordered w-full" />
+                    <span asp-validation-for="SellingPrice" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Supplier reference</span></label>
+                    <input asp-for="SupplierReference" class="input input-bordered w-full" />
+                    <span asp-validation-for="SupplierReference" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Supplier notes</span></label>
+                    <textarea asp-for="SupplierNotes" class="textarea textarea-bordered w-full" rows="3"></textarea>
+                    <span asp-validation-for="SupplierNotes" class="text-error text-sm mt-1"></span>
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Service</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

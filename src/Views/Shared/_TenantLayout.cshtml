@@ -4,6 +4,7 @@
 @{
     var slug = TenantContext.Slug;
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var bookingsEnabled = await FeatureService.IsEnabledAsync("bookings");
     var clientsEnabled = await FeatureService.IsEnabledAsync("clients");
     var inventoryEnabled = await FeatureService.IsEnabledAsync("inventory");
     var settingsEnabled = await FeatureService.IsEnabledAsync("settings");
@@ -79,6 +80,17 @@
                             </swap-nav>
                         </li>
                         @* ── App modules (customize this section) ──────── *@
+                        @if (bookingsEnabled && CurrentUser.HasPermission("bookings.read"))
+                        {
+                        <li>
+                            <swap-nav to="/@slug/bookings" class="@(controller == "Booking" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V9m-7-4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                                Bookings
+                            </swap-nav>
+                        </li>
+                        }
                         @if (clientsEnabled && CurrentUser.HasPermission("clients.read"))
                         {
                         <li>

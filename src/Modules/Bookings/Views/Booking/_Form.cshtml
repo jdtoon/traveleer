@@ -1,0 +1,113 @@
+@model saas.Modules.Bookings.DTOs.BookingFormDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-3xl">
+        <form hx-post="@Url.Action("Create", "Booking", new { slug })" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-lg font-bold">New Booking</h3>
+                    <p class="text-sm opacity-70">Capture the trip owner, travel window, and internal handoff notes before adding services.</p>
+                </div>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Client</span></label>
+                    <select name="ClientId" class="select select-bordered w-full">
+                        <option value="">Select a client</option>
+                        @foreach (var option in Model.ClientOptions)
+                        {
+                            if (Model.ClientId == option.Id)
+                            {
+                                <option value="@option.Id" selected>@option.Label</option>
+                            }
+                            else
+                            {
+                                <option value="@option.Id">@option.Label</option>
+                            }
+                        }
+                    </select>
+                    <span asp-validation-for="ClientId" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Client reference</span></label>
+                    <input asp-for="ClientReference" class="input input-bordered w-full" />
+                    <span asp-validation-for="ClientReference" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Selling currency</span></label>
+                    <select name="SellingCurrencyCode" class="select select-bordered w-full">
+                        @foreach (var currency in Model.CurrencyOptions)
+                        {
+                            if (string.Equals(Model.SellingCurrencyCode, currency, StringComparison.OrdinalIgnoreCase))
+                            {
+                                <option value="@currency" selected>@currency</option>
+                            }
+                            else
+                            {
+                                <option value="@currency">@currency</option>
+                            }
+                        }
+                    </select>
+                    <span asp-validation-for="SellingCurrencyCode" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Travel start</span></label>
+                    <input asp-for="TravelStartDate" type="date" class="input input-bordered w-full" />
+                    <span asp-validation-for="TravelStartDate" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Travel end</span></label>
+                    <input asp-for="TravelEndDate" type="date" class="input input-bordered w-full" />
+                    <span asp-validation-for="TravelEndDate" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Pax</span></label>
+                    <input asp-for="Pax" class="input input-bordered w-full" />
+                    <span asp-validation-for="Pax" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Lead guest</span></label>
+                    <input asp-for="LeadGuestName" class="input input-bordered w-full" />
+                    <span asp-validation-for="LeadGuestName" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Lead guest nationality</span></label>
+                    <input asp-for="LeadGuestNationality" class="input input-bordered w-full" />
+                    <span asp-validation-for="LeadGuestNationality" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Special requests</span></label>
+                    <textarea asp-for="SpecialRequests" class="textarea textarea-bordered w-full" rows="3"></textarea>
+                    <span asp-validation-for="SpecialRequests" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Internal notes</span></label>
+                    <textarea asp-for="InternalNotes" class="textarea textarea-bordered w-full" rows="3"></textarea>
+                    <span asp-validation-for="InternalNotes" class="text-error text-sm mt-1"></span>
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Booking</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

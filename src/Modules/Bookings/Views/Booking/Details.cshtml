@@ -1,0 +1,20 @@
+@model saas.Modules.Bookings.DTOs.BookingDetailsDto
+@{
+    ViewData["Title"] = Model.BookingRef;
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+<div class="flex flex-col gap-6">
+    <div id="booking-summary"
+         hx-get="@Url.Action("Summary", "Booking", new { slug, id = Model.Id })"
+         hx-trigger="@saas.Modules.Bookings.Events.BookingEvents.ItemsRefresh from:body"
+         hx-swap="innerHTML">
+        @await Html.PartialAsync("_Summary", Model)
+    </div>
+
+    <div id="booking-items"
+         hx-get="@Url.Action("Items", "Booking", new { slug, id = Model.Id })"
+         hx-trigger="load, @saas.Modules.Bookings.Events.BookingEvents.ItemsRefresh from:body"
+         hx-swap="innerHTML show:none">
+        <span class="loading loading-spinner loading-lg"></span>
+    </div>
+</div>

@@ -1,0 +1,105 @@
+@model saas.Modules.Bookings.DTOs.BookingDetailsDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+<div class="card border border-base-300 bg-base-100 shadow-sm">
+    <div class="card-body gap-4">
+        <div class="flex items-center justify-between gap-3">
+            <div>
+                <h2 class="card-title">Services</h2>
+                <p class="text-sm opacity-70">Track supplier status for each sold service line.</p>
+            </div>
+            <div class="text-sm opacity-60">@Model.Items.Count service@(Model.Items.Count == 1 ? string.Empty : "s")</div>
+        </div>
+
+        @if (Model.Items.Count == 0)
+        {
+            <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-8 text-center">
+                <h3 class="text-lg font-semibold">No services added yet</h3>
+                <p class="mt-2 opacity-70">Add an inventory-backed service to start supplier follow-up and total tracking.</p>
+            </div>
+        }
+        else
+        {
+            <div class="grid gap-4">
+                @foreach (var item in Model.Items)
+                {
+                    <div class="rounded-box border border-base-300 bg-base-100 p-4">
+                        <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                            <div class="space-y-2">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h3 class="font-semibold">@item.ServiceName</h3>
+                                    <span class="badge badge-outline badge-sm">@item.ServiceKind</span>
+                                    <span class="badge badge-ghost badge-sm">@item.SupplierStatus</span>
+                                </div>
+                                <div class="text-sm opacity-70">
+                                    @if (item.ServiceDate.HasValue)
+                                    {
+                                        <span>@item.ServiceDate.Value.ToString("dd MMM yyyy")</span>
+                                    }
+                                    @if (item.EndDate.HasValue)
+                                    {
+                                        <span> - @item.EndDate.Value.ToString("dd MMM yyyy")</span>
+                                    }
+                                    @if (item.Nights.HasValue)
+                                    {
+                                        <span> · @item.Nights.Value night@(item.Nights.Value == 1 ? string.Empty : "s")</span>
+                                    }
+                                    <span> · @item.Quantity qty · @item.Pax pax</span>
+                                </div>
+                                <div class="text-sm opacity-80">Supplier: @(string.IsNullOrWhiteSpace(item.SupplierName) ? "Unassigned" : item.SupplierName)</div>
+                                @if (!string.IsNullOrWhiteSpace(item.Description))
+                                {
+                                    <p class="text-sm opacity-70">@item.Description</p>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(item.SupplierReference) || !string.IsNullOrWhiteSpace(item.SupplierNotes))
+                                {
+                                    <div class="text-sm opacity-70">
+                                        @if (!string.IsNullOrWhiteSpace(item.SupplierReference))
+                                        {
+                                            <div>Supplier ref: @item.SupplierReference</div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(item.SupplierNotes))
+                                        {
+                                            <div>Notes: @item.SupplierNotes</div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="grid gap-3 xl:justify-items-end">
+                                <div class="text-sm text-right">
+                                    <div>Cost: <span class="font-medium">@item.CostCurrencyCode @item.LineCostTotal.ToString("N2")</span></div>
+                                    <div>Selling: <span class="font-medium">@item.SellingCurrencyCode @item.LineSellingTotal.ToString("N2")</span></div>
+                                </div>
+
+                                <has-permission name="bookings.edit">
+                                    <div class="flex flex-wrap gap-2 xl:justify-end">
+                                        @if (item.SupplierStatus == SupplierStatus.NotRequested)
+                                        {
+                                            <form hx-post="@Url.Action("RequestSupplier", "Booking", new { slug, bookingId = Model.Id, itemId = item.Id })" hx-swap="none">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-outline btn-sm">Mark Requested</button>
+                                            </form>
+                                        }
+                                        @if (item.SupplierStatus == SupplierStatus.Requested || item.SupplierStatus == SupplierStatus.Waitlisted)
+                                        {
+                                            <form hx-post="@Url.Action("ConfirmSupplier", "Booking", new { slug, bookingId = Model.Id, itemId = item.Id })" hx-swap="none">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-primary btn-sm">Mark Confirmed</button>
+                                            </form>
+                                            <form hx-post="@Url.Action("DeclineSupplier", "Booking", new { slug, bookingId = Model.Id, itemId = item.Id })" hx-swap="none">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-ghost btn-sm">Mark Declined</button>
+                                            </form>
+                                        }
+                                    </div>
+                                </has-permission>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

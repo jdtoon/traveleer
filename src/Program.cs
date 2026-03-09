@@ -84,6 +84,7 @@ var modules = new IModule[]
     new saas.Modules.Litestream.LitestreamModule(),
 
     // --- App modules (your project — add, remove, or customize freely) --------
+    new saas.Modules.Bookings.BookingsModule(),
     new saas.Modules.Clients.ClientsModule(),
     new saas.Modules.Inventory.InventoryModule(),
     new saas.Modules.Settings.SettingsModule(),

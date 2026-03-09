@@ -1,0 +1,106 @@
+@model saas.Data.PaginatedList<saas.Modules.Bookings.DTOs.BookingListItemDto>
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var status = ViewData["Status"]?.ToString();
+    var search = ViewData["Search"]?.ToString();
+
+    string ListUrl(int page)
+    {
+        var routeValues = new Dictionary<string, object?>
+        {
+            ["slug"] = slug,
+            ["page"] = page
+        };
+        if (!string.IsNullOrWhiteSpace(status)) routeValues["status"] = status;
+        if (!string.IsNullOrWhiteSpace(search)) routeValues["search"] = search;
+        return Url.Action("List", "Booking", routeValues)!;
+    }
+}
+@if (Model.Items.Count == 0)
+{
+    <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-8 text-center">
+        <h3 class="text-lg font-semibold">No bookings yet</h3>
+        <p class="mt-2 opacity-70">
+            @if (!string.IsNullOrWhiteSpace(status) || !string.IsNullOrWhiteSpace(search))
+            {
+                <text>No bookings match this filter. Try a broader search or switch status tabs.</text>
+            }
+            else
+            {
+                <text>Create your first booking once a client and inventory items are ready for operations.</text>
+            }
+        </p>
+    </div>
+}
+else
+{
+    <div class="overflow-x-auto">
+        <table class="table table-zebra">
+            <thead>
+                <tr>
+                    <th>Booking</th>
+                    <th>Client</th>
+                    <th>Travel</th>
+                    <th>Status</th>
+                    <th class="text-right">Selling</th>
+                    <th class="text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr class="hover">
+                        <td>
+                            <div class="font-semibold">@item.BookingRef</div>
+                            <div class="text-xs opacity-60">@item.ItemCount service@(item.ItemCount == 1 ? string.Empty : "s") · @item.Pax pax</div>
+                        </td>
+                        <td>@item.ClientName</td>
+                        <td>
+                            @if (item.TravelStartDate.HasValue)
+                            {
+                                <span>@item.TravelStartDate.Value.ToString("dd MMM yyyy")</span>
+                            }
+                            @if (item.TravelEndDate.HasValue)
+                            {
+                                <span> - @item.TravelEndDate.Value.ToString("dd MMM yyyy")</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge badge-outline badge-sm">@item.Status</span>
+                        </td>
+                        <td class="text-right font-medium">@item.SellingCurrencyCode @item.TotalSelling.ToString("N2")</td>
+                        <td class="text-right">
+                            <a class="btn btn-ghost btn-sm" href="@Url.Action("Details", "Booking", new { slug, id = item.Id })">Open</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="mt-6 flex items-center justify-between gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3 text-sm">
+            <div class="opacity-70">Page @Model.PageIndex of @Model.TotalPages</div>
+            <div class="join">
+                @if (Model.HasPreviousPage)
+                {
+                    <button class="join-item btn btn-sm" hx-get="@ListUrl(Model.PageIndex - 1)" hx-target="#booking-list">Previous</button>
+                }
+                else
+                {
+                    <button class="join-item btn btn-sm btn-disabled">Previous</button>
+                }
+
+                @if (Model.HasNextPage)
+                {
+                    <button class="join-item btn btn-sm" hx-get="@ListUrl(Model.PageIndex + 1)" hx-target="#booking-list">Next</button>
+                }
+                else
+                {
+                    <button class="join-item btn btn-sm btn-disabled">Next</button>
+                }
+            </div>
+        </div>
+    }
+}
