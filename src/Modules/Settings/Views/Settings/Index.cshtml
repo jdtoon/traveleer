@@ -1,0 +1,143 @@
+@{
+    ViewData["Title"] = "Settings";
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var activeTab = ViewData["ActiveTab"]?.ToString() ?? "room-types";
+    string tabClass(string tab) => activeTab == tab ? "tab tab-active" : "tab";
+    string panelClass(string tab) => activeTab == tab ? "space-y-4" : "hidden space-y-4";
+}
+
+<div class="flex flex-col gap-6">
+    <div>
+        <h1 class="text-2xl font-bold">Settings</h1>
+        <p class="opacity-60">Manage the shared travel reference data your agency will use for inventory, rates, quotes, and bookings.</p>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 shadow-sm">
+        <div class="card-body gap-6">
+            <div role="tablist" class="tabs tabs-bordered flex-wrap gap-2">
+                <button role="tab" class="@tabClass("room-types")" onclick="switchSettingsTab('room-types')">Room Types</button>
+                <button role="tab" class="@tabClass("meal-plans")" onclick="switchSettingsTab('meal-plans')">Meal Plans</button>
+                <button role="tab" class="@tabClass("currencies")" onclick="switchSettingsTab('currencies')">Currencies</button>
+                <button role="tab" class="@tabClass("destinations")" onclick="switchSettingsTab('destinations')">Destinations</button>
+                <button role="tab" class="@tabClass("suppliers")" onclick="switchSettingsTab('suppliers')">Suppliers</button>
+                <button role="tab" class="@tabClass("rate-categories")" onclick="switchSettingsTab('rate-categories')">Rate Categories</button>
+                <button role="tab" class="@tabClass("users")" onclick="switchSettingsTab('users')">Users</button>
+            </div>
+
+            <section id="tab-room-types" class="@panelClass("room-types")">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold">Room Types</h2>
+                        <p class="text-sm opacity-70">Define the room labels used by hotels and rate entry.</p>
+                    </div>
+                    <has-permission name="masterdata.edit">
+                        <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewRoomType", "Settings", new { slug })" hx-target="#modal-container">+ New Room Type</button>
+                    </has-permission>
+                </div>
+                <div id="room-types-list" hx-get="@Url.Action("RoomTypes", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.RoomTypesRefresh from:body" hx-swap="innerHTML show:none">
+                    <span class="loading loading-spinner loading-lg"></span>
+                </div>
+            </section>
+
+            <section id="tab-meal-plans" class="@panelClass("meal-plans")">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold">Meal Plans</h2>
+                        <p class="text-sm opacity-70">Keep accommodation board basis options consistent across rate cards.</p>
+                    </div>
+                    <has-permission name="masterdata.edit">
+                        <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewMealPlan", "Settings", new { slug })" hx-target="#modal-container">+ New Meal Plan</button>
+                    </has-permission>
+                </div>
+                <div id="meal-plans-list" hx-get="@Url.Action("MealPlans", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.MealPlansRefresh from:body" hx-swap="innerHTML show:none">
+                    <span class="loading loading-spinner loading-lg"></span>
+                </div>
+            </section>
+
+            <section id="tab-currencies" class="@panelClass("currencies")">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold">Currencies</h2>
+                        <p class="text-sm opacity-70">Manage exchange rates, base currency, markup defaults, and rounding rules.</p>
+                    </div>
+                    <has-permission name="masterdata.edit">
+                        <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewCurrency", "Settings", new { slug })" hx-target="#modal-container">+ New Currency</button>
+                    </has-permission>
+                </div>
+                <div id="currencies-list" hx-get="@Url.Action("Currencies", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.CurrenciesRefresh from:body" hx-swap="innerHTML show:none">
+                    <span class="loading loading-spinner loading-lg"></span>
+                </div>
+            </section>
+
+            <section id="tab-destinations" class="@panelClass("destinations")">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold">Destinations</h2>
+                        <p class="text-sm opacity-70">Store your core places once so inventory and quotes stay consistent.</p>
+                    </div>
+                    <has-permission name="masterdata.edit">
+                        <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewDestination", "Settings", new { slug })" hx-target="#modal-container">+ New Destination</button>
+                    </has-permission>
+                </div>
+                <div id="destinations-list" hx-get="@Url.Action("Destinations", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.DestinationsRefresh from:body" hx-swap="innerHTML show:none">
+                    <span class="loading loading-spinner loading-lg"></span>
+                </div>
+            </section>
+
+            <section id="tab-suppliers" class="@panelClass("suppliers")">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold">Suppliers</h2>
+                        <p class="text-sm opacity-70">Track hotel, transport, visa, and experience providers for your tenant.</p>
+                    </div>
+                    <has-permission name="masterdata.edit">
+                        <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewSupplier", "Settings", new { slug })" hx-target="#modal-container">+ New Supplier</button>
+                    </has-permission>
+                </div>
+                <div id="suppliers-list" hx-get="@Url.Action("Suppliers", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.SuppliersRefresh from:body" hx-swap="innerHTML show:none">
+                    <span class="loading loading-spinner loading-lg"></span>
+                </div>
+            </section>
+
+            <section id="tab-rate-categories" class="@panelClass("rate-categories")">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold">Rate Categories</h2>
+                        <p class="text-sm opacity-70">Classify flights, excursions, transfers, and visa pricing in one place.</p>
+                    </div>
+                    <has-permission name="masterdata.edit">
+                        <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewRateCategory", "Settings", new { slug })" hx-target="#modal-container">+ New Rate Category</button>
+                    </has-permission>
+                </div>
+                <div id="rate-categories-list" hx-get="@Url.Action("RateCategories", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.RateCategoriesRefresh from:body" hx-swap="innerHTML show:none">
+                    <span class="loading loading-spinner loading-lg"></span>
+                </div>
+            </section>
+
+            <section id="tab-users" class="@panelClass("users")">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold">Users</h2>
+                        <p class="text-sm opacity-70">See who has access. Full role and invitation management stays in Admin.</p>
+                    </div>
+                    <a href="/@slug/admin/users" class="btn btn-outline btn-sm">Manage Users & Roles</a>
+                </div>
+                <div id="settings-users-list" hx-get="@Url.Action("Users", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.UsersRefresh from:body" hx-swap="innerHTML show:none">
+                    <span class="loading loading-spinner loading-lg"></span>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchSettingsTab(tab) {
+        const tabs = ["room-types", "meal-plans", "currencies", "destinations", "suppliers", "rate-categories", "users"];
+        for (const current of tabs) {
+            const panel = document.getElementById(`tab-${current}`);
+            const button = Array.from(document.querySelectorAll('[role="tab"]')).find(x => x.textContent.trim().toLowerCase().replace(/\s+/g, '-') === current);
+            if (panel) panel.classList.toggle('hidden', current !== tab);
+            if (button) button.classList.toggle('tab-active', current === tab);
+        }
+    }
+</script>

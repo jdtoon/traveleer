@@ -101,4 +101,56 @@ public class CoreDataSeederTests
         var entFeatureCount = planFeatures.Count(pf => pf.PlanId == entPlan.Id);
         Assert.Equal(2, entFeatureCount);
     }
+
+    [Fact]
+    public async Task SeedAsync_WhenNewFeatureIsAddedLater_BackfillsPlanMappings()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<CoreDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var db = new CoreDbContext(options);
+        await db.Database.EnsureCreatedAsync();
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SuperAdmin:Email"] = "admin@localhost"
+            })
+            .Build();
+
+        IModule[] initialModules =
+        [
+            new saas.Modules.Tenancy.TenancyModule(),
+            new saas.Modules.Audit.AuditModule(),
+            new saas.Modules.TenantAdmin.TenantAdminModule(),
+            new saas.Modules.Auth.AuthModule(),
+            new saas.Modules.Settings.SettingsModule(),
+        ];
+
+        await CoreDataSeeder.SeedAsync(db, config, initialModules);
+
+        var settingsFeatureId = await db.Features
+            .Where(f => f.Key == saas.Modules.Settings.SettingsFeatures.Settings)
+            .Select(f => f.Id)
+            .SingleAsync();
+
+        var staleMappings = await db.PlanFeatures
+            .Where(pf => pf.FeatureId == settingsFeatureId)
+            .ToListAsync();
+        db.PlanFeatures.RemoveRange(staleMappings);
+        await db.SaveChangesAsync();
+
+        var settingsFeature = await db.Features.SingleAsync(f => f.Key == saas.Modules.Settings.SettingsFeatures.Settings);
+        var starterPlan = await db.Plans.SingleAsync(p => p.Slug == "starter");
+        var freePlan = await db.Plans.SingleAsync(p => p.Slug == "free");
+
+        await CoreDataSeeder.SeedAsync(db, config, initialModules);
+
+        Assert.True(await db.PlanFeatures.AnyAsync(pf => pf.PlanId == starterPlan.Id && pf.FeatureId == settingsFeature.Id));
+        Assert.False(await db.PlanFeatures.AnyAsync(pf => pf.PlanId == freePlan.Id && pf.FeatureId == settingsFeature.Id));
+    }
 }

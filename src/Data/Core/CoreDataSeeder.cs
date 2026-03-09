@@ -137,10 +137,7 @@ public static class CoreDataSeeder
         var moduleFeatures = modules.SelectMany(m => m.Features.Select(mf => new { Module = m, Feature = mf })).ToList();
         var newModuleFeatures = moduleFeatures.Where(x => !existingKeySet.Contains(x.Feature.Key)).ToList();
 
-        if (newModuleFeatures.Count == 0)
-            return;
-
-        // Add new features
+        // Add new features first so the feature catalog matches the module declarations.
         var newFeatures = newModuleFeatures.Select(x => new Feature
         {
             Id = Guid.NewGuid(),
@@ -152,7 +149,57 @@ public static class CoreDataSeeder
             IsEnabled = true
         }).ToList();
 
-        db.Features.AddRange(newFeatures);
+        if (newFeatures.Count > 0)
+        {
+            db.Features.AddRange(newFeatures);
+            await db.SaveChangesAsync();
+        }
+
+        var plans = await db.Plans.OrderBy(p => p.SortOrder).ToListAsync();
+        var declaredFeatureKeys = new HashSet<string>(moduleFeatures.Select(x => x.Feature.Key), StringComparer.OrdinalIgnoreCase);
+        var featuresToSync = await db.Features
+            .Where(f => declaredFeatureKeys.Contains(f.Key))
+            .ToListAsync();
+
+        var existingPlanFeaturePairs = await db.PlanFeatures
+            .Select(pf => new { pf.PlanId, pf.FeatureId })
+            .ToListAsync();
+        var existingPlanFeatureSet = new HashSet<string>(
+            existingPlanFeaturePairs.Select(x => $"{x.PlanId}:{x.FeatureId}"),
+            StringComparer.OrdinalIgnoreCase);
+
+        var featureMinPlan = modules
+            .SelectMany(m => m.Features)
+            .ToDictionary(mf => mf.Key, mf => mf.MinPlanSlug, StringComparer.OrdinalIgnoreCase);
+
+        var planSortOrder = plans.ToDictionary(p => p.Slug, p => p.SortOrder, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var feature in featuresToSync)
+        {
+            if (!featureMinPlan.TryGetValue(feature.Key, out var minSlug))
+                continue;
+
+            foreach (var plan in plans)
+            {
+                var key = $"{plan.Id}:{feature.Id}";
+                if (existingPlanFeatureSet.Contains(key))
+                    continue;
+
+                if (minSlug is null)
+                {
+                    db.PlanFeatures.Add(new PlanFeature { PlanId = plan.Id, FeatureId = feature.Id });
+                    existingPlanFeatureSet.Add(key);
+                    continue;
+                }
+
+                if (planSortOrder.TryGetValue(minSlug, out var minSortOrder) && plan.SortOrder >= minSortOrder)
+                {
+                    db.PlanFeatures.Add(new PlanFeature { PlanId = plan.Id, FeatureId = feature.Id });
+                    existingPlanFeatureSet.Add(key);
+                }
+            }
+        }
+
         await db.SaveChangesAsync();
     }
 }

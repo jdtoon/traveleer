@@ -79,7 +79,7 @@ public class AppFixture : IDisposable
         string userId, email, name;
         using (var userCmd = connection.CreateCommand())
         {
-            userCmd.CommandText = "SELECT Id, Email, UserName FROM AspNetUsers WHERE NormalizedEmail = @email";
+            userCmd.CommandText = "SELECT Id, Email, COALESCE(UserName, DisplayName, Email) FROM AspNetUsers WHERE NormalizedEmail = @email";
             userCmd.Parameters.AddWithValue("@email", normalizedEmail);
             using var reader = userCmd.ExecuteReader();
             reader.Read();

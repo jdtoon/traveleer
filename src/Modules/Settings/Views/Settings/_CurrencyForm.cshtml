@@ -1,0 +1,27 @@
+@model saas.Modules.Settings.DTOs.CurrencyDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var isEdit = Model.Id != Guid.Empty;
+    var title = isEdit ? "Edit Currency" : "New Currency";
+    var action = isEdit ? Url.Action("UpdateCurrency", "Settings", new { slug, id = Model.Id }) : Url.Action("CreateCurrency", "Settings", new { slug });
+}
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-2xl">
+        <form hx-post="@action" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="flex items-center justify-between mb-4"><h3 class="text-lg font-bold">@title</h3><button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-control w-full"><label class="label"><span class="label-text">Code</span></label><input asp-for="Code" class="input input-bordered w-full" /><span asp-validation-for="Code" class="text-error text-sm mt-1"></span></div>
+                <div class="form-control w-full"><label class="label"><span class="label-text">Symbol</span></label><input asp-for="Symbol" class="input input-bordered w-full" /><span asp-validation-for="Symbol" class="text-error text-sm mt-1"></span></div>
+                <div class="form-control w-full md:col-span-2"><label class="label"><span class="label-text">Name</span></label><input asp-for="Name" class="input input-bordered w-full" /><span asp-validation-for="Name" class="text-error text-sm mt-1"></span></div>
+                <div class="form-control w-full"><label class="label"><span class="label-text">Exchange rate</span></label><input asp-for="ExchangeRate" class="input input-bordered w-full" /><span asp-validation-for="ExchangeRate" class="text-error text-sm mt-1"></span></div>
+                <div class="form-control w-full"><label class="label"><span class="label-text">Default markup %</span></label><input asp-for="DefaultMarkup" class="input input-bordered w-full" /><span asp-validation-for="DefaultMarkup" class="text-error text-sm mt-1"></span></div>
+                <div class="form-control w-full md:col-span-2"><label class="label"><span class="label-text">Rounding rule</span></label><select asp-for="RoundingRule" asp-items="Html.GetEnumSelectList<saas.Modules.Settings.Entities.RoundingRule>()" class="select select-bordered w-full"></select><span asp-validation-for="RoundingRule" class="text-error text-sm mt-1"></span></div>
+                <label class="label cursor-pointer justify-start gap-3"><input asp-for="IsBaseCurrency" class="toggle toggle-primary" /><span class="label-text">Base currency</span></label>
+                <label class="label cursor-pointer justify-start gap-3"><input asp-for="IsActive" class="toggle toggle-primary" /><span class="label-text">Active</span></label>
+            </div>
+            <div class="modal-action"><button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button onclick="this.closest('.modal').classList.remove('modal-open')">close</button></form>
+</dialog>

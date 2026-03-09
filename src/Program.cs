@@ -85,6 +85,7 @@ var modules = new IModule[]
 
     // --- App modules (your project — add, remove, or customize freely) --------
     new saas.Modules.Clients.ClientsModule(),
+    new saas.Modules.Settings.SettingsModule(),
 };
 
 foreach (var module in modules)

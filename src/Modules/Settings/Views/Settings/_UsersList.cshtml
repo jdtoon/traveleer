@@ -1,0 +1,37 @@
+@model saas.Modules.Settings.DTOs.SettingsUsersViewModel
+@if (Model.Users.Count == 0)
+{
+    <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-8 text-center">
+        <h3 class="text-lg font-semibold">No users found</h3>
+        <p class="mt-2 opacity-70">Invite teammates from the Admin area when you are ready.</p>
+    </div>
+}
+else
+{
+    <div class="overflow-x-auto">
+        <table class="table table-zebra">
+            <thead><tr><th>User</th><th>Roles</th><th>Status</th><th>Last Login</th></tr></thead>
+            <tbody>
+            @foreach (var user in Model.Users)
+            {
+                <tr class="hover">
+                    <td>
+                        <div class="font-medium">@(user.DisplayName ?? user.Email)</div>
+                        <div class="text-xs opacity-60">@user.Email</div>
+                    </td>
+                    <td>
+                        <div class="flex flex-wrap gap-1">
+                        @foreach (var role in user.Roles)
+                        {
+                            <span class="badge badge-outline badge-sm">@role</span>
+                        }
+                        </div>
+                    </td>
+                    <td><span class="badge @(user.IsActive ? "badge-success" : "badge-ghost") badge-sm">@(user.IsActive ? "Active" : "Inactive")</span></td>
+                    <td class="opacity-70">@(user.LastLoginAt?.ToString("dd MMM yyyy HH:mm") ?? "Never")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
