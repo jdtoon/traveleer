@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
@@ -78,11 +79,101 @@ public class CurrentUserMiddleware
                         _logger.LogWarning(ex, "Session validation failed for tenant {Slug}", tenantContext.Slug);
                     }
                 }
+
+                try
+                {
+                    var tenantDb = context.RequestServices.GetRequiredService<TenantDbContext>();
+                    await RefreshTenantClaimsIfNeededAsync(context, tenantDb, tenantContext.Slug);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Claim refresh failed for tenant {Slug}", tenantContext.Slug);
+                }
             }
 
             current.SetFromClaims(context.User, isSuperAdmin);
         }
 
         await _next(context);
+    }
+
+    private async Task RefreshTenantClaimsIfNeededAsync(HttpContext context, TenantDbContext tenantDb, string? tenantSlug)
+    {
+        if (!(context.User.Identity?.IsAuthenticated ?? false))
+        {
+            return;
+        }
+
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        var userRoles = await tenantDb.UserRoles
+            .Where(userRole => userRole.UserId == userId)
+            .Join(
+                tenantDb.Roles,
+                userRole => userRole.RoleId,
+                role => role.Id,
+                (userRole, role) => new { userRole.RoleId, role.Name })
+            .ToListAsync();
+
+        var roleNames = userRoles
+            .Select(userRole => userRole.Name)
+            .Where(roleName => !string.IsNullOrWhiteSpace(roleName))
+            .Cast<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var roleIds = userRoles
+            .Select(userRole => userRole.RoleId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var permissionKeys = roleIds.Count == 0
+            ? []
+            : await tenantDb.RolePermissions
+                .Where(rolePermission => roleIds.Contains(rolePermission.RoleId))
+                .Select(rolePermission => rolePermission.Permission.Key)
+                .Distinct()
+                .ToListAsync();
+
+        if (ClaimsMatch(context.User, roleNames, permissionKeys))
+        {
+            return;
+        }
+
+        var refreshedClaims = context.User.Claims
+            .Where(claim => claim.Type != ClaimTypes.Role && claim.Type != AuthClaims.Permission)
+            .Concat(roleNames.Select(roleName => new Claim(ClaimTypes.Role, roleName)))
+            .Concat(permissionKeys.Select(permission => new Claim(AuthClaims.Permission, permission)))
+            .ToList();
+
+        var authType = context.User.Identity?.AuthenticationType ?? AuthSchemes.Tenant;
+        var refreshedPrincipal = new ClaimsPrincipal(new ClaimsIdentity(refreshedClaims, authType));
+
+        context.User = refreshedPrincipal;
+        await context.SignInAsync(AuthSchemes.Tenant, refreshedPrincipal);
+
+        _logger.LogInformation(
+            "Refreshed tenant auth claims for user {UserId} in tenant {Slug}",
+            userId,
+            tenantSlug ?? "unknown");
+    }
+
+    private static bool ClaimsMatch(ClaimsPrincipal principal, IReadOnlyCollection<string> roleNames, IReadOnlyCollection<string> permissionKeys)
+    {
+        var claimedRoles = principal.FindAll(ClaimTypes.Role)
+            .Select(claim => claim.Value)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var claimedPermissions = principal.FindAll(AuthClaims.Permission)
+            .Select(claim => claim.Value)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return claimedRoles.SetEquals(roleNames) && claimedPermissions.SetEquals(permissionKeys);
     }
 }

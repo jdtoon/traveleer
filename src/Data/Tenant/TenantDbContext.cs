@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using saas.Modules.Auth.Entities;
 using saas.Modules.Clients.Entities;
+using saas.Modules.Inventory.Entities;
 using saas.Modules.Notifications.Entities;
 using saas.Modules.Settings.Entities;
 using saas.Modules.TenantAdmin.Entities;
@@ -25,6 +26,7 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
 
     // Application domain entities
     public DbSet<Client> Clients => Set<Client>();
+    public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<RoomType> RoomTypes => Set<RoomType>();
     public DbSet<MealPlan> MealPlans => Set<MealPlan>();
     public DbSet<Currency> Currencies => Set<Currency>();

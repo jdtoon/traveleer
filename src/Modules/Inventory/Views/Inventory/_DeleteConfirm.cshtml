@@ -1,0 +1,20 @@
+@model saas.Modules.Inventory.DTOs.InventoryDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-md">
+        <h3 class="text-lg font-bold">Delete @Model.Name?</h3>
+        <p class="py-4 text-sm opacity-70">This inventory item will be removed from this tenant. Existing downstream references should be reviewed before deletion.</p>
+        <form hx-post="@Url.Action("Delete", "Inventory", new { slug, id = Model.Id })" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-error">Delete</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

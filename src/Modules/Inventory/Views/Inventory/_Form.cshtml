@@ -1,0 +1,106 @@
+@model saas.Modules.Inventory.DTOs.InventoryDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var isEdit = Model.Id != Guid.Empty;
+    var title = isEdit ? "Edit Inventory Item" : "New Inventory Item";
+    var action = isEdit
+        ? Url.Action("Update", "Inventory", new { slug, id = Model.Id })
+        : Url.Action("Create", "Inventory", new { slug });
+}
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-3xl">
+        <form hx-post="@action" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-lg font-bold">@title</h3>
+                    <p class="text-sm opacity-70">Capture the destination, supplier, and pricing baseline your team will work from.</p>
+                </div>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Name</span></label>
+                    <input asp-for="Name" class="input input-bordered w-full" />
+                    <span asp-validation-for="Name" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Type</span></label>
+                    <select asp-for="Kind" asp-items="Html.GetEnumSelectList<saas.Modules.Inventory.Entities.InventoryItemKind>()" class="select select-bordered w-full"></select>
+                    <span asp-validation-for="Kind" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Base cost</span></label>
+                    <input asp-for="BaseCost" class="input input-bordered w-full" />
+                    <span asp-validation-for="BaseCost" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Destination</span></label>
+                    <select asp-for="DestinationId" class="select select-bordered w-full">
+                        <option value="">No destination</option>
+                        @foreach (var option in Model.DestinationOptions)
+                        {
+                            <option value="@option.Id" selected="@(Model.DestinationId == option.Id)">@option.Label</option>
+                        }
+                    </select>
+                    <span asp-validation-for="DestinationId" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Supplier</span></label>
+                    <select asp-for="SupplierId" class="select select-bordered w-full">
+                        <option value="">No supplier</option>
+                        @foreach (var option in Model.SupplierOptions)
+                        {
+                            <option value="@option.Id" selected="@(Model.SupplierId == option.Id)">@option.Label</option>
+                        }
+                    </select>
+                    <span asp-validation-for="SupplierId" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Rating (hotels only)</span></label>
+                    <select asp-for="Rating" class="select select-bordered w-full">
+                        <option value="">No rating</option>
+                        <option value="1" selected="@(Model.Rating == 1)">1 star</option>
+                        <option value="2" selected="@(Model.Rating == 2)">2 stars</option>
+                        <option value="3" selected="@(Model.Rating == 3)">3 stars</option>
+                        <option value="4" selected="@(Model.Rating == 4)">4 stars</option>
+                        <option value="5" selected="@(Model.Rating == 5)">5 stars</option>
+                    </select>
+                    <span asp-validation-for="Rating" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Image URL</span></label>
+                    <input asp-for="ImageUrl" class="input input-bordered w-full" placeholder="https://..." />
+                    <span asp-validation-for="ImageUrl" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Address</span></label>
+                    <input asp-for="Address" class="input input-bordered w-full" />
+                    <span asp-validation-for="Address" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Description</span></label>
+                    <textarea asp-for="Description" class="textarea textarea-bordered w-full" rows="4"></textarea>
+                    <span asp-validation-for="Description" class="text-error text-sm mt-1"></span>
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

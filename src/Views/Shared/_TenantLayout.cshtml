@@ -1,9 +1,11 @@
 @inject saas.Shared.ITenantContext TenantContext
 @inject saas.Shared.IFeatureService FeatureService
+@inject saas.Shared.ICurrentUser CurrentUser
 @{
     var slug = TenantContext.Slug;
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
     var clientsEnabled = await FeatureService.IsEnabledAsync("clients");
+    var inventoryEnabled = await FeatureService.IsEnabledAsync("inventory");
     var settingsEnabled = await FeatureService.IsEnabledAsync("settings");
 }
 <!DOCTYPE html>
@@ -77,7 +79,7 @@
                             </swap-nav>
                         </li>
                         @* ── App modules (customize this section) ──────── *@
-                        @if (clientsEnabled)
+                        @if (clientsEnabled && CurrentUser.HasPermission("clients.read"))
                         {
                         <li>
                             <swap-nav to="/@slug/clients" class="@(controller == "Client" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
@@ -88,7 +90,18 @@
                             </swap-nav>
                         </li>
                         }
-                        @if (settingsEnabled)
+                        @if (inventoryEnabled && CurrentUser.HasPermission("inventory.read"))
+                        {
+                        <li>
+                            <swap-nav to="/@slug/inventory" class="@(controller == "Inventory" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0H4m4-3h8" />
+                                </svg>
+                                Inventory
+                            </swap-nav>
+                        </li>
+                        }
+                        @if (settingsEnabled && CurrentUser.HasPermission("masterdata.read"))
                         {
                         <li>
                             <swap-nav to="/@slug/settings" class="@(controller == "Settings" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
