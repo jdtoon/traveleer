@@ -1,0 +1,81 @@
+@model saas.Data.PaginatedList<saas.Modules.Clients.DTOs.ClientListItemDto>
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var search = ViewData["Search"]?.ToString();
+    var listUrl = Url.Action("List", "Client", new { slug, search })!;
+}
+
+@if (Model.Items.Count == 0)
+{
+    <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-8 text-center">
+        <h3 class="text-lg font-semibold">No clients yet</h3>
+        <p class="mt-2 opacity-70">Create your first client so future quotes and bookings have a person or company to attach to.</p>
+    </div>
+}
+else
+{
+    <div class="overflow-x-auto">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Company</th>
+                    <th>Contact</th>
+                    <th>Country</th>
+                    <th>Created</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr class="hover">
+                    <td>
+                        <div class="font-medium">@item.Name</div>
+                        @if (!string.IsNullOrWhiteSpace(item.Email))
+                        {
+                            <div class="text-xs opacity-60">@item.Email</div>
+                        }
+                    </td>
+                    <td>@(item.Company ?? "-")</td>
+                    <td>@(item.Phone ?? "-")</td>
+                    <td>@(item.Country ?? "-")</td>
+                    <td class="opacity-70">@item.CreatedAt.ToString("dd MMM yyyy")</td>
+                    <td class="text-right">
+                        <div class="dropdown dropdown-end">
+                            <label tabindex="0" class="btn btn-ghost btn-xs">...</label>
+                            <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-200 rounded-box shadow-lg z-10 w-40">
+                                <li>
+                                    <button hx-get="@Url.Action("Details", "Client", new { slug, id = item.Id })"
+                                            hx-target="#modal-container">
+                                        View details
+                                    </button>
+                                </li>
+                                <has-permission name="clients.edit">
+                                    <li>
+                                        <button hx-get="@Url.Action("Edit", "Client", new { slug, id = item.Id })"
+                                                hx-target="#modal-container">
+                                            Edit
+                                        </button>
+                                    </li>
+                                </has-permission>
+                                <has-permission name="clients.delete">
+                                    <li>
+                                        <button class="text-error"
+                                                hx-get="@Url.Action("DeleteConfirm", "Client", new { slug, id = item.Id })"
+                                                hx-target="#modal-container">
+                                            Delete
+                                        </button>
+                                    </li>
+                                </has-permission>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <partial name="_Pagination" model="@Model.ToPagination(listUrl, "#client-list")" />
+}

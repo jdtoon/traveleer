@@ -10,6 +10,7 @@
 global using saas.Modules.Billing.Entities;
 global using saas.Modules.FeatureFlags.Entities;
 global using saas.Modules.Auth.Entities;
+global using saas.Modules.Clients.Entities;
 global using saas.Modules.Tenancy.Entities;
 global using saas.Modules.SuperAdmin.Entities;
 global using saas.Modules.Audit.Entities;

@@ -1,0 +1,21 @@
+@model saas.Modules.Clients.DTOs.ClientDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-md">
+        <h3 class="text-lg font-bold">Delete @Model.Name?</h3>
+        <p class="py-4 text-sm opacity-70">This removes the client from this tenant. Use this only if the record is no longer needed.</p>
+        <form hx-post="@Url.Action("Delete", "Client", new { slug, id = Model.Id })" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-error">Delete</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

@@ -1,0 +1,73 @@
+@model saas.Modules.Clients.DTOs.ClientDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var isEdit = Model.Id != Guid.Empty;
+    var title = isEdit ? "Edit Client" : "New Client";
+    var action = isEdit
+        ? Url.Action("Update", "Client", new { slug, id = Model.Id })
+        : Url.Action("Create", "Client", new { slug });
+}
+
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-2xl">
+        <form hx-post="@action" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">@title</h3>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label" for="Name"><span class="label-text">Client name</span></label>
+                    <input asp-for="Name" class="input input-bordered w-full" />
+                    <span asp-validation-for="Name" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label" for="Company"><span class="label-text">Company</span></label>
+                    <input asp-for="Company" class="input input-bordered w-full" />
+                    <span asp-validation-for="Company" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label" for="Country"><span class="label-text">Country</span></label>
+                    <input asp-for="Country" class="input input-bordered w-full" />
+                    <span asp-validation-for="Country" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label" for="Email"><span class="label-text">Email</span></label>
+                    <input asp-for="Email" class="input input-bordered w-full" />
+                    <span asp-validation-for="Email" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label" for="Phone"><span class="label-text">Phone</span></label>
+                    <input asp-for="Phone" class="input input-bordered w-full" />
+                    <span asp-validation-for="Phone" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label" for="Address"><span class="label-text">Address</span></label>
+                    <textarea asp-for="Address" class="textarea textarea-bordered w-full" rows="3"></textarea>
+                    <span asp-validation-for="Address" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label" for="Notes"><span class="label-text">Notes</span></label>
+                    <textarea asp-for="Notes" class="textarea textarea-bordered w-full" rows="4"></textarea>
+                    <span asp-validation-for="Notes" class="text-error text-sm mt-1"></span>
+                </div>
+            </div>
+
+            <div class="modal-action mt-6">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

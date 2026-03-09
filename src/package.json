@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "css:build": "npx @tailwindcss/cli -i wwwroot/css/input.css -o wwwroot/css/app.css --minify",
+    "css:dev": "npx @tailwindcss/cli -i wwwroot/css/input.css -o wwwroot/css/app.css",
     "css:watch": "npx @tailwindcss/cli -i wwwroot/css/input.css -o wwwroot/css/app.css --watch"
   },
   "devDependencies": {

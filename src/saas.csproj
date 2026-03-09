@@ -48,12 +48,13 @@
   </ItemGroup>
 
   <!-- Tailwind CSS build step: npm install + compile CSS before dotnet build -->
-  <Target Name="NpmInstall" BeforeTargets="BeforeBuild" Condition="Exists('package.json') And '$(SkipTailwindBuild)' != 'true'">
+  <Target Name="NpmInstall" BeforeTargets="BeforeBuild" Condition="Exists('package.json') And '$(SkipTailwindBuild)' != 'true'" Inputs="package-lock.json" Outputs="node_modules/.package-lock.json">
     <Exec Command="npm install --prefer-offline --no-audit" WorkingDirectory="$(MSBuildProjectDirectory)" />
   </Target>
 
   <Target Name="TailwindBuild" AfterTargets="NpmInstall" BeforeTargets="BeforeBuild" Condition="Exists('package.json') And '$(SkipTailwindBuild)' != 'true'">
-    <Exec Command="npm run css:build" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Exec Command="npm run css:dev" Condition="'$(Configuration)' == 'Debug'" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Exec Command="npm run css:build" Condition="'$(Configuration)' != 'Debug'" WorkingDirectory="$(MSBuildProjectDirectory)" />
   </Target>
 
 </Project>

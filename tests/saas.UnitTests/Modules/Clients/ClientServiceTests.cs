@@ -1,0 +1,117 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using saas.Data.Tenant;
+using saas.Modules.Clients.DTOs;
+using saas.Modules.Clients.Entities;
+using saas.Modules.Clients.Services;
+using Xunit;
+
+namespace saas.Tests.Modules.Clients;
+
+public class ClientServiceTests : IAsyncLifetime
+{
+    private SqliteConnection _connection = null!;
+    private TenantDbContext _db = null!;
+    private ClientService _service = null!;
+
+    public async Task InitializeAsync()
+    {
+        _connection = new SqliteConnection("Data Source=:memory:");
+        await _connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<TenantDbContext>()
+            .UseSqlite(_connection)
+            .Options;
+
+        _db = new TenantDbContext(options);
+        await _db.Database.EnsureCreatedAsync();
+
+        _db.Clients.AddRange(
+            new Client
+            {
+                Id = Guid.NewGuid(),
+                Name = "Acacia Travel",
+                Company = "Acacia",
+                Email = "hello@acacia.test",
+                Phone = "+27 11 100 2000",
+                Country = "South Africa",
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            },
+            new Client
+            {
+                Id = Guid.NewGuid(),
+                Name = "Berlin Explorer",
+                Company = "Explorer GmbH",
+                Email = "team@explorer.test",
+                Phone = "+49 30 555 000",
+                Country = "Germany",
+                CreatedAt = DateTime.UtcNow.AddDays(-1)
+            });
+        await _db.SaveChangesAsync();
+
+        _service = new ClientService(_db);
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _db.DisposeAsync();
+        await _connection.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetListAsync_WithSearch_FiltersAcrossFields()
+    {
+        var result = await _service.GetListAsync("germany");
+
+        Assert.Single(result.Items);
+        Assert.Equal("Berlin Explorer", result.Items[0].Name);
+    }
+
+    [Fact]
+    public async Task EmailExistsAsync_RespectsExcludeId()
+    {
+        var existing = await _db.Clients.FirstAsync();
+
+        var existsForSame = await _service.EmailExistsAsync(existing.Email!, existing.Id);
+        var existsForDifferent = await _service.EmailExistsAsync(existing.Email!);
+
+        Assert.False(existsForSame);
+        Assert.True(existsForDifferent);
+    }
+
+    [Fact]
+    public async Task CreateAsync_TrimsAndPersistsValues()
+    {
+        var dto = new ClientDto
+        {
+            Name = "  New Client  ",
+            Company = "  Blue Dune  ",
+            Email = "  info@bluedune.test  ",
+            Notes = "  Important account  "
+        };
+
+        await _service.CreateAsync(dto);
+
+        var created = await _db.Clients.SingleAsync(c => c.Name == "New Client");
+        Assert.Equal("Blue Dune", created.Company);
+        Assert.Equal("info@bluedune.test", created.Email);
+        Assert.Equal("Important account", created.Notes);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_NonExistentClient_Throws()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.UpdateAsync(Guid.NewGuid(), new ClientDto { Name = "Missing" }));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_RemovesClient()
+    {
+        var existing = await _db.Clients.FirstAsync();
+
+        await _service.DeleteAsync(existing.Id);
+
+        Assert.False(await _db.Clients.AnyAsync(c => c.Id == existing.Id));
+    }
+}

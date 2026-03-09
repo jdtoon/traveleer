@@ -19,22 +19,21 @@ public class BillingModule : IModule
     {
         // Billing options (tax, company info, trials, grace period, feature toggles)
         services.Configure<BillingOptions>(configuration.GetSection(BillingOptions.SectionName));
+        services.Configure<PaystackOptions>(configuration.GetSection(PaystackOptions.SectionName));
+
+        // Register the typed client in all modes because downstream billing services
+        // depend on its constructor type even when tests run with the mock provider.
+        services.AddHttpClient<PaystackClient>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.paystack.co/");
+            client.DefaultRequestHeaders.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/json"));
+        });
 
         var provider = configuration.GetValue<string>("Billing:Provider") ?? "Mock";
 
         if (provider.Equals("Paystack", StringComparison.OrdinalIgnoreCase))
         {
-            // Paystack configuration
-            services.Configure<PaystackOptions>(configuration.GetSection(PaystackOptions.SectionName));
-
-            // Typed HTTP client for Paystack API
-            services.AddHttpClient<PaystackClient>(client =>
-            {
-                client.BaseAddress = new Uri("https://api.paystack.co/");
-                client.DefaultRequestHeaders.Accept.Add(
-                    new MediaTypeWithQualityHeaderValue("application/json"));
-            });
-
             services.AddScoped<IBillingService, PaystackBillingService>();
 
             // Background plan sync — only in Paystack mode

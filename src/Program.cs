@@ -84,6 +84,8 @@ var modules = new IModule[]
     new saas.Modules.Litestream.LitestreamModule(),
 
     // --- App modules (your project — add, remove, or customize freely) --------
+    new saas.Modules.Notes.NotesModule(),
+    new saas.Modules.Clients.ClientsModule(),
 };
 
 foreach (var module in modules)

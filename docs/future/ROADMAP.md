@@ -43,6 +43,8 @@ Likely deliverables:
 - entity/data ownership maps
 - onboarding flow spec
 - branding settings spec
+- first-wave module specs for Clients and Inventory
+- execution backlog mapping source modules to target work
 
 ### Phase 3: Core Module Migration
 

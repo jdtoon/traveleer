@@ -1,0 +1,8 @@
+/*
+   Stable stylesheet entry point used by Razor layouts.
+   The Tailwind/DaisyUI build writes the real compiled output to app.css.
+   Keeping this thin wrapper avoids runtime failures when a bundle route is not
+   available and mirrors the single-path layout contract used across the app.
+*/
+
+@import url('/css/app.css');

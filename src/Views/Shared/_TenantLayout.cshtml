@@ -4,9 +4,10 @@
     var slug = TenantContext.Slug;
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
     var notesEnabled = await FeatureService.IsEnabledAsync("notes");
+    var clientsEnabled = await FeatureService.IsEnabledAsync("clients");
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="lemonade">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,7 +17,7 @@
     <meta name="theme-color" content="#6366f1" />
 
     <!-- DaisyUI + Tailwind CSS -->
-    <link rel="stylesheet" href="/css/styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="/css/app.css" asp-append-version="true" />
 
     <!-- Swap.Htmx CSS -->
     <link rel="stylesheet" href="~/_content/Swap.Htmx/css/swap.css" asp-append-version="true" />
@@ -84,6 +85,17 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                                 Notes
+                            </swap-nav>
+                        </li>
+                        }
+                        @if (clientsEnabled)
+                        {
+                        <li>
+                            <swap-nav to="/@slug/clients" class="@(controller == "Client" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V4H2v16h5m10 0v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2m10 0H7m8-10a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                                Clients
                             </swap-nav>
                         </li>
                         }

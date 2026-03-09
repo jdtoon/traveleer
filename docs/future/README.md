@@ -23,6 +23,11 @@ This folder exists to make implementation predictable:
 6. `phase-1/04-DATA-MIGRATION-STRATEGY.md`
 7. `phase-1/05-TESTING-QA-ROLLOUT.md`
 8. `phase-1/06-PUBLIC-SITE-AND-ONBOARDING.md`
+9. `phase-2/01-BRANDING-MODULE.md`
+10. `phase-2/02-ONBOARDING-MODULE.md`
+11. `phase-2/03-CLIENTS-MODULE.md`
+12. `phase-2/04-INVENTORY-MODULE.md`
+13. `backlog/MODULE-EXECUTION-BACKLOG.md`
 
 ## Current Foundation
 
@@ -39,7 +44,9 @@ This folder exists to make implementation predictable:
 ## Phase Structure
 
 - `phase-1/` - governance, migration inventory, branding, data mapping, testing rollout, onboarding/public-site alignment
-- Later phases - module specs, workflow redesigns, implementation sequencing, and release planning
+- `phase-2/` - module-level specs for first-wave implementation work
+- `backlog/` - execution sequencing and source-to-target mapping
+- Later phases - workflow redesigns, implementation sequencing, and release planning
 
 ## Working Rules
 
