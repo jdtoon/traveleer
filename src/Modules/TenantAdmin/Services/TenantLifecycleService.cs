@@ -59,19 +59,6 @@ public class TenantLifecycleService : ITenantLifecycleService
             })
             .ToListAsync();
 
-        // Export notes
-        var notes = await _tenantDb.Notes
-            .AsNoTracking()
-            .Select(n => new
-            {
-                n.Title,
-                n.Content,
-                n.CreatedAt,
-                n.UpdatedAt,
-                CreatedBy = n.CreatedBy ?? "unknown"
-            })
-            .ToListAsync();
-
         // Export sessions
         var sessions = await _tenantDb.Set<saas.Modules.Auth.Entities.UserSession>()
             .AsNoTracking()
@@ -127,7 +114,6 @@ public class TenantLifecycleService : ITenantLifecycleService
             },
             Users = users,
             UserCount = users.Count,
-            Notes = notes,
             Sessions = sessions,
             Notifications = notifications,
             Invitations = invitations

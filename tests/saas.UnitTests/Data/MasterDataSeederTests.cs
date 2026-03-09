@@ -33,7 +33,6 @@ public class CoreDataSeederTests
         var modules = new IModule[]
         {
             new saas.Modules.Tenancy.TenancyModule(),
-            new saas.Modules.Notes.NotesModule(),
             new saas.Modules.Audit.AuditModule(),
             new saas.Modules.TenantAdmin.TenantAdminModule(),
             new saas.Modules.Auth.AuthModule(),
@@ -43,8 +42,8 @@ public class CoreDataSeederTests
         await CoreDataSeeder.SeedAsync(db, config, modules);
 
         Assert.Equal(4, await db.Plans.CountAsync());
-        // Notes:1 + Audit:1 + TenantAdmin:1 = 3 features (AuthModule SSO removed, TenancyModule has no features)
-        Assert.Equal(3, await db.Features.CountAsync());
+        // Audit:1 + TenantAdmin:1 = 2 features (AuthModule SSO removed, TenancyModule has no features)
+        Assert.Equal(2, await db.Features.CountAsync());
         Assert.True(await db.PlanFeatures.AnyAsync());
         Assert.Equal(1, await db.SuperAdmins.CountAsync());
     }
@@ -71,7 +70,6 @@ public class CoreDataSeederTests
 
         var modules = new IModule[]
         {
-            new saas.Modules.Notes.NotesModule(),         // notes → starter
             new saas.Modules.TenantAdmin.TenantAdminModule(), // custom_roles → starter
             new saas.Modules.Audit.AuditModule(),         // audit_log → professional
             new saas.Modules.Auth.AuthModule(),           // sso → enterprise
@@ -88,19 +86,19 @@ public class CoreDataSeederTests
         var freeFeatureCount = planFeatures.Count(pf => pf.PlanId == freePlan.Id);
         Assert.Equal(0, freeFeatureCount);
 
-        // Starter (SortOrder 1) — notes + custom_roles = 2
+        // Starter (SortOrder 1) — custom_roles = 1
         var starterPlan = plans.First(p => p.Slug == "starter");
         var starterFeatureCount = planFeatures.Count(pf => pf.PlanId == starterPlan.Id);
-        Assert.Equal(2, starterFeatureCount);
+        Assert.Equal(1, starterFeatureCount);
 
-        // Professional (SortOrder 2) — starter features + audit_log = 3
+        // Professional (SortOrder 2) — starter features + audit_log = 2
         var proPlan = plans.First(p => p.Slug == "professional");
         var proFeatureCount = planFeatures.Count(pf => pf.PlanId == proPlan.Id);
-        Assert.Equal(3, proFeatureCount);
+        Assert.Equal(2, proFeatureCount);
 
-        // Enterprise (SortOrder 3) — all features = 3
+        // Enterprise (SortOrder 3) — all features = 2
         var entPlan = plans.First(p => p.Slug == "enterprise");
         var entFeatureCount = planFeatures.Count(pf => pf.PlanId == entPlan.Id);
-        Assert.Equal(3, entFeatureCount);
+        Assert.Equal(2, entFeatureCount);
     }
 }

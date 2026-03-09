@@ -80,7 +80,6 @@ public class TenantDataCountsModel
     public string Slug { get; set; } = string.Empty;
     public int Users { get; set; }
     public int Roles { get; set; }
-    public int Notes { get; set; }
     public int NotificationsTotal { get; set; }
     public int NotificationsUnread { get; set; }
     public int ActiveSessions { get; set; }

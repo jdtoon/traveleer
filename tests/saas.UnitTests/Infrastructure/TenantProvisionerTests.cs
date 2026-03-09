@@ -93,7 +93,6 @@ public class TenantProvisionerTests : IAsyncLifetime
         services.AddSingleton<IReadOnlyList<IModule>>(new IModule[]
         {
             new saas.Modules.Tenancy.TenancyModule(),
-            new saas.Modules.Notes.NotesModule(),
             new saas.Modules.Audit.AuditModule(),
             new saas.Modules.TenantAdmin.TenantAdminModule(),
             new saas.Modules.SuperAdmin.SuperAdminModule(),
@@ -244,16 +243,15 @@ public class TenantProvisionerTests : IAsyncLifetime
 
         // Permissions seeded
         var permissions = await tenantDb.Permissions.ToListAsync();
-        Assert.Equal(14, permissions.Count);
-        Assert.Contains(permissions, p => p.Key == saas.Modules.Notes.NotesPermissions.Read);
+        Assert.Equal(10, permissions.Count);
         Assert.Contains(permissions, p => p.Key == saas.Modules.TenantAdmin.TenantAdminPermissions.SettingsEdit);
 
-        // RolePermissions: Admin has all 14
+        // RolePermissions: Admin has all 10
         var adminRole = await tenantDb.Roles.FirstAsync(r => r.Name == "Admin");
         var adminRolePerms = await tenantDb.RolePermissions
             .Where(rp => rp.RoleId == adminRole.Id)
             .ToListAsync();
-        Assert.Equal(14, adminRolePerms.Count);
+        Assert.Equal(10, adminRolePerms.Count);
     }
 
     [Fact]

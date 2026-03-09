@@ -175,7 +175,6 @@ public class TenantInspectionService : ITenantInspectionService
             Slug = slug,
             Users = await context.Users.CountAsync(),
             Roles = await context.Roles.CountAsync(),
-            Notes = await context.Notes.CountAsync(),
             NotificationsTotal = await context.Notifications.CountAsync(),
             NotificationsUnread = await context.Notifications.CountAsync(n => !n.IsRead),
             ActiveSessions = await context.UserSessions.CountAsync(s => s.ExpiresAt > DateTime.UtcNow && !s.IsRevoked),

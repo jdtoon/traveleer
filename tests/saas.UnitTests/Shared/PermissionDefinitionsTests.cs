@@ -22,7 +22,6 @@ public class ModulePermissionsTests
     {
         IModule[] modules =
         [
-            new saas.Modules.Notes.NotesModule(),
             new TenantAdminModule(),
             new saas.Modules.Audit.AuditModule(),
         ];
