@@ -1,0 +1,89 @@
+@model saas.Modules.RateCards.DTOs.RateCardDetailsDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="text-2xl font-bold">@Model.Name</h1>
+                <span class="badge badge-outline">@Model.Status</span>
+            </div>
+            <p class="mt-2 opacity-70">@Model.InventoryItemName@if (!string.IsNullOrWhiteSpace(Model.DestinationName)) { <text> · @Model.DestinationName</text> }</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a class="btn btn-ghost btn-sm" href="@Url.Action("Index", "RateCard", new { slug })">Back to Rate Cards</a>
+            <has-permission name="ratecards.edit">
+                <button class="btn btn-outline btn-sm" hx-get="@Url.Action("NewSeason", "RateCard", new { slug, id = Model.Id })" hx-target="#modal-container">+ Add Season</button>
+                @if (Model.Status != RateCardStatus.Active)
+                {
+                    <form hx-post="@Url.Action("Activate", "RateCard", new { slug, id = Model.Id })" hx-swap="none">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-primary btn-sm">Activate</button>
+                    </form>
+                }
+                else
+                {
+                    <form hx-post="@Url.Action("Archive", "RateCard", new { slug, id = Model.Id })" hx-swap="none">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-primary btn-sm">Archive</button>
+                    </form>
+                }
+                @if (Model.Status != RateCardStatus.Draft)
+                {
+                    <form hx-post="@Url.Action("SetDraft", "RateCard", new { slug, id = Model.Id })" hx-swap="none">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-ghost btn-sm">Set Draft</button>
+                    </form>
+                }
+            </has-permission>
+            <has-permission name="ratecards.create">
+                <form hx-post="@Url.Action("Duplicate", "RateCard", new { slug, id = Model.Id })" hx-swap="none">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-ghost btn-sm">Duplicate</button>
+                </form>
+            </has-permission>
+        </div>
+    </div>
+
+    <div class="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
+        <div class="grid gap-4 md:grid-cols-2">
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Hotel</div>
+                    <div class="font-medium">@Model.InventoryItemName</div>
+                    <div class="text-sm opacity-70">@(string.IsNullOrWhiteSpace(Model.DestinationName) ? "Destination pending" : Model.DestinationName)</div>
+                </div>
+            </div>
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Contract</div>
+                    <div class="font-medium">@Model.ContractCurrencyCode</div>
+                    <div class="text-sm opacity-70">Meal plan: @(string.IsNullOrWhiteSpace(Model.DefaultMealPlanName) ? "Not set" : Model.DefaultMealPlanName)</div>
+                </div>
+            </div>
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Validity</div>
+                    <div class="font-medium">@(Model.ValidFrom?.ToString("dd MMM yyyy") ?? "Open start") - @(Model.ValidTo?.ToString("dd MMM yyyy") ?? "Open end")</div>
+                    <div class="text-sm opacity-70">@Model.Seasons.Count season@(Model.Seasons.Count == 1 ? string.Empty : "s") configured</div>
+                </div>
+            </div>
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Coverage</div>
+                    <div class="font-medium">@Model.RoomTypes.Count active room type@(Model.RoomTypes.Count == 1 ? string.Empty : "s")</div>
+                    <div class="text-sm opacity-70">Updated @Model.UpdatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-2">
+                <div class="text-sm uppercase tracking-wide opacity-60">Notes</div>
+                <p class="text-sm opacity-80">@(string.IsNullOrWhiteSpace(Model.Notes) ? "No contract notes recorded yet." : Model.Notes)</p>
+            </div>
+        </div>
+    </div>
+</div>

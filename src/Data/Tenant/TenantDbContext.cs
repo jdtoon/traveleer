@@ -6,6 +6,7 @@ using saas.Modules.Bookings.Entities;
 using saas.Modules.Clients.Entities;
 using saas.Modules.Inventory.Entities;
 using saas.Modules.Notifications.Entities;
+using saas.Modules.RateCards.Entities;
 using saas.Modules.Settings.Entities;
 using saas.Modules.TenantAdmin.Entities;
 
@@ -30,6 +31,9 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<BookingItem> BookingItems => Set<BookingItem>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
+    public DbSet<RateCard> RateCards => Set<RateCard>();
+    public DbSet<RateSeason> RateSeasons => Set<RateSeason>();
+    public DbSet<RoomRate> RoomRates => Set<RoomRate>();
     public DbSet<RoomType> RoomTypes => Set<RoomType>();
     public DbSet<MealPlan> MealPlans => Set<MealPlan>();
     public DbSet<Currency> Currencies => Set<Currency>();

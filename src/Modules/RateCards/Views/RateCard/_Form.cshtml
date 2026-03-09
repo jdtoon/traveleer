@@ -1,0 +1,79 @@
+@model saas.Modules.RateCards.DTOs.RateCardFormDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-2xl">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-lg font-bold">New Rate Card</h3>
+                <p class="text-sm opacity-70">Start a hotel contract with currency, validity dates, and a default meal plan before defining seasons.</p>
+            </div>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+        </div>
+
+        <form hx-post="@Url.Action("Create", "RateCard", new { slug })" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label" for="Name"><span class="label-text">Rate card name</span></label>
+                    <input id="Name" name="Name" value="@Model.Name" class="input input-bordered w-full" />
+                    <span asp-validation-for="Name" class="text-error text-sm mt-1"></span>
+                </div>
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label" for="InventoryItemId"><span class="label-text">Hotel inventory item</span></label>
+                    <select id="InventoryItemId" name="InventoryItemId" class="select select-bordered w-full">
+                        <option value="">Select a hotel</option>
+                        @foreach (var option in Model.InventoryOptions)
+                        {
+                            <option value="@option.Id" selected="@(Model.InventoryItemId == option.Id)">@option.Label</option>
+                        }
+                    </select>
+                    <span asp-validation-for="InventoryItemId" class="text-error text-sm mt-1"></span>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label" for="ContractCurrencyCode"><span class="label-text">Contract currency</span></label>
+                    <select id="ContractCurrencyCode" name="ContractCurrencyCode" class="select select-bordered w-full">
+                        @foreach (var currency in Model.CurrencyOptions)
+                        {
+                            <option value="@currency" selected="@(string.Equals(Model.ContractCurrencyCode, currency, StringComparison.OrdinalIgnoreCase))">@currency</option>
+                        }
+                    </select>
+                    <span asp-validation-for="ContractCurrencyCode" class="text-error text-sm mt-1"></span>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label" for="DefaultMealPlanId"><span class="label-text">Default meal plan</span></label>
+                    <select id="DefaultMealPlanId" name="DefaultMealPlanId" class="select select-bordered w-full">
+                        <option value="">No default meal plan</option>
+                        @foreach (var option in Model.MealPlanOptions)
+                        {
+                            <option value="@option.Id" selected="@(Model.DefaultMealPlanId == option.Id)">@option.Label</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label" for="ValidFrom"><span class="label-text">Valid from</span></label>
+                    <input id="ValidFrom" type="date" name="ValidFrom" value="@Model.ValidFrom?.ToString("yyyy-MM-dd")" class="input input-bordered w-full" />
+                </div>
+                <div class="form-control w-full">
+                    <label class="label" for="ValidTo"><span class="label-text">Valid to</span></label>
+                    <input id="ValidTo" type="date" name="ValidTo" value="@Model.ValidTo?.ToString("yyyy-MM-dd")" class="input input-bordered w-full" />
+                </div>
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label" for="Notes"><span class="label-text">Contract notes</span></label>
+                    <textarea id="Notes" name="Notes" class="textarea textarea-bordered w-full" rows="4">@Model.Notes</textarea>
+                    <span asp-validation-for="Notes" class="text-error text-sm mt-1"></span>
+                </div>
+            </div>
+
+            <div class="modal-action mt-6">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Rate Card</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

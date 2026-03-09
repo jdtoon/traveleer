@@ -1,0 +1,21 @@
+@model saas.Modules.RateCards.DTOs.RateSeasonFormDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-sm">
+        <h3 class="text-lg font-bold">Delete @Model.Name?</h3>
+        <p class="py-4 text-sm opacity-70">This removes the season and every room-rate cell attached to it.</p>
+        <div class="modal-action">
+            <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+            <form hx-post="@Url.Action("DeleteSeason", "RateCard", new { slug, rateCardId = Model.RateCardId, seasonId = Model.Id })" hx-target="#modal-container">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-error">Delete</button>
+            </form>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

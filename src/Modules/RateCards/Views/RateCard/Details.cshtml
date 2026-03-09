@@ -1,0 +1,21 @@
+@model saas.Modules.RateCards.DTOs.RateCardDetailsDto
+@{
+    ViewData["Title"] = Model.Name;
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<div class="flex flex-col gap-6">
+    <div id="rate-card-summary"
+         hx-get="@Url.Action("Summary", "RateCard", new { slug, id = Model.Id })"
+         hx-trigger="@saas.Modules.RateCards.Events.RateCardEvents.DetailsRefresh from:body"
+         hx-swap="innerHTML">
+        @await Html.PartialAsync("_Summary", Model)
+    </div>
+
+    <div id="rate-card-grid"
+         hx-get="@Url.Action("Grid", "RateCard", new { slug, id = Model.Id })"
+         hx-trigger="load, @saas.Modules.RateCards.Events.RateCardEvents.DetailsRefresh from:body"
+         hx-swap="innerHTML show:none">
+        <span class="loading loading-spinner loading-lg"></span>
+    </div>
+</div>

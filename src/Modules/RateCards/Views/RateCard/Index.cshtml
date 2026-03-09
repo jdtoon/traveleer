@@ -1,0 +1,70 @@
+@{
+    ViewData["Title"] = "Rate Cards";
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var search = ViewData["Search"]?.ToString();
+    var status = ViewData["Status"]?.ToString();
+
+    string tabClass(string? current) => string.Equals(status, current, StringComparison.OrdinalIgnoreCase)
+        ? "tab tab-active"
+        : "tab";
+
+    string? QueryFor(string? nextStatus)
+    {
+        var pairs = new List<string>();
+        if (!string.IsNullOrWhiteSpace(nextStatus)) pairs.Add($"status={Uri.EscapeDataString(nextStatus)}");
+        if (!string.IsNullOrWhiteSpace(search)) pairs.Add($"search={Uri.EscapeDataString(search)}");
+        return pairs.Count == 0 ? null : string.Join("&", pairs);
+    }
+
+    string TabUrl(string? nextStatus)
+    {
+        var query = QueryFor(nextStatus);
+        return query is null ? $"/{slug}/rate-cards" : $"/{slug}/rate-cards?{query}";
+    }
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">Rate Cards</h1>
+            <p class="opacity-70">Manage hotel supplier contracts with seasonal room-type pricing that downstream quotes can rely on.</p>
+        </div>
+        <has-permission name="ratecards.create">
+            <button class="btn btn-primary btn-sm" hx-get="@Url.Action("New", "RateCard", new { slug })" hx-target="#modal-container">+ New Rate Card</button>
+        </has-permission>
+    </div>
+
+    <div class="card border border-base-300 bg-base-100 shadow-sm">
+        <div class="card-body gap-6">
+            <div role="tablist" class="tabs tabs-bordered flex-wrap gap-2">
+                <a href="@TabUrl(null)" class="@tabClass(null)">All</a>
+                <a href="@TabUrl(nameof(RateCardStatus.Draft))" class="@tabClass(nameof(RateCardStatus.Draft))">Draft</a>
+                <a href="@TabUrl(nameof(RateCardStatus.Active))" class="@tabClass(nameof(RateCardStatus.Active))">Active</a>
+                <a href="@TabUrl(nameof(RateCardStatus.Archived))" class="@tabClass(nameof(RateCardStatus.Archived))">Archived</a>
+            </div>
+
+            <form class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end"
+                  hx-get="@Url.Action("List", "RateCard", new { slug })"
+                  hx-target="#rate-card-list"
+                  hx-swap="innerHTML">
+                <input type="hidden" name="status" value="@status" />
+                <input type="hidden" name="page" value="1" />
+                <div class="form-control w-full">
+                    <label class="label" for="ratecard-search">
+                        <span class="label-text">Search rate cards</span>
+                    </label>
+                    <input id="ratecard-search" name="search" value="@search" class="input input-bordered w-full" placeholder="Search by card, hotel, destination, or currency" />
+                </div>
+                <button type="submit" class="btn btn-primary">Apply</button>
+                <a href="@TabUrl(status)" class="btn btn-ghost">Clear</a>
+            </form>
+
+            <div id="rate-card-list"
+                 hx-get="@Url.Action("List", "RateCard", new { slug, status, search })"
+                 hx-trigger="load, @saas.Modules.RateCards.Events.RateCardEvents.Refresh from:body"
+                 hx-swap="innerHTML show:none">
+                <span class="loading loading-spinner loading-lg"></span>
+            </div>
+        </div>
+    </div>
+</div>
