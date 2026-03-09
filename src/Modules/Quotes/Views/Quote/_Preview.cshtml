@@ -1,0 +1,104 @@
+@model saas.Modules.Quotes.DTOs.QuotePreviewDto
+
+<div class="card border border-base-300 bg-base-100 shadow-sm">
+    <div class="card-body gap-4">
+        <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h2 class="card-title">Quote Preview</h2>
+                <p class="text-sm opacity-70">Client: @(string.IsNullOrWhiteSpace(Model.ClientName) ? "Name pending" : Model.ClientName)</p>
+            </div>
+            <div class="text-sm opacity-70">Output: @Model.OutputCurrencyCode · Markup @Model.MarkupPercentage.ToString("0.##")%</div>
+        </div>
+
+        @if (Model.FilterByTravelDates)
+        {
+            <div class="alert alert-info text-sm">
+                Travel filter is enabled for @(Model.TravelStartDate?.ToString("dd MMM yyyy") ?? "open") to @(Model.TravelEndDate?.ToString("dd MMM yyyy") ?? "open").
+            </div>
+        }
+
+        @if (Model.Items.Count == 0)
+        {
+            <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-8 text-center">
+                <h3 class="text-lg font-semibold">No rate cards selected</h3>
+                <p class="mt-2 opacity-70">Choose at least one rate card to see the quote output and save the quote.</p>
+            </div>
+        }
+        else
+        {
+            <div class="space-y-4">
+                @foreach (var item in Model.Items)
+                {
+                    <section class="rounded-box border border-base-300 bg-base-100 p-4">
+                        <div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h3 class="text-lg font-semibold">@item.HotelName</h3>
+                                    <span class="badge badge-sm @(item.Status == RateCardStatus.Active ? "badge-success" : "badge-warning")">@item.Status</span>
+                                </div>
+                                <div class="text-sm opacity-70">@item.RateCardName@if (!string.IsNullOrWhiteSpace(item.DestinationName)) { <text> · @item.DestinationName</text> }</div>
+                            </div>
+                            <div class="text-sm opacity-70">Contract @item.ContractCurrencyCode</div>
+                        </div>
+
+                        @if (item.Seasons.Count == 0)
+                        {
+                            <div class="mt-4 rounded-box border border-dashed border-base-300 bg-base-200/40 p-4 text-sm opacity-70">
+                                This rate card has no seasons available for the current quote window.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mt-4 overflow-x-auto">
+                                <table class="table table-zebra min-w-225">
+                                    <thead>
+                                        <tr>
+                                            <th class="min-w-56">Season</th>
+                                            @foreach (var roomType in item.RoomTypes)
+                                            {
+                                                <th class="min-w-48">@roomType.Code</th>
+                                            }
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var season in item.Seasons)
+                                        {
+                                            <tr>
+                                                <td class="align-top">
+                                                    <div class="space-y-1">
+                                                        <div class="font-medium">@season.Name</div>
+                                                        <div class="text-sm opacity-70">@season.StartDate.ToString("dd MMM yyyy") - @season.EndDate.ToString("dd MMM yyyy")</div>
+                                                        @if (season.IsBlackout)
+                                                        {
+                                                            <span class="badge badge-ghost badge-sm">Blackout</span>
+                                                        }
+                                                    </div>
+                                                </td>
+                                                @foreach (var rate in season.Rates)
+                                                {
+                                                    <td class="align-top">
+                                                        @if (!rate.IsIncluded)
+                                                        {
+                                                            <span class="text-sm opacity-50">Excluded</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="space-y-1 text-sm">
+                                                                <div>Wkday: @Model.CurrencySymbol@rate.WeekdayRate.ToString("N2")</div>
+                                                                <div>Wkend: @(rate.WeekendRate.HasValue ? $"{Model.CurrencySymbol}{rate.WeekendRate.Value.ToString("N2")}" : "Same as weekday")</div>
+                                                            </div>
+                                                        }
+                                                    </td>
+                                                }
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </section>
+                }
+            </div>
+        }
+    </div>
+</div>

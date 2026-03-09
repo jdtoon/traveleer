@@ -1,0 +1,100 @@
+@model saas.Modules.Quotes.DTOs.QuoteDetailsDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="text-2xl font-bold">@Model.ReferenceNumber</h1>
+                <span class="badge badge-outline">@Model.Status</span>
+            </div>
+            <p class="mt-2 opacity-70">@Model.ClientName@if (!string.IsNullOrWhiteSpace(Model.ClientEmail)) { <text> · @Model.ClientEmail</text> }</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a class="btn btn-ghost btn-sm" href="@Url.Action("Index", "Quote", new { slug })">Back to Quotes</a>
+            <has-permission name="quotes.edit">
+                <a class="btn btn-outline btn-sm" href="@Url.Action("Edit", "Quote", new { slug, id = Model.Id })">Edit Builder</a>
+                @if (Model.Status != QuoteStatus.Sent)
+                {
+                    <form hx-post="@Url.Action("UpdateStatus", "Quote", new { slug, id = Model.Id })" hx-swap="none">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="status" value="@QuoteStatus.Sent" />
+                        <button type="submit" class="btn btn-primary btn-sm">Mark Sent</button>
+                    </form>
+                }
+                @if (Model.Status != QuoteStatus.Accepted)
+                {
+                    <form hx-post="@Url.Action("UpdateStatus", "Quote", new { slug, id = Model.Id })" hx-swap="none">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="status" value="@QuoteStatus.Accepted" />
+                        <button type="submit" class="btn btn-success btn-sm">Accept</button>
+                    </form>
+                }
+                @if (Model.Status != QuoteStatus.Expired)
+                {
+                    <form hx-post="@Url.Action("UpdateStatus", "Quote", new { slug, id = Model.Id })" hx-swap="none">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="status" value="@QuoteStatus.Expired" />
+                        <button type="submit" class="btn btn-ghost btn-sm">Expire</button>
+                    </form>
+                }
+                @if (Model.Status != QuoteStatus.Draft)
+                {
+                    <form hx-post="@Url.Action("UpdateStatus", "Quote", new { slug, id = Model.Id })" hx-swap="none">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="status" value="@QuoteStatus.Draft" />
+                        <button type="submit" class="btn btn-ghost btn-sm">Move To Draft</button>
+                    </form>
+                }
+            </has-permission>
+        </div>
+    </div>
+
+    <div class="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
+        <div class="grid gap-4 md:grid-cols-2">
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Client</div>
+                    <div class="font-medium">@Model.ClientName</div>
+                    <div class="text-sm opacity-70">@(string.IsNullOrWhiteSpace(Model.ClientPhone) ? "Phone not set" : Model.ClientPhone)</div>
+                </div>
+            </div>
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Pricing</div>
+                    <div class="font-medium">@Model.OutputCurrencyCode</div>
+                    <div class="text-sm opacity-70">Markup @Model.MarkupPercentage.ToString("0.##")%</div>
+                </div>
+            </div>
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Travel Window</div>
+                    <div class="font-medium">@(Model.TravelStartDate?.ToString("dd MMM yyyy") ?? "Open") - @(Model.TravelEndDate?.ToString("dd MMM yyyy") ?? "Open")</div>
+                    <div class="text-sm opacity-70">@(Model.FilterByTravelDates ? "Season filtering enabled" : "All seasons included")</div>
+                </div>
+            </div>
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Composition</div>
+                    <div class="font-medium">@Model.RateCardCount rate card@(Model.RateCardCount == 1 ? string.Empty : "s")</div>
+                    <div class="text-sm opacity-70">Updated @Model.UpdatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-2">
+                <div class="text-sm uppercase tracking-wide opacity-60">Notes</div>
+                <p class="text-sm opacity-80">@(string.IsNullOrWhiteSpace(Model.Notes) ? "No client-facing notes recorded." : Model.Notes)</p>
+                @if (!string.IsNullOrWhiteSpace(Model.InternalNotes))
+                {
+                    <div class="divider my-1"></div>
+                    <div class="text-sm uppercase tracking-wide opacity-60">Internal</div>
+                    <p class="text-sm opacity-80">@Model.InternalNotes</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>

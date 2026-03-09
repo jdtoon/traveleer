@@ -1,0 +1,190 @@
+@model saas.Modules.Quotes.DTOs.QuoteBuilderDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var quoteId = ViewData["QuoteId"] as Guid?;
+    var isEdit = quoteId.HasValue;
+    var action = isEdit
+        ? Url.Action("Update", "Quote", new { slug, id = quoteId })
+        : Url.Action("Create", "Quote", new { slug });
+    var referencePreview = ViewData["ReferenceNumberPreview"]?.ToString() ?? "QT-preview";
+    ViewData["Title"] = isEdit ? "Edit Quote" : "New Quote";
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">@(isEdit ? "Edit Quote" : "New Quote")</h1>
+            <p class="opacity-70">Select the rate cards you want to sell, shape the pricing output, and save a quote record your team can act on.</p>
+        </div>
+        <div class="rounded-box border border-base-300 bg-base-100 px-4 py-3 text-sm shadow-sm">
+            <div class="opacity-60">Reference</div>
+            <div class="font-semibold">@referencePreview</div>
+        </div>
+    </div>
+
+    <form id="quote-builder-form" method="post" action="@action" class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        @Html.AntiForgeryToken()
+        <div class="flex flex-col gap-6">
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <h2 class="card-title text-lg">Client Snapshot</h2>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div class="form-control w-full md:col-span-2">
+                            <label class="label" for="ClientId"><span class="label-text">Existing client</span></label>
+                            <select id="ClientId" name="ClientId" class="select select-bordered w-full">
+                                <option value="">One-off client</option>
+                                @foreach (var option in Model.ClientOptions)
+                                {
+                                    <option value="@option.Id" selected="@(Model.ClientId == option.Id)">@option.Label</option>
+                                }
+                            </select>
+                            <span class="label-text-alt opacity-60">Select a saved client to prefill any blank contact fields when you save or preview.</span>
+                        </div>
+                        <div class="form-control w-full md:col-span-2">
+                            <label class="label" for="ClientName"><span class="label-text">Client name</span></label>
+                            <input id="ClientName" name="ClientName" value="@Model.ClientName" class="input input-bordered w-full" />
+                            <span asp-validation-for="ClientName" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="ClientEmail"><span class="label-text">Client email</span></label>
+                            <input id="ClientEmail" type="email" name="ClientEmail" value="@Model.ClientEmail" class="input input-bordered w-full" />
+                            <span asp-validation-for="ClientEmail" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="ClientPhone"><span class="label-text">Client phone</span></label>
+                            <input id="ClientPhone" name="ClientPhone" value="@Model.ClientPhone" class="input input-bordered w-full" />
+                            <span asp-validation-for="ClientPhone" class="text-error text-sm mt-1"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <h2 class="card-title text-lg">Pricing Output</h2>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div class="form-control w-full">
+                            <label class="label" for="OutputCurrencyCode"><span class="label-text">Output currency</span></label>
+                            <select id="OutputCurrencyCode" name="OutputCurrencyCode" class="select select-bordered w-full">
+                                @foreach (var currency in Model.CurrencyOptions)
+                                {
+                                    <option value="@currency" selected="@(string.Equals(Model.OutputCurrencyCode, currency, StringComparison.OrdinalIgnoreCase))">@currency</option>
+                                }
+                            </select>
+                            <span asp-validation-for="OutputCurrencyCode" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="MarkupPercentage"><span class="label-text">Markup %</span></label>
+                            <input id="MarkupPercentage" type="number" step="0.01" min="0" name="MarkupPercentage" value="@Model.MarkupPercentage.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" class="input input-bordered w-full" />
+                            <span asp-validation-for="MarkupPercentage" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="ValidUntil"><span class="label-text">Quote valid until</span></label>
+                            <input id="ValidUntil" type="date" name="ValidUntil" value="@Model.ValidUntil?.ToString("yyyy-MM-dd")" class="input input-bordered w-full" />
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="GroupBy"><span class="label-text">Grouping</span></label>
+                            <select id="GroupBy" name="GroupBy" class="select select-bordered w-full">
+                                <option value="ratecard" selected="@(string.Equals(Model.GroupBy, "ratecard", StringComparison.OrdinalIgnoreCase))">Rate card</option>
+                                <option value="destination" selected="@(string.Equals(Model.GroupBy, "destination", StringComparison.OrdinalIgnoreCase))">Destination</option>
+                            </select>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="TravelStartDate"><span class="label-text">Travel start date</span></label>
+                            <input id="TravelStartDate" type="date" name="TravelStartDate" value="@Model.TravelStartDate?.ToString("yyyy-MM-dd")" class="input input-bordered w-full" />
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="TravelEndDate"><span class="label-text">Travel end date</span></label>
+                            <input id="TravelEndDate" type="date" name="TravelEndDate" value="@Model.TravelEndDate?.ToString("yyyy-MM-dd")" class="input input-bordered w-full" />
+                            <span asp-validation-for="TravelEndDate" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full md:col-span-2">
+                            <label class="label cursor-pointer justify-start gap-3">
+                                <input type="hidden" name="FilterByTravelDates" value="false" />
+                                <input type="checkbox" name="FilterByTravelDates" value="true" class="checkbox" checked="@Model.FilterByTravelDates" />
+                                <span class="label-text">Filter seasons to the travel date window</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h2 class="card-title text-lg">Rate Card Selection</h2>
+                            <p class="text-sm opacity-70">Choose one or more hotel rate cards to include in the quote preview and saved record.</p>
+                        </div>
+                        <div class="badge badge-outline">@Model.SelectedRateCardIds.Count selected</div>
+                    </div>
+                    <div class="grid gap-4">
+                        @if (ViewData.ModelState.TryGetValue(nameof(Model.SelectedRateCardIds), out var selectedRateCardErrors) && selectedRateCardErrors.Errors.Count > 0)
+                        {
+                            <div class="alert alert-error text-sm">@selectedRateCardErrors.Errors[0].ErrorMessage</div>
+                        }
+                        @foreach (var option in Model.AvailableRateCards)
+                        {
+                            <label class="card cursor-pointer border border-base-300 bg-base-100 shadow-sm transition hover:border-primary/40">
+                                <div class="card-body gap-3 p-4">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div class="space-y-1">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <input type="checkbox" name="SelectedRateCardIds" value="@option.Id" class="checkbox checkbox-sm" checked="@option.IsSelected" />
+                                                <span class="font-semibold">@option.HotelName</span>
+                                                <span class="badge badge-sm @(option.Status == RateCardStatus.Active ? "badge-success" : "badge-warning")">@option.Status</span>
+                                            </div>
+                                            <div class="text-sm opacity-80">@option.RateCardName</div>
+                                        </div>
+                                        <div class="text-right text-sm opacity-70">
+                                            <div>@option.ContractCurrencyCode</div>
+                                            <div>@option.SeasonCount season@(option.SeasonCount == 1 ? string.Empty : "s")</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-3 text-sm opacity-70">
+                                        <span>@(string.IsNullOrWhiteSpace(option.DestinationName) ? "Destination pending" : option.DestinationName)</span>
+                                        <span>@(option.ValidFrom?.ToString("dd MMM yyyy") ?? "Open start") - @(option.ValidTo?.ToString("dd MMM yyyy") ?? "Open end")</span>
+                                    </div>
+                                </div>
+                            </label>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <h2 class="card-title text-lg">Notes</h2>
+                    <div class="grid gap-4">
+                        <div class="form-control w-full">
+                            <label class="label" for="Notes"><span class="label-text">Client-facing notes</span></label>
+                            <textarea id="Notes" name="Notes" class="textarea textarea-bordered w-full" rows="4">@Model.Notes</textarea>
+                            <span asp-validation-for="Notes" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="InternalNotes"><span class="label-text">Internal notes</span></label>
+                            <textarea id="InternalNotes" name="InternalNotes" class="textarea textarea-bordered w-full" rows="4">@Model.InternalNotes</textarea>
+                            <span asp-validation-for="InternalNotes" class="text-error text-sm mt-1"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+                <a class="btn btn-ghost" href="@Url.Action("Index", "Quote", new { slug })">Cancel</a>
+                <button type="submit" class="btn btn-primary">@(isEdit ? "Update Quote" : "Save Quote")</button>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-6">
+            <div id="quote-preview"
+                 class="min-h-64"
+                 hx-get="@Url.Action("Preview", "Quote", new { slug })"
+                 hx-trigger="load, change from:#quote-builder-form, input delay:500ms from:#quote-builder-form"
+                 hx-include="#quote-builder-form"
+                 hx-swap="innerHTML show:none">
+                <span class="loading loading-spinner loading-lg"></span>
+            </div>
+        </div>
+    </form>
+</div>

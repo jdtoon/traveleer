@@ -6,6 +6,7 @@ using saas.Modules.Bookings.Entities;
 using saas.Modules.Clients.Entities;
 using saas.Modules.Inventory.Entities;
 using saas.Modules.Notifications.Entities;
+using saas.Modules.Quotes.Entities;
 using saas.Modules.RateCards.Entities;
 using saas.Modules.Settings.Entities;
 using saas.Modules.TenantAdmin.Entities;
@@ -41,6 +42,8 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<RateCategory> RateCategories => Set<RateCategory>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<Quote> Quotes => Set<Quote>();
+    public DbSet<QuoteRateCard> QuoteRateCards => Set<QuoteRateCard>();
     public DbSet<TeamInvitation> TeamInvitations => Set<TeamInvitation>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

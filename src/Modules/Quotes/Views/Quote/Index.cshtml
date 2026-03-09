@@ -1,0 +1,65 @@
+@{
+    ViewData["Title"] = "Quotes";
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var search = ViewData["Search"]?.ToString();
+    var status = ViewData["Status"]?.ToString();
+
+    string tabClass(string? current) => string.Equals(status, current, StringComparison.OrdinalIgnoreCase)
+        ? "tab tab-active"
+        : "tab";
+
+    string TabUrl(string? nextStatus)
+    {
+        var pairs = new List<string>();
+        if (!string.IsNullOrWhiteSpace(nextStatus)) pairs.Add($"status={Uri.EscapeDataString(nextStatus)}");
+        if (!string.IsNullOrWhiteSpace(search)) pairs.Add($"search={Uri.EscapeDataString(search)}");
+        return pairs.Count == 0 ? $"/{slug}/quotes" : $"/{slug}/quotes?{string.Join("&", pairs)}";
+    }
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">Quotes</h1>
+            <p class="opacity-70">Build client-ready quotes from saved hotel rate cards, then track the quote through its operational lifecycle.</p>
+        </div>
+        <has-permission name="quotes.create">
+            <a class="btn btn-primary btn-sm" href="@Url.Action("New", "Quote", new { slug })">+ New Quote</a>
+        </has-permission>
+    </div>
+
+    <div class="card border border-base-300 bg-base-100 shadow-sm">
+        <div class="card-body gap-6">
+            <div role="tablist" class="tabs tabs-bordered flex-wrap gap-2">
+                <a href="@TabUrl(null)" class="@tabClass(null)">All</a>
+                <a href="@TabUrl(nameof(QuoteStatus.Draft))" class="@tabClass(nameof(QuoteStatus.Draft))">Draft</a>
+                <a href="@TabUrl(nameof(QuoteStatus.Sent))" class="@tabClass(nameof(QuoteStatus.Sent))">Sent</a>
+                <a href="@TabUrl(nameof(QuoteStatus.Accepted))" class="@tabClass(nameof(QuoteStatus.Accepted))">Accepted</a>
+                <a href="@TabUrl(nameof(QuoteStatus.Expired))" class="@tabClass(nameof(QuoteStatus.Expired))">Expired</a>
+            </div>
+
+            <form class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end"
+                  hx-get="@Url.Action("List", "Quote", new { slug })"
+                  hx-target="#quote-list"
+                  hx-swap="innerHTML">
+                <input type="hidden" name="status" value="@status" />
+                <input type="hidden" name="page" value="1" />
+                <div class="form-control w-full">
+                    <label class="label" for="quote-search">
+                        <span class="label-text">Search quotes</span>
+                    </label>
+                    <input id="quote-search" name="search" value="@search" class="input input-bordered w-full" placeholder="Search by reference, client, email, or hotel" />
+                </div>
+                <button type="submit" class="btn btn-primary">Apply</button>
+                <a href="@TabUrl(status)" class="btn btn-ghost">Clear</a>
+            </form>
+
+            <div id="quote-list"
+                 hx-get="@Url.Action("List", "Quote", new { slug, status, search })"
+                 hx-trigger="load, @saas.Modules.Quotes.Events.QuoteEvents.Refresh from:body"
+                 hx-swap="innerHTML show:none">
+                <span class="loading loading-spinner loading-lg"></span>
+            </div>
+        </div>
+    </div>
+</div>

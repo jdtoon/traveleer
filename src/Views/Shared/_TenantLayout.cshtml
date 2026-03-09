@@ -7,6 +7,7 @@
     var bookingsEnabled = await FeatureService.IsEnabledAsync("bookings");
     var clientsEnabled = await FeatureService.IsEnabledAsync("clients");
     var inventoryEnabled = await FeatureService.IsEnabledAsync("inventory");
+    var quotesEnabled = await FeatureService.IsEnabledAsync("quotes");
     var rateCardsEnabled = await FeatureService.IsEnabledAsync("ratecards");
     var settingsEnabled = await FeatureService.IsEnabledAsync("settings");
 }
@@ -111,6 +112,17 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0H4m4-3h8" />
                                 </svg>
                                 Inventory
+                            </swap-nav>
+                        </li>
+                        }
+                        @if (quotesEnabled && CurrentUser.HasPermission("quotes.read"))
+                        {
+                        <li>
+                            <swap-nav to="/@slug/quotes" class="@(controller == "Quote" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 5h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2z" />
+                                </svg>
+                                Quotes
                             </swap-nav>
                         </li>
                         }

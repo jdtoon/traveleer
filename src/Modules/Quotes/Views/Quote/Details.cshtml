@@ -1,0 +1,21 @@
+@model saas.Modules.Quotes.DTOs.QuoteDetailsDto
+@{
+    ViewData["Title"] = Model.ReferenceNumber;
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<div class="flex flex-col gap-6">
+    <div id="quote-summary"
+         hx-get="@Url.Action("Summary", "Quote", new { slug, id = Model.Id })"
+         hx-trigger="@saas.Modules.Quotes.Events.QuoteEvents.DetailsRefresh from:body"
+         hx-swap="innerHTML">
+        @await Html.PartialAsync("_Summary", Model)
+    </div>
+
+    <div id="quote-preview"
+         hx-get="@Url.Action("SavedPreview", "Quote", new { slug, id = Model.Id })"
+         hx-trigger="load"
+         hx-swap="innerHTML show:none">
+        <span class="loading loading-spinner loading-lg"></span>
+    </div>
+</div>
