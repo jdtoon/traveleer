@@ -1,56 +1,46 @@
-# Traveleer Future Work
+# Remaining Migration Work
 
-This folder is the planning and design space for turning `traveleer` into the full travel-agency product built on the SaaS starter and informed by `agencycardpro`.
+This folder is now the live execution tracker for the remaining AgencyCardPro parity work in `traveleer`.
 
-## Intent
+It no longer describes speculative module migration. The large module migration is already done.
 
-Traveleer keeps the existing multi-tenant SaaS foundation and absorbs product behavior from AgencyCardPro through deliberate migration, redesign, and testing.
+## What This Folder Tracks
 
-This folder exists to make implementation predictable:
-
-- architecture decisions are written down before code starts
-- high-risk migrations are specified before they are implemented
-- UX is designed before screens are built
-- testing and manual QA are part of the plan, not cleanup work
+- what is already complete in Traveleer
+- the verified implementation gaps that still remain
+- the ordered execution phases for closing those gaps
+- the rule that each phase must end with build, tests, browser QA, a commit, and a docs update before the next phase starts
 
 ## Reading Order
 
-1. `DECISIONS.md`
-2. `ROADMAP.md`
-3. `phase-1/01-INSTRUCTION-ADOPTION.md`
-4. `phase-1/02-FEATURE-MIGRATION-INVENTORY.md`
-5. `phase-1/03-BRANDING-THEMING.md`
-6. `phase-1/04-DATA-MIGRATION-STRATEGY.md`
-7. `phase-1/05-TESTING-QA-ROLLOUT.md`
-8. `phase-1/06-PUBLIC-SITE-AND-ONBOARDING.md`
-9. `phase-2/01-BRANDING-MODULE.md`
-10. `phase-2/02-ONBOARDING-MODULE.md`
-11. `phase-2/03-CLIENTS-MODULE.md`
-12. `phase-2/04-INVENTORY-MODULE.md`
-13. `backlog/MODULE-EXECUTION-BACKLOG.md`
+1. `STATUS.md`
+2. `REMAINING-WORK.md`
+3. `PHASES.md`
 
-## Current Foundation
+## Operating Rule
 
-| Area | Current State | Direction |
-|------|---------------|-----------|
-| SaaS core | Present in `traveleer` | Retain and extend |
-| Tenant registration | Present in `Registration` module | Keep, then layer onboarding |
-| Billing | Present in `Billing` module | Retain unless ADR says otherwise |
-| Marketing site | Present in `Marketing` module | Redesign content for travel product |
-| Tenant product modules | Not yet implemented | Port from AgencyCardPro into app modules |
-| Engineering instructions | Missing in Traveleer | Import and adapt from ClinicDiary |
-| Future planning docs | Missing in Traveleer | Establish here |
+For every remaining phase:
 
-## Phase Structure
+1. implement the phase
+2. run `dotnet build src/saas.csproj`
+3. run `dotnet test tests/saas.UnitTests`
+4. run `dotnet test tests/saas.IntegrationTests`
+5. perform manual browser QA
+6. commit the phase
+7. update these docs to mark it complete
 
-- `phase-1/` - governance, migration inventory, branding, data mapping, testing rollout, onboarding/public-site alignment
-- `phase-2/` - module-level specs for first-wave implementation work
-- `backlog/` - execution sequencing and source-to-target mapping
-- Later phases - workflow redesigns, implementation sequencing, and release planning
+## Current Position
 
-## Working Rules
+Traveleer already contains the full ACP product-module surface:
 
-- No major module migration starts without a corresponding future doc when the flow is complex.
-- Quotes, bookings, rate cards, branding, and onboarding always require written design before coding.
-- The destination UI system is DaisyUI + Tailwind, not AgencyCardPro's custom CSS.
-- The quality gate is build + unit tests + integration tests + Playwright QA.
+- Branding
+- Onboarding
+- Clients
+- Settings
+- Inventory
+- RateCards
+- Quotes
+- Email
+- Bookings
+
+The remaining work is feature-depth parity and public-site parity, not module creation.
