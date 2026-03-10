@@ -5,6 +5,7 @@ using saas.IntegrationTests.Fixtures;
 using saas.Modules.Bookings.Entities;
 using saas.Modules.Clients.Entities;
 using saas.Modules.Inventory.Entities;
+using saas.Modules.Settings.Entities;
 using Swap.Testing;
 using Xunit;
 
@@ -57,7 +58,7 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task BookingSummaryPartial_RendersWithoutLayout()
     {
-        var bookingId = await SeedBookingWithItemAsync();
+        var (bookingId, _) = await SeedBookingWithItemAsync();
 
         var response = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/summary/{bookingId}");
 
@@ -145,18 +146,39 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task BookingItemsPartial_RequestSupplierAction_Works()
     {
-        var bookingId = await SeedBookingWithItemAsync();
+        var (bookingId, itemId) = await SeedBookingWithItemAsync();
         var itemsResponse = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/items/{bookingId}");
         itemsResponse.AssertSuccess();
 
-        var response = await _client.SubmitFormAsync(itemsResponse, "form", new Dictionary<string, string>());
+        var response = await _client.SubmitFormAsync(itemsResponse, $"form[hx-post='/{TenantSlug}/bookings/items/request/{bookingId}/{itemId}']", new Dictionary<string, string>());
 
         response.AssertSuccess();
-        response.AssertToast("Supplier request recorded.");
+        response.AssertToast("Supplier request sent.");
+        response.AssertTrigger("bookings.items.refresh");
 
         await using var db = OpenTenantDb();
-        var item = await db.BookingItems.FirstAsync(x => x.BookingId == bookingId);
+        var item = await db.BookingItems.FirstAsync(x => x.Id == itemId);
         Assert.Equal(SupplierStatus.Requested, item.SupplierStatus);
+        Assert.NotNull(item.RequestedAt);
+    }
+
+    [Fact]
+    public async Task BookingItemsPartial_WhenRequested_UserCanSendReminder()
+    {
+        var (bookingId, itemId) = await SeedBookingWithItemAsync(status: SupplierStatus.Requested);
+        var itemsResponse = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/items/{bookingId}");
+        itemsResponse.AssertSuccess();
+        await itemsResponse.AssertContainsAsync("Send Reminder");
+
+        var response = await _client.SubmitFormAsync(itemsResponse, $"form[hx-post='/{TenantSlug}/bookings/items/remind/{bookingId}/{itemId}']", new Dictionary<string, string>());
+
+        response.AssertSuccess();
+        response.AssertToast("Supplier reminder sent.");
+        response.AssertTrigger("bookings.items.refresh");
+
+        var refreshedItems = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/items/{bookingId}");
+        refreshedItems.AssertSuccess();
+        await refreshedItems.AssertContainsAsync("Request sent:");
     }
 
     [Fact]
@@ -200,11 +222,29 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
         return booking.Id;
     }
 
-    private async Task<Guid> SeedBookingWithItemAsync()
+    private async Task<(Guid BookingId, Guid ItemId)> SeedBookingWithItemAsync(SupplierStatus status = SupplierStatus.NotRequested)
     {
         await using var db = OpenTenantDb();
         var clientId = await db.Clients.OrderBy(x => x.Name).Select(x => x.Id).FirstAsync();
-        var inventory = await db.InventoryItems.Include(x => x.Supplier).OrderBy(x => x.Name).FirstAsync();
+        var supplier = new Supplier
+        {
+            Name = $"QA Supplier {Guid.NewGuid():N}"[..18],
+            ContactEmail = "ops-supplier@test.local",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var inventory = new InventoryItem
+        {
+            Name = $"QA Service {Guid.NewGuid():N}"[..18],
+            Kind = InventoryItemKind.Hotel,
+            BaseCost = 800m,
+            Supplier = supplier,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        db.InventoryItems.Add(inventory);
+
         var booking = new Booking
         {
             BookingRef = $"BK-R-{Guid.NewGuid():N}"[..13],
@@ -216,7 +256,7 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
             SellingCurrencyCode = "USD",
             CreatedAt = DateTime.UtcNow
         };
-        booking.Items.Add(new BookingItem
+        var item = new BookingItem
         {
             InventoryItemId = inventory.Id,
             SupplierId = inventory.SupplierId,
@@ -228,17 +268,19 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
             SellingCurrencyCode = "USD",
             Quantity = 1,
             Pax = 2,
-            SupplierStatus = SupplierStatus.NotRequested,
+            SupplierStatus = status,
             ServiceDate = new DateOnly(2026, 6, 1),
             EndDate = new DateOnly(2026, 6, 4),
-            Nights = 3
-        });
+            Nights = 3,
+            RequestedAt = status == SupplierStatus.Requested ? DateTime.UtcNow.AddMinutes(-10) : null
+        };
+        booking.Items.Add(item);
         booking.TotalCost = booking.Items.Sum(x => x.CostPrice * x.Quantity);
         booking.TotalSelling = booking.Items.Sum(x => x.SellingPrice * x.Quantity);
         booking.TotalProfit = booking.TotalSelling - booking.TotalCost;
         db.Bookings.Add(booking);
         await db.SaveChangesAsync();
-        return booking.Id;
+        return (booking.Id, item.Id);
     }
 
     private TenantDbContext OpenTenantDb()

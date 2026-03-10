@@ -48,6 +48,20 @@
                                     <span> · @item.Quantity qty · @item.Pax pax</span>
                                 </div>
                                 <div class="text-sm opacity-80">Supplier: @(string.IsNullOrWhiteSpace(item.SupplierName) ? "Unassigned" : item.SupplierName)</div>
+                                <div class="text-sm opacity-70">Supplier email: @(string.IsNullOrWhiteSpace(item.SupplierEmail) ? "Not configured" : item.SupplierEmail)</div>
+                                @if (item.RequestedAt.HasValue || item.ConfirmedAt.HasValue)
+                                {
+                                    <div class="text-sm opacity-70">
+                                        @if (item.RequestedAt.HasValue)
+                                        {
+                                            <div>Request sent: @item.RequestedAt.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div>
+                                        }
+                                        @if (item.ConfirmedAt.HasValue)
+                                        {
+                                            <div>Confirmed: @item.ConfirmedAt.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div>
+                                        }
+                                    </div>
+                                }
                                 @if (!string.IsNullOrWhiteSpace(item.Description))
                                 {
                                     <p class="text-sm opacity-70">@item.Description</p>
@@ -79,11 +93,15 @@
                                         {
                                             <form hx-post="@Url.Action("RequestSupplier", "Booking", new { slug, bookingId = Model.Id, itemId = item.Id })" hx-swap="none">
                                                 @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn btn-outline btn-sm">Mark Requested</button>
+                                                <button type="submit" class="btn btn-outline btn-sm">Send Request</button>
                                             </form>
                                         }
                                         @if (item.SupplierStatus == SupplierStatus.Requested || item.SupplierStatus == SupplierStatus.Waitlisted)
                                         {
+                                            <form hx-post="@Url.Action("SendSupplierReminder", "Booking", new { slug, bookingId = Model.Id, itemId = item.Id })" hx-swap="none">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-outline btn-sm">Send Reminder</button>
+                                            </form>
                                             <form hx-post="@Url.Action("ConfirmSupplier", "Booking", new { slug, bookingId = Model.Id, itemId = item.Id })" hx-swap="none">
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit" class="btn btn-primary btn-sm">Mark Confirmed</button>

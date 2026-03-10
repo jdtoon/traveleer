@@ -144,9 +144,35 @@ public class BookingController : SwapController
     [HasPermission(BookingPermissions.BookingsEdit)]
     public async Task<IActionResult> RequestSupplier(Guid bookingId, Guid itemId)
     {
-        await _service.UpdateItemStatusAsync(bookingId, itemId, SupplierStatus.Requested);
+        var result = await _service.SendSupplierRequestAsync(bookingId, itemId, isReminder: false);
+        if (!result.Success)
+        {
+            return SwapResponse()
+                .WithErrorToast(result.ErrorMessage ?? "Supplier request could not be sent.")
+                .Build();
+        }
+
         return SwapResponse()
-            .WithSuccessToast("Supplier request recorded.")
+            .WithSuccessToast("Supplier request sent.")
+            .WithTrigger(BookingEvents.ItemsRefresh)
+            .Build();
+    }
+
+    [HttpPost("items/remind/{bookingId:guid}/{itemId:guid}")]
+    [ValidateAntiForgeryToken]
+    [HasPermission(BookingPermissions.BookingsEdit)]
+    public async Task<IActionResult> SendSupplierReminder(Guid bookingId, Guid itemId)
+    {
+        var result = await _service.SendSupplierRequestAsync(bookingId, itemId, isReminder: true);
+        if (!result.Success)
+        {
+            return SwapResponse()
+                .WithErrorToast(result.ErrorMessage ?? "Supplier reminder could not be sent.")
+                .Build();
+        }
+
+        return SwapResponse()
+            .WithSuccessToast("Supplier reminder sent.")
             .WithTrigger(BookingEvents.ItemsRefresh)
             .Build();
     }

@@ -105,6 +105,7 @@ public class BookingItemListItemDto
     public int Pax { get; set; }
     public SupplierStatus SupplierStatus { get; set; }
     public string? SupplierName { get; set; }
+    public string? SupplierEmail { get; set; }
     public DateTime? RequestedAt { get; set; }
     public DateTime? ConfirmedAt { get; set; }
     public string? SupplierReference { get; set; }
@@ -158,6 +159,25 @@ public class BookingConversionResult
         };
 
     public static BookingConversionResult Fail(string errorMessage)
+        => new()
+        {
+            Success = false,
+            ErrorMessage = errorMessage
+        };
+}
+
+public class BookingItemActionResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+
+    public static BookingItemActionResult Ok()
+        => new()
+        {
+            Success = true
+        };
+
+    public static BookingItemActionResult Fail(string errorMessage)
         => new()
         {
             Success = false,

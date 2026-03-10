@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
+using saas.Infrastructure.Services;
 using saas.Modules.Bookings.DTOs;
 using saas.Modules.Bookings.Entities;
 using saas.Modules.Bookings.Services;
@@ -9,6 +10,7 @@ using saas.Modules.Inventory.Entities;
 using saas.Modules.Quotes.Entities;
 using saas.Modules.RateCards.Entities;
 using saas.Modules.Settings.Entities;
+using saas.Shared;
 using Xunit;
 
 namespace saas.Tests.Modules.Bookings;
@@ -18,6 +20,9 @@ public class BookingServiceTests : IAsyncLifetime
     private SqliteConnection _connection = null!;
     private TenantDbContext _db = null!;
     private BookingService _service = null!;
+    private FakeEmailService _emailService = null!;
+    private FakeEmailTemplateService _templateService = null!;
+    private FakeTenantContext _tenantContext = null!;
     private Client _client = null!;
     private InventoryItem _hotel = null!;
     private Quote _acceptedQuote = null!;
@@ -34,7 +39,7 @@ public class BookingServiceTests : IAsyncLifetime
         _db = new TenantDbContext(options);
         await _db.Database.EnsureCreatedAsync();
 
-        var supplier = new Supplier { Name = "Al Haram Hotels", IsActive = true, CreatedAt = DateTime.UtcNow };
+        var supplier = new Supplier { Name = "Al Haram Hotels", ContactName = "Reservations", ContactEmail = "reservations@alharam.test", IsActive = true, CreatedAt = DateTime.UtcNow };
         var destination = new Destination { Name = "Makkah", IsActive = true, SortOrder = 10, CreatedAt = DateTime.UtcNow };
         _client = new Client { Name = "Acacia Travel Group", Email = "hello@test.com", CreatedAt = DateTime.UtcNow };
         _hotel = new InventoryItem
@@ -88,7 +93,10 @@ public class BookingServiceTests : IAsyncLifetime
             new Currency { Code = "SAR", Name = "Saudi Riyal", Symbol = "SAR", ExchangeRate = 3.75m, IsBaseCurrency = false, IsActive = true, CreatedAt = DateTime.UtcNow });
         await _db.SaveChangesAsync();
 
-        _service = new BookingService(_db);
+        _emailService = new FakeEmailService();
+        _templateService = new FakeEmailTemplateService();
+        _tenantContext = new FakeTenantContext();
+        _service = new BookingService(_db, _emailService, _templateService, _tenantContext);
     }
 
     public async Task DisposeAsync()
@@ -240,6 +248,112 @@ public class BookingServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SendSupplierRequestAsync_WhenValid_SendsEmailAndMarksItemRequested()
+    {
+        var bookingId = await _service.CreateAsync(new BookingFormDto
+        {
+            ClientId = _client.Id,
+            SellingCurrencyCode = "USD",
+            Pax = 2
+        });
+
+        await _service.AddItemAsync(bookingId, new BookingItemFormDto
+        {
+            BookingId = bookingId,
+            InventoryItemId = _hotel.Id,
+            ServiceDate = new DateOnly(2026, 5, 1),
+            EndDate = new DateOnly(2026, 5, 3),
+            Quantity = 1,
+            Pax = 2,
+            SellingPrice = 600m,
+            SupplierReference = "SUP-REQ-1"
+        });
+
+        var itemId = await _db.BookingItems.Where(x => x.BookingId == bookingId).Select(x => x.Id).SingleAsync();
+
+        var result = await _service.SendSupplierRequestAsync(bookingId, itemId);
+
+        var item = await _db.BookingItems.SingleAsync(x => x.Id == itemId);
+        Assert.True(result.Success);
+        Assert.Equal(SupplierStatus.Requested, item.SupplierStatus);
+        Assert.NotNull(item.RequestedAt);
+        Assert.Single(_emailService.Messages);
+        Assert.Contains("Booking request", _emailService.Messages[0].Subject);
+        Assert.Contains("BK-", _emailService.Messages[0].Subject);
+    }
+
+    [Fact]
+    public async Task SendSupplierRequestAsync_WhenReminder_SendsSecondEmailWithoutResettingRequestedAt()
+    {
+        var bookingId = await _service.CreateAsync(new BookingFormDto
+        {
+            ClientId = _client.Id,
+            SellingCurrencyCode = "USD",
+            Pax = 2
+        });
+
+        await _service.AddItemAsync(bookingId, new BookingItemFormDto
+        {
+            BookingId = bookingId,
+            InventoryItemId = _hotel.Id,
+            ServiceDate = new DateOnly(2026, 5, 1),
+            EndDate = new DateOnly(2026, 5, 3),
+            Quantity = 1,
+            Pax = 2,
+            SellingPrice = 600m
+        });
+
+        var itemId = await _db.BookingItems.Where(x => x.BookingId == bookingId).Select(x => x.Id).SingleAsync();
+        await _service.SendSupplierRequestAsync(bookingId, itemId);
+        var firstRequestedAt = await _db.BookingItems.Where(x => x.Id == itemId).Select(x => x.RequestedAt).SingleAsync();
+
+        var result = await _service.SendSupplierRequestAsync(bookingId, itemId, isReminder: true);
+
+        var item = await _db.BookingItems.SingleAsync(x => x.Id == itemId);
+        Assert.True(result.Success);
+        Assert.Equal(SupplierStatus.Requested, item.SupplierStatus);
+        Assert.Equal(firstRequestedAt, item.RequestedAt);
+        Assert.Equal(2, _emailService.Messages.Count);
+        Assert.Contains("Reminder:", _emailService.Messages[1].Subject);
+    }
+
+    [Fact]
+    public async Task SendSupplierRequestAsync_WhenSupplierEmailMissing_Fails()
+    {
+        var supplier = await _db.Suppliers.SingleAsync();
+        supplier.ContactEmail = null;
+        await _db.SaveChangesAsync();
+
+        var bookingId = await _service.CreateAsync(new BookingFormDto
+        {
+            ClientId = _client.Id,
+            SellingCurrencyCode = "USD",
+            Pax = 2
+        });
+
+        await _service.AddItemAsync(bookingId, new BookingItemFormDto
+        {
+            BookingId = bookingId,
+            InventoryItemId = _hotel.Id,
+            ServiceDate = new DateOnly(2026, 5, 1),
+            EndDate = new DateOnly(2026, 5, 3),
+            Quantity = 1,
+            Pax = 2,
+            SellingPrice = 600m
+        });
+
+        var itemId = await _db.BookingItems.Where(x => x.BookingId == bookingId).Select(x => x.Id).SingleAsync();
+
+        var result = await _service.SendSupplierRequestAsync(bookingId, itemId);
+
+        var item = await _db.BookingItems.SingleAsync(x => x.Id == itemId);
+        Assert.False(result.Success);
+        Assert.Equal("Add a supplier contact email before sending a supplier request.", result.ErrorMessage);
+        Assert.Equal(SupplierStatus.NotRequested, item.SupplierStatus);
+        Assert.Empty(_emailService.Messages);
+    }
+
+    [Fact]
     public async Task GetListAsync_SearchMatchesBookingReferenceAndClient()
     {
         var bookingId = await _service.CreateAsync(new BookingFormDto
@@ -259,5 +373,35 @@ public class BookingServiceTests : IAsyncLifetime
         Assert.Single(byClient.Items);
         Assert.Equal(bookingId, byRef.Items[0].Id);
         Assert.Equal(bookingId, byClient.Items[0].Id);
+    }
+
+    private sealed class FakeEmailService : IEmailService
+    {
+        public List<EmailMessage> Messages { get; } = [];
+        public EmailSendResult NextResult { get; set; } = EmailSendResult.Succeeded();
+
+        public Task<EmailSendResult> SendAsync(EmailMessage message)
+        {
+            Messages.Add(message);
+            return Task.FromResult(NextResult);
+        }
+
+        public Task<EmailSendResult> SendMagicLinkAsync(string to, string magicLinkUrl)
+            => Task.FromResult(EmailSendResult.Succeeded());
+    }
+
+    private sealed class FakeEmailTemplateService : IEmailTemplateService
+    {
+        public string Render(string templateName, Dictionary<string, string> variables)
+            => $"{templateName}:{string.Join("|", variables.OrderBy(x => x.Key).Select(x => $"{x.Key}={x.Value}"))}";
+    }
+
+    private sealed class FakeTenantContext : ITenantContext
+    {
+        public string? Slug => "demo";
+        public Guid? TenantId => Guid.NewGuid();
+        public string? PlanSlug => "starter";
+        public string? TenantName => "Acacia Journeys";
+        public bool IsTenantRequest => true;
     }
 }

@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using saas.Data;
 using saas.Data.Tenant;
+using saas.Infrastructure.Services;
+using saas.Modules.Branding.Entities;
 using saas.Modules.Bookings.DTOs;
 using saas.Modules.Bookings.Entities;
 using saas.Modules.Inventory.Entities;
 using saas.Modules.Quotes.Entities;
+using saas.Shared;
 
 namespace saas.Modules.Bookings.Services;
 
@@ -17,16 +20,27 @@ public interface IBookingService
     Task<BookingDetailsDto?> GetDetailsAsync(Guid id);
     Task<BookingItemFormDto> CreateEmptyItemAsync(Guid bookingId);
     Task AddItemAsync(Guid bookingId, BookingItemFormDto dto);
+    Task<BookingItemActionResult> SendSupplierRequestAsync(Guid bookingId, Guid itemId, bool isReminder = false);
     Task UpdateItemStatusAsync(Guid bookingId, Guid itemId, SupplierStatus newStatus);
 }
 
 public class BookingService : IBookingService
 {
     private readonly TenantDbContext _db;
+    private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _templateService;
+    private readonly ITenantContext _tenantContext;
 
-    public BookingService(TenantDbContext db)
+    public BookingService(
+        TenantDbContext db,
+        IEmailService emailService,
+        IEmailTemplateService templateService,
+        ITenantContext tenantContext)
     {
         _db = db;
+        _emailService = emailService;
+        _templateService = templateService;
+        _tenantContext = tenantContext;
     }
 
     public async Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12)
@@ -260,6 +274,7 @@ public class BookingService : IBookingService
                         Pax = item.Pax,
                         SupplierStatus = item.SupplierStatus,
                         SupplierName = item.Supplier != null ? item.Supplier.Name : null,
+                        SupplierEmail = item.Supplier != null ? item.Supplier.ContactEmail : null,
                         RequestedAt = item.RequestedAt,
                         ConfirmedAt = item.ConfirmedAt,
                         SupplierReference = item.SupplierReference,
@@ -322,6 +337,77 @@ public class BookingService : IBookingService
 
         RecalculateTotals(booking);
         await _db.SaveChangesAsync();
+    }
+
+    public async Task<BookingItemActionResult> SendSupplierRequestAsync(Guid bookingId, Guid itemId, bool isReminder = false)
+    {
+        var booking = await _db.Bookings
+            .Include(x => x.Client)
+            .Include(x => x.Items)
+                .ThenInclude(x => x.Supplier)
+            .FirstOrDefaultAsync(x => x.Id == bookingId);
+
+        if (booking is null)
+        {
+            return BookingItemActionResult.Fail("Booking was not found.");
+        }
+
+        var item = booking.Items.FirstOrDefault(x => x.Id == itemId);
+        if (item is null)
+        {
+            return BookingItemActionResult.Fail("Booking item was not found.");
+        }
+
+        if (!item.SupplierId.HasValue || item.Supplier is null)
+        {
+            return BookingItemActionResult.Fail("Assign a supplier before sending a supplier request.");
+        }
+
+        if (string.IsNullOrWhiteSpace(item.Supplier.ContactEmail))
+        {
+            return BookingItemActionResult.Fail("Add a supplier contact email before sending a supplier request.");
+        }
+
+        if (isReminder && item.SupplierStatus == SupplierStatus.NotRequested)
+        {
+            return BookingItemActionResult.Fail("Send the first supplier request before sending a reminder.");
+        }
+
+        if (!isReminder && item.SupplierStatus != SupplierStatus.NotRequested)
+        {
+            return BookingItemActionResult.Fail("This supplier request has already been sent.");
+        }
+
+        var branding = await _db.BrandingSettings.AsNoTracking()
+            .OrderBy(x => x.CreatedAt)
+            .FirstOrDefaultAsync() ?? new BrandingSettings();
+
+        var subject = isReminder
+            ? $"Reminder: booking request {booking.BookingRef} - {item.ServiceName}"
+            : $"Booking request {booking.BookingRef} - {item.ServiceName}";
+
+        var htmlBody = _templateService.Render("SupplierBookingRequest", BuildSupplierRequestVariables(booking, item, branding, isReminder));
+        var plainTextBody = BuildSupplierRequestPlainText(booking, item, branding, isReminder);
+
+        var result = await _emailService.SendAsync(new EmailMessage(
+            To: item.Supplier.ContactEmail.Trim(),
+            Subject: subject,
+            HtmlBody: htmlBody,
+            PlainTextBody: plainTextBody));
+
+        if (!result.Success)
+        {
+            return BookingItemActionResult.Fail(result.ErrorMessage ?? "Supplier request could not be sent.");
+        }
+
+        if (!isReminder)
+        {
+            item.SupplierStatus = SupplierStatus.Requested;
+            item.RequestedAt ??= DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        return BookingItemActionResult.Ok();
     }
 
     public async Task UpdateItemStatusAsync(Guid bookingId, Guid itemId, SupplierStatus newStatus)
@@ -465,6 +551,93 @@ public class BookingService : IBookingService
         booking.TotalCost = booking.Items.Sum(x => x.CostPrice * x.Quantity);
         booking.TotalSelling = booking.Items.Sum(x => x.SellingPrice * x.Quantity);
         booking.TotalProfit = booking.TotalSelling - booking.TotalCost;
+    }
+
+    private Dictionary<string, string> BuildSupplierRequestVariables(Booking booking, BookingItem item, BrandingSettings branding, bool isReminder)
+    {
+        var agencyName = GetAgencyName(branding);
+        var supplierName = item.Supplier?.Name ?? "Supplier";
+        var serviceWindow = FormatServiceWindow(item.ServiceDate, item.EndDate);
+
+        return new Dictionary<string, string>
+        {
+            ["AgencyName"] = agencyName,
+            ["SupplierName"] = supplierName,
+            ["SupplierContactName"] = Normalize(item.Supplier?.ContactName) ?? supplierName,
+            ["RequestType"] = isReminder ? "Reminder" : "New request",
+            ["BookingReference"] = booking.BookingRef,
+            ["ClientName"] = booking.Client?.Name ?? "Client",
+            ["TravelWindow"] = FormatTravelWindow(booking.TravelStartDate, booking.TravelEndDate),
+            ["ServiceName"] = item.ServiceName,
+            ["ServiceKind"] = item.ServiceKind.ToString(),
+            ["ServiceWindow"] = serviceWindow,
+            ["Quantity"] = item.Quantity.ToString(),
+            ["Pax"] = item.Pax.ToString(),
+            ["SupplierReference"] = Normalize(item.SupplierReference) ?? "Not provided",
+            ["SpecialRequests"] = Normalize(booking.SpecialRequests) ?? "No special requests recorded.",
+            ["InternalNotes"] = Normalize(item.SupplierNotes) ?? "No supplier-specific notes recorded.",
+            ["ContactEmail"] = Normalize(branding.PublicContactEmail) ?? "Reply to this email",
+            ["ContactPhone"] = Normalize(branding.ContactPhone) ?? "Phone not provided"
+        };
+    }
+
+    private string BuildSupplierRequestPlainText(Booking booking, BookingItem item, BrandingSettings branding, bool isReminder)
+    {
+        var lines = new List<string>
+        {
+            $"{GetAgencyName(branding)} {(isReminder ? "is following up on" : "would like to request")} booking {booking.BookingRef}.",
+            string.Empty,
+            $"Client: {booking.Client?.Name ?? "Client"}",
+            $"Travel window: {FormatTravelWindow(booking.TravelStartDate, booking.TravelEndDate)}",
+            $"Service: {item.ServiceName} ({item.ServiceKind})",
+            $"Service dates: {FormatServiceWindow(item.ServiceDate, item.EndDate)}",
+            $"Quantity: {item.Quantity}",
+            $"Pax: {item.Pax}",
+            $"Supplier ref: {Normalize(item.SupplierReference) ?? "Not provided"}",
+            string.Empty,
+            $"Special requests: {Normalize(booking.SpecialRequests) ?? "No special requests recorded."}",
+            $"Supplier notes: {Normalize(item.SupplierNotes) ?? "No supplier-specific notes recorded."}",
+            string.Empty,
+            $"Contact email: {Normalize(branding.PublicContactEmail) ?? "Reply to this email"}",
+            $"Contact phone: {Normalize(branding.ContactPhone) ?? "Phone not provided"}"
+        };
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private string GetAgencyName(BrandingSettings branding)
+        => string.IsNullOrWhiteSpace(branding.AgencyName)
+            ? _tenantContext.TenantName ?? "Your travel workspace"
+            : branding.AgencyName.Trim();
+
+    private static string FormatTravelWindow(DateOnly? startDate, DateOnly? endDate)
+    {
+        if (!startDate.HasValue && !endDate.HasValue)
+        {
+            return "Travel dates pending";
+        }
+
+        if (startDate.HasValue && endDate.HasValue)
+        {
+            return $"{startDate.Value:dd MMM yyyy} - {endDate.Value:dd MMM yyyy}";
+        }
+
+        return startDate?.ToString("dd MMM yyyy") ?? endDate?.ToString("dd MMM yyyy") ?? "Travel dates pending";
+    }
+
+    private static string FormatServiceWindow(DateOnly? serviceDate, DateOnly? endDate)
+    {
+        if (!serviceDate.HasValue && !endDate.HasValue)
+        {
+            return "To be confirmed";
+        }
+
+        if (serviceDate.HasValue && endDate.HasValue)
+        {
+            return $"{serviceDate.Value:dd MMM yyyy} - {endDate.Value:dd MMM yyyy}";
+        }
+
+        return serviceDate?.ToString("dd MMM yyyy") ?? endDate?.ToString("dd MMM yyyy") ?? "To be confirmed";
     }
 
     private static bool TryParseStatus(string? status, out BookingStatus parsedStatus)
