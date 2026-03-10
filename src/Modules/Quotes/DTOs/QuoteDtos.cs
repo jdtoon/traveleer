@@ -108,6 +108,7 @@ public class QuotePreviewDto
     public string OutputCurrencyCode { get; set; } = "USD";
     public string CurrencySymbol { get; set; } = "$";
     public decimal MarkupPercentage { get; set; }
+    public string? FooterText { get; set; }
     public bool FilterByTravelDates { get; set; }
     public DateOnly? TravelStartDate { get; set; }
     public DateOnly? TravelEndDate { get; set; }

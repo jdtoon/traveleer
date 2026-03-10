@@ -1,0 +1,209 @@
+@model saas.Modules.Branding.DTOs.BrandingSettingsDto
+@{
+    ViewData["Title"] = "Branding";
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">Branding</h1>
+            <p class="opacity-70">Shape how your tenant appears to clients and set the defaults that drive new quotes.</p>
+        </div>
+        <div class="rounded-box border border-base-300 bg-base-100 px-4 py-3 text-sm shadow-sm">
+            <div class="opacity-60">Organization settings stay in Admin</div>
+            <div class="font-semibold">Name and primary tenant email still live under Organization Settings.</div>
+        </div>
+    </div>
+
+    <form method="post"
+          hx-post="@Url.Action("Save", "Branding", new { slug })"
+          hx-target="#main-content"
+          hx-swap="innerHTML"
+          class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        @Html.AntiForgeryToken()
+
+        <div class="space-y-6">
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <div>
+                        <h2 class="card-title text-lg">Public Identity</h2>
+                        <p class="text-sm opacity-70">These details appear in quote previews and can differ from your internal workspace record if needed.</p>
+                    </div>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div class="form-control w-full md:col-span-2">
+                            <label class="label" for="AgencyName"><span class="label-text">Public-facing agency name</span></label>
+                            <input id="AgencyName" name="AgencyName" value="@Model.AgencyName" class="input input-bordered w-full" placeholder="Leave blank to use organization name" />
+                            <span asp-validation-for="AgencyName" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="PublicContactEmail"><span class="label-text">Public contact email</span></label>
+                            <input id="PublicContactEmail" type="email" name="PublicContactEmail" value="@Model.PublicContactEmail" class="input input-bordered w-full" placeholder="Leave blank to use organization email" />
+                            <span asp-validation-for="PublicContactEmail" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="ContactPhone"><span class="label-text">Phone</span></label>
+                            <input id="ContactPhone" name="ContactPhone" value="@Model.ContactPhone" class="input input-bordered w-full" />
+                            <span asp-validation-for="ContactPhone" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="Website"><span class="label-text">Website</span></label>
+                            <input id="Website" name="Website" value="@Model.Website" class="input input-bordered w-full" placeholder="https://example.com" />
+                            <span asp-validation-for="Website" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="LogoUrl"><span class="label-text">Logo URL</span></label>
+                            <input id="LogoUrl" name="LogoUrl" value="@Model.LogoUrl" class="input input-bordered w-full" placeholder="https://example.com/logo.svg" />
+                            <span asp-validation-for="LogoUrl" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full md:col-span-2">
+                            <label class="label" for="Address"><span class="label-text">Address</span></label>
+                            <textarea id="Address" name="Address" class="textarea textarea-bordered w-full" rows="3">@Model.Address</textarea>
+                            <span asp-validation-for="Address" class="text-error text-sm mt-1"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <div>
+                        <h2 class="card-title text-lg">Visual Identity</h2>
+                        <p class="text-sm opacity-70">These colors drive the tenant shell, buttons, and quote accents across the workspace.</p>
+                    </div>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div class="form-control w-full">
+                            <label class="label" for="PrimaryColor"><span class="label-text">Primary color</span></label>
+                            <div class="flex gap-3">
+                                <input id="PrimaryColorPicker" type="color" value="@Model.PrimaryColor" class="h-12 w-16 rounded-lg border border-base-300 bg-base-100" oninput="document.getElementById('PrimaryColor').value = this.value.toUpperCase()" />
+                                <input id="PrimaryColor" name="PrimaryColor" value="@Model.PrimaryColor" class="input input-bordered w-full" oninput="document.getElementById('PrimaryColorPicker').value = this.value" />
+                            </div>
+                            <span asp-validation-for="PrimaryColor" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="SecondaryColor"><span class="label-text">Secondary color</span></label>
+                            <div class="flex gap-3">
+                                <input id="SecondaryColorPicker" type="color" value="@Model.SecondaryColor" class="h-12 w-16 rounded-lg border border-base-300 bg-base-100" oninput="document.getElementById('SecondaryColor').value = this.value.toUpperCase()" />
+                                <input id="SecondaryColor" name="SecondaryColor" value="@Model.SecondaryColor" class="input input-bordered w-full" oninput="document.getElementById('SecondaryColorPicker').value = this.value" />
+                            </div>
+                            <span asp-validation-for="SecondaryColor" class="text-error text-sm mt-1"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <div>
+                        <h2 class="card-title text-lg">Quote Defaults</h2>
+                        <p class="text-sm opacity-70">Every new quote starts from these defaults, and saved references use this numbering rule.</p>
+                    </div>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div class="form-control w-full">
+                            <label class="label" for="QuotePrefix"><span class="label-text">Quote prefix</span></label>
+                            <input id="QuotePrefix" name="QuotePrefix" value="@Model.QuotePrefix" class="input input-bordered w-full" />
+                            <span asp-validation-for="QuotePrefix" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="NextQuoteSequence"><span class="label-text">Next sequence</span></label>
+                            <input id="NextQuoteSequence" type="number" min="1" name="NextQuoteSequence" value="@Model.NextQuoteSequence" class="input input-bordered w-full" />
+                            <span asp-validation-for="NextQuoteSequence" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full md:col-span-2">
+                            <label class="label" for="QuoteNumberFormat"><span class="label-text">Quote number format</span></label>
+                            <input id="QuoteNumberFormat" name="QuoteNumberFormat" value="@Model.QuoteNumberFormat" class="input input-bordered w-full" placeholder="{PREFIX}-{YEAR}-{SEQ:4}" />
+                            <label class="label"><span class="label-text-alt">Available tokens: {PREFIX}, {YEAR}, {YEAR2}, {MONTH}, {SEQ}, {SEQ:4}</span></label>
+                            <span asp-validation-for="QuoteNumberFormat" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="DefaultQuoteValidityDays"><span class="label-text">Default validity days</span></label>
+                            <input id="DefaultQuoteValidityDays" type="number" min="1" max="365" name="DefaultQuoteValidityDays" value="@Model.DefaultQuoteValidityDays" class="input input-bordered w-full" />
+                            <span asp-validation-for="DefaultQuoteValidityDays" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label" for="DefaultQuoteMarkupPercentage"><span class="label-text">Default markup %</span></label>
+                            <input id="DefaultQuoteMarkupPercentage" type="number" step="0.01" min="0" name="DefaultQuoteMarkupPercentage" value="@(Model.DefaultQuoteMarkupPercentage?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))" class="input input-bordered w-full" placeholder="Leave blank to follow base currency" />
+                            <span asp-validation-for="DefaultQuoteMarkupPercentage" class="text-error text-sm mt-1"></span>
+                        </div>
+                        <div class="form-control w-full md:col-span-2">
+                            <label class="label cursor-pointer justify-start gap-3">
+                                <input type="checkbox" name="QuoteResetSequenceYearly" value="true" class="checkbox" checked="@Model.QuoteResetSequenceYearly" />
+                                <span class="label-text">Reset numbering back to 1 at the start of each year</span>
+                            </label>
+                        </div>
+                        <div class="form-control w-full md:col-span-2">
+                            <label class="label" for="PdfFooterText"><span class="label-text">Quote footer note</span></label>
+                            <textarea id="PdfFooterText" name="PdfFooterText" class="textarea textarea-bordered w-full" rows="3" placeholder="Optional footer or disclaimer shown in quote preview">@Model.PdfFooterText</textarea>
+                            <span asp-validation-for="PdfFooterText" class="text-error text-sm mt-1"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+                <button type="submit" class="btn btn-primary">Save Branding</button>
+                <a class="btn btn-ghost" href="/@slug/quotes/new">Open New Quote</a>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <div class="card overflow-hidden border border-base-300 bg-base-100 shadow-sm">
+                <div class="px-6 py-5" style="background: linear-gradient(135deg, @Model.SecondaryColor 0%, @Model.PrimaryColor 100%); color: @Model.SecondaryTextColor;">
+                    <div class="flex items-center gap-4">
+                        @if (!string.IsNullOrWhiteSpace(Model.LogoUrl))
+                        {
+                            <div class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-white/90 p-2 shadow-sm">
+                                <img src="@Model.LogoUrl" alt="Brand logo" class="max-h-full max-w-full object-contain" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-lg font-semibold uppercase">@Model.EffectiveAgencyName[..1]</div>
+                        }
+                        <div class="space-y-1">
+                            <h2 class="text-xl font-semibold">@Model.EffectiveAgencyName</h2>
+                            <p class="text-sm opacity-80">Workspace shell and quote preview accent</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body gap-4">
+                    <div class="grid gap-3 text-sm md:grid-cols-2">
+                        <div class="rounded-box p-4" style="background-color: @Model.PrimaryColor; color: @Model.PrimaryTextColor;">
+                            <div class="text-xs uppercase tracking-[0.2em] opacity-70">Primary</div>
+                            <div class="mt-2 font-semibold">Buttons and highlights</div>
+                            <div class="mt-1 opacity-80">@Model.PrimaryColor</div>
+                        </div>
+                        <div class="rounded-box p-4" style="background-color: @Model.SecondaryColor; color: @Model.SecondaryTextColor;">
+                            <div class="text-xs uppercase tracking-[0.2em] opacity-70">Secondary</div>
+                            <div class="mt-2 font-semibold">Sidebar and depth color</div>
+                            <div class="mt-1 opacity-80">@Model.SecondaryColor</div>
+                        </div>
+                    </div>
+                    <div class="rounded-box border border-base-300 bg-base-200/40 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] opacity-60">Next quote reference</div>
+                        <div class="mt-2 text-2xl font-semibold">@Model.PreviewReferenceNumber</div>
+                        <p class="mt-2 text-sm opacity-70">New quotes use this rule immediately after you save.</p>
+                    </div>
+                    <div class="rounded-box border border-dashed border-base-300 bg-base-200/30 p-4 text-sm opacity-80">
+                        <div>@Model.EffectiveContactEmail</div>
+                        @if (!string.IsNullOrWhiteSpace(Model.ContactPhone))
+                        {
+                            <div>@Model.ContactPhone</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Website))
+                        {
+                            <div>@Model.Website</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Address))
+                        {
+                            <div class="mt-2 whitespace-pre-line">@Model.Address</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

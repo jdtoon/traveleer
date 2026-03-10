@@ -1,0 +1,50 @@
+@model saas.Modules.Branding.DTOs.BrandingThemeDto
+<style id="branding-theme-vars">
+    .tenant-brand-surface {
+        --color-primary: @Model.PrimaryColor;
+        --color-primary-content: @Model.PrimaryTextColor;
+        --color-secondary: @Model.SecondaryColor;
+        --color-secondary-content: @Model.SecondaryTextColor;
+        --branding-primary-soft: @Model.PrimarySoftColor;
+        --branding-secondary-soft: @Model.SecondarySoftColor;
+    }
+
+    .tenant-brand-surface .drawer-side > aside {
+        background: linear-gradient(180deg, var(--branding-secondary-soft) 0%, color-mix(in srgb, var(--color-secondary) 18%, white) 100%);
+    }
+
+    .tenant-brand-surface .drawer-side .menu li > *:not(ul):not(details):active,
+    .tenant-brand-surface .drawer-side .menu li > *:not(ul):not(details).active,
+    .tenant-brand-surface .drawer-side .menu li > details > summary:active {
+        background-color: color-mix(in srgb, var(--color-primary) 16%, white);
+        color: var(--color-secondary);
+    }
+
+    .tenant-brand-surface .drawer-side .menu-title span {
+        color: color-mix(in srgb, var(--color-secondary) 72%, white);
+    }
+
+    .tenant-brand-surface .navbar,
+    .tenant-brand-surface .skip-branding,
+    .tenant-brand-surface .btn-primary,
+    .tenant-brand-surface .badge-success,
+    .tenant-brand-surface .checkbox:checked,
+    .tenant-brand-surface .toggle:checked,
+    .tenant-brand-surface .radio:checked {
+        background-color: var(--color-primary);
+        border-color: var(--color-primary);
+        color: var(--color-primary-content);
+    }
+
+    .tenant-brand-surface .link,
+    .tenant-brand-surface a:hover,
+    .tenant-brand-surface .text-branding-primary {
+        color: var(--color-primary);
+    }
+
+    .tenant-brand-surface .focus\:bg-primary:focus,
+    .tenant-brand-surface .focus\:text-primary-content:focus {
+        background-color: var(--color-primary);
+        color: var(--color-primary-content);
+    }
+</style>

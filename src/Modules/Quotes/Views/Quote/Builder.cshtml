@@ -6,7 +6,7 @@
     var action = isEdit
         ? Url.Action("Update", "Quote", new { slug, id = quoteId })
         : Url.Action("Create", "Quote", new { slug });
-    var referencePreview = ViewData["ReferenceNumberPreview"]?.ToString() ?? "QT-preview";
+    var referencePreview = ViewData["ReferenceNumberPreview"]?.ToString() ?? "Quote-preview";
     ViewData["Title"] = isEdit ? "Edit Quote" : "New Quote";
 }
 
@@ -100,7 +100,6 @@
                         </div>
                         <div class="form-control w-full md:col-span-2">
                             <label class="label cursor-pointer justify-start gap-3">
-                                <input type="hidden" name="FilterByTravelDates" value="false" />
                                 <input type="checkbox" name="FilterByTravelDates" value="true" class="checkbox" checked="@Model.FilterByTravelDates" />
                                 <span class="label-text">Filter seasons to the travel date window</span>
                             </label>

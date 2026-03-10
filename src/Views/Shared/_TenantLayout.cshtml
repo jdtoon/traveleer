@@ -4,6 +4,7 @@
 @{
     var slug = TenantContext.Slug;
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var brandingEnabled = await FeatureService.IsEnabledAsync("branding");
     var bookingsEnabled = await FeatureService.IsEnabledAsync("bookings");
     var clientsEnabled = await FeatureService.IsEnabledAsync("clients");
     var inventoryEnabled = await FeatureService.IsEnabledAsync("inventory");
@@ -27,9 +28,13 @@
     <!-- Swap.Htmx CSS -->
     <link rel="stylesheet" href="~/_content/Swap.Htmx/css/swap.css" asp-append-version="true" />
 </head>
-<body class="min-h-screen bg-base-100 text-base-content">
+<body class="tenant-brand-surface min-h-screen bg-base-100 text-base-content">
+    <div id="branding-theme-vars"
+         hx-get="@Url.Action("ThemeVars", "Branding", new { slug })"
+         hx-trigger="load, branding.refresh from:body"
+         hx-swap="outerHTML"></div>
     <!-- Skip navigation link -->
-    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-primary focus:text-primary-content focus:px-4 focus:py-2 focus:rounded">
+    <a href="#main-content" class="skip-branding sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:rounded">
         Skip to main content
     </a>
     <!-- Drawer for mobile menu -->
@@ -46,7 +51,12 @@
                     </label>
                 </div>
                 <div class="flex-1">
-                    <span class="text-xl font-bold">@(TenantContext.TenantName ?? "saas")</span>
+                    <div id="tenant-brand-shell-mobile"
+                         hx-get="@Url.Action("Shell", "Branding", new { slug })"
+                         hx-trigger="load, branding.refresh from:body"
+                         hx-swap="innerHTML">
+                        <span class="text-xl font-bold">@(TenantContext.TenantName ?? "saas")</span>
+                    </div>
                 </div>
                 <div class="flex-none">
                 </div>
@@ -67,7 +77,12 @@
             <aside class="bg-base-200 w-64 min-h-full flex flex-col" role="navigation" aria-label="Main navigation">
                 <!-- Brand -->
                 <div class="p-4 border-b border-base-300">
-                    <span class="text-xl font-bold">@(TenantContext.TenantName ?? "saas")</span>
+                    <div id="tenant-brand-shell"
+                         hx-get="@Url.Action("Shell", "Branding", new { slug })"
+                         hx-trigger="load, branding.refresh from:body"
+                         hx-swap="innerHTML">
+                        <span class="text-xl font-bold">@(TenantContext.TenantName ?? "saas")</span>
+                    </div>
                 </div>
 
                 <!-- Navigation -->
@@ -82,6 +97,17 @@
                             </swap-nav>
                         </li>
                         @* ── App modules (customize this section) ──────── *@
+                        @if (brandingEnabled && CurrentUser.HasPermission("branding.read"))
+                        {
+                        <li>
+                            <swap-nav to="/@slug/branding" class="@(controller == "Branding" ? "active" : "")" onclick="document.getElementById('mobile-drawer').checked=false">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10" />
+                                </svg>
+                                Branding
+                            </swap-nav>
+                        </li>
+                        }
                         @if (bookingsEnabled && CurrentUser.HasPermission("bookings.read"))
                         {
                         <li>

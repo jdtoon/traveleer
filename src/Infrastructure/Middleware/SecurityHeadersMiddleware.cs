@@ -2,6 +2,7 @@ namespace saas.Infrastructure.Middleware;
 
 public class SecurityHeadersMiddleware
 {
+    private const string ImageSources = "'self' data: https:";
     private readonly RequestDelegate _next;
     private readonly IConfiguration _configuration;
 
@@ -36,7 +37,7 @@ public class SecurityHeadersMiddleware
             // Build frame-src list from configured infrastructure URLs
             var frameSources = BuildInfrastructureFrameSources();
             headers["Content-Security-Policy"] = "default-src 'self'; " +
-                                 "img-src 'self' data:; " +
+                                 $"img-src {ImageSources}; " +
                                  "style-src 'self' 'unsafe-inline'; " +
                                  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; " +
                                  $"frame-src 'self' https://challenges.cloudflare.com {frameSources}".TrimEnd();
@@ -45,7 +46,7 @@ public class SecurityHeadersMiddleware
         {
             headers["X-Frame-Options"] = "DENY";
             headers["Content-Security-Policy"] = "default-src 'self'; " +
-                                 "img-src 'self' data:; " +
+                                 $"img-src {ImageSources}; " +
                                  "style-src 'self' 'unsafe-inline'; " +
                                  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; " +
                                  "frame-src https://challenges.cloudflare.com";

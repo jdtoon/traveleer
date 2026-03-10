@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
+using saas.Modules.Branding.Entities;
+using saas.Modules.Branding.Services;
 
 namespace saas.Modules.Quotes.Services;
 
@@ -34,20 +36,30 @@ public class QuoteNumberingService : IQuoteNumberingService
 
         try
         {
-            var year = DateTime.UtcNow.Year;
-            var prefix = $"QT-{year}-";
-            var references = await _db.Quotes
-                .AsNoTracking()
-                .Where(x => x.ReferenceNumber.StartsWith(prefix))
-                .Select(x => x.ReferenceNumber)
-                .ToListAsync();
+            var settings = await GetOrCreateBrandingAsync();
+            var now = DateTime.UtcNow;
+            var sequence = settings.NextQuoteSequence;
 
-            var next = references
-                .Select(ParseSequence)
-                .DefaultIfEmpty(0)
-                .Max() + 1;
+            if (settings.QuoteResetSequenceYearly && settings.QuoteSequenceLastResetYear != now.Year)
+            {
+                sequence = 1;
+            }
 
-            return $"QT-{year}-{next:D4}";
+            var reference = QuoteReferenceFormatHelper.Format(settings.QuoteNumberFormat, settings.QuotePrefix, sequence, now);
+            while (await _db.Quotes.AsNoTracking().AnyAsync(x => x.ReferenceNumber == reference))
+            {
+                sequence += 1;
+                reference = QuoteReferenceFormatHelper.Format(settings.QuoteNumberFormat, settings.QuotePrefix, sequence, now);
+            }
+
+            if (reserve)
+            {
+                settings.NextQuoteSequence = sequence + 1;
+                settings.QuoteSequenceLastResetYear = now.Year;
+                await _db.SaveChangesAsync();
+            }
+
+            return reference;
         }
         finally
         {
@@ -58,9 +70,17 @@ public class QuoteNumberingService : IQuoteNumberingService
         }
     }
 
-    private static int ParseSequence(string referenceNumber)
+    private async Task<BrandingSettings> GetOrCreateBrandingAsync()
     {
-        var parts = referenceNumber.Split('-', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length >= 3 && int.TryParse(parts[^1], out var parsed) ? parsed : 0;
+        var settings = await _db.BrandingSettings.FirstOrDefaultAsync();
+        if (settings is not null)
+        {
+            return settings;
+        }
+
+        settings = new BrandingSettings();
+        _db.BrandingSettings.Add(settings);
+        await _db.SaveChangesAsync();
+        return settings;
     }
 }

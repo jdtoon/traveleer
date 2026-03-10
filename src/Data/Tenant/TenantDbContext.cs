@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using saas.Modules.Branding.Entities;
 using saas.Modules.Auth.Entities;
 using saas.Modules.Bookings.Entities;
 using saas.Modules.Clients.Entities;
@@ -30,6 +31,7 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     // Application domain entities
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<BookingItem> BookingItems => Set<BookingItem>();
+    public DbSet<BrandingSettings> BrandingSettings => Set<BrandingSettings>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<RateCard> RateCards => Set<RateCard>();

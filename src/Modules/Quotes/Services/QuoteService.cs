@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using saas.Data;
 using saas.Data.Tenant;
+using saas.Modules.Branding.Entities;
 using saas.Modules.Clients.Entities;
 using saas.Modules.Quotes.DTOs;
 using saas.Modules.Quotes.Entities;
@@ -87,10 +88,12 @@ public class QuoteService : IQuoteService
     public async Task<QuoteBuilderDto> CreateEmptyAsync()
     {
         var baseCurrency = await _db.Currencies.AsNoTracking().FirstOrDefaultAsync(x => x.IsBaseCurrency && x.IsActive);
+        var branding = await _db.BrandingSettings.AsNoTracking().FirstOrDefaultAsync();
         var dto = new QuoteBuilderDto
         {
             OutputCurrencyCode = baseCurrency?.Code ?? "USD",
-            MarkupPercentage = baseCurrency?.DefaultMarkup ?? 10m
+            MarkupPercentage = branding?.DefaultQuoteMarkupPercentage ?? baseCurrency?.DefaultMarkup ?? 10m,
+            ValidUntil = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(Math.Max(1, branding?.DefaultQuoteValidityDays ?? 14)))
         };
 
         await PopulateOptionsAsync(dto);
@@ -154,12 +157,14 @@ public class QuoteService : IQuoteService
 
         if (selectedIds.Count == 0)
         {
+            var branding = await _db.BrandingSettings.AsNoTracking().FirstOrDefaultAsync();
             return new QuotePreviewDto
             {
                 ClientName = dto.ClientName,
                 OutputCurrencyCode = dto.OutputCurrencyCode,
                 CurrencySymbol = outputCurrency?.Symbol ?? dto.OutputCurrencyCode,
                 MarkupPercentage = dto.MarkupPercentage,
+                FooterText = branding?.PdfFooterText,
                 FilterByTravelDates = dto.FilterByTravelDates,
                 TravelStartDate = dto.TravelStartDate,
                 TravelEndDate = dto.TravelEndDate
@@ -188,6 +193,7 @@ public class QuoteService : IQuoteService
             OutputCurrencyCode = outputCurrency?.Code ?? dto.OutputCurrencyCode,
             CurrencySymbol = outputCurrency?.Symbol ?? outputCurrency?.Code ?? dto.OutputCurrencyCode,
             MarkupPercentage = dto.MarkupPercentage,
+            FooterText = await _db.BrandingSettings.AsNoTracking().Select(x => x.PdfFooterText).FirstOrDefaultAsync(),
             FilterByTravelDates = dto.FilterByTravelDates,
             TravelStartDate = dto.TravelStartDate,
             TravelEndDate = dto.TravelEndDate,

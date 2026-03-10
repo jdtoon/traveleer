@@ -1,0 +1,20 @@
+@model saas.Modules.Branding.DTOs.BrandingShellDto
+
+<div class="flex items-center gap-3">
+    @if (!string.IsNullOrWhiteSpace(Model.LogoUrl))
+    {
+        <div class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-white/90 p-2 shadow-sm ring-1 ring-black/5">
+            <img src="@Model.LogoUrl" alt="@Model.DisplayName logo" class="max-h-full max-w-full object-contain" />
+        </div>
+    }
+    else
+    {
+        <div class="flex h-11 w-11 items-center justify-center rounded-2xl text-sm font-semibold text-white shadow-sm" style="background: linear-gradient(135deg, @Model.AccentColor 0%, #0F172A 100%);">
+            @Model.DisplayName[..1].ToUpperInvariant()
+        </div>
+    }
+    <div class="min-w-0">
+        <div class="truncate text-base font-semibold">@Model.DisplayName</div>
+        <div class="text-xs opacity-60">Travel workspace</div>
+    </div>
+</div>

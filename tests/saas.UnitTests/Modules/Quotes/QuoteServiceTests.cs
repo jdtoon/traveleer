@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
+using saas.Modules.Branding.Entities;
 using saas.Modules.Clients.Entities;
 using saas.Modules.Inventory.Entities;
 using saas.Modules.Quotes.DTOs;
@@ -236,5 +237,36 @@ public class QuoteServiceTests : IAsyncLifetime
         Assert.Equal(_client.Name, quote.ClientName);
         Assert.Equal(_client.Email, quote.ClientEmail);
         Assert.Equal(_client.Phone, quote.ClientPhone);
+    }
+
+    [Fact]
+    public async Task CreateEmptyAsync_UsesBrandingDefaultsAndNumbering()
+    {
+        _db.BrandingSettings.Add(new BrandingSettings
+        {
+            AgencyName = "Acacia Journeys",
+            QuotePrefix = "ACJ",
+            QuoteNumberFormat = "{PREFIX}-{YEAR2}-{SEQ:3}",
+            NextQuoteSequence = 1,
+            QuoteResetSequenceYearly = false,
+            DefaultQuoteValidityDays = 21,
+            DefaultQuoteMarkupPercentage = 18m
+        });
+        await _db.SaveChangesAsync();
+
+        var empty = await _service.CreateEmptyAsync();
+        var quoteId = await _service.CreateAsync(new QuoteBuilderDto
+        {
+            ClientId = _client.Id,
+            ClientName = _client.Name,
+            OutputCurrencyCode = "USD",
+            SelectedRateCardIds = [_rateCard.Id]
+        });
+
+        var quote = await _db.Quotes.SingleAsync(x => x.Id == quoteId);
+
+        Assert.Equal(18m, empty.MarkupPercentage);
+        Assert.Equal(DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(21)), empty.ValidUntil);
+        Assert.Equal($"ACJ-{(DateTime.UtcNow.Year % 100):D2}-001", quote.ReferenceNumber);
     }
 }
