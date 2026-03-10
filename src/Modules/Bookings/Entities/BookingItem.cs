@@ -37,6 +37,8 @@ public class BookingItem
     public SupplierStatus SupplierStatus { get; set; } = SupplierStatus.NotRequested;
     public DateTime? RequestedAt { get; set; }
     public DateTime? ConfirmedAt { get; set; }
+    public bool VoucherSent { get; set; }
+    public DateTime? VoucherSentAt { get; set; }
     public bool VoucherGenerated { get; set; }
     public DateTime? VoucherGeneratedAt { get; set; }
     public string? VoucherNumber { get; set; }

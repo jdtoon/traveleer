@@ -209,6 +209,25 @@ public class BookingController : SwapController
         return File(pdf.Value.PdfBytes, "application/pdf", pdf.Value.FileName);
     }
 
+    [HttpPost("items/voucher/send/{bookingId:guid}/{itemId:guid}")]
+    [ValidateAntiForgeryToken]
+    [HasPermission(BookingPermissions.BookingsEdit)]
+    public async Task<IActionResult> SendVoucher(Guid bookingId, Guid itemId)
+    {
+        var result = await _service.SendVoucherAsync(bookingId, itemId);
+        if (!result.Success)
+        {
+            return SwapResponse()
+                .WithErrorToast(result.ErrorMessage ?? "Voucher could not be sent.")
+                .Build();
+        }
+
+        return SwapResponse()
+            .WithSuccessToast("Voucher sent.")
+            .WithTrigger(BookingEvents.ItemsRefresh)
+            .Build();
+    }
+
     [HttpPost("items/confirm/{bookingId:guid}/{itemId:guid}")]
     [ValidateAntiForgeryToken]
     [HasPermission(BookingPermissions.BookingsEdit)]

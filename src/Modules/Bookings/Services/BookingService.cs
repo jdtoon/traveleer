@@ -22,6 +22,7 @@ public interface IBookingService
     Task AddItemAsync(Guid bookingId, BookingItemFormDto dto);
     Task<BookingItemActionResult> SendSupplierRequestAsync(Guid bookingId, Guid itemId, bool isReminder = false);
     Task<BookingItemActionResult> GenerateVoucherAsync(Guid bookingId, Guid itemId);
+    Task<BookingItemActionResult> SendVoucherAsync(Guid bookingId, Guid itemId);
     Task<(byte[] PdfBytes, string FileName)?> GetVoucherPdfAsync(Guid bookingId, Guid itemId);
     Task UpdateItemStatusAsync(Guid bookingId, Guid itemId, SupplierStatus newStatus);
 }
@@ -282,6 +283,8 @@ public class BookingService : IBookingService
                         SupplierEmail = item.Supplier != null ? item.Supplier.ContactEmail : null,
                         RequestedAt = item.RequestedAt,
                         ConfirmedAt = item.ConfirmedAt,
+                        VoucherSent = item.VoucherSent,
+                        VoucherSentAt = item.VoucherSentAt,
                         VoucherGenerated = item.VoucherGenerated,
                         VoucherGeneratedAt = item.VoucherGeneratedAt,
                         VoucherNumber = item.VoucherNumber,
@@ -453,6 +456,79 @@ public class BookingService : IBookingService
         return BookingItemActionResult.Ok();
     }
 
+    public async Task<BookingItemActionResult> SendVoucherAsync(Guid bookingId, Guid itemId)
+    {
+        var booking = await _db.Bookings
+            .Include(x => x.Client)
+            .Include(x => x.Items)
+                .ThenInclude(x => x.Supplier)
+            .FirstOrDefaultAsync(x => x.Id == bookingId);
+
+        if (booking is null)
+        {
+            return BookingItemActionResult.Fail("Booking was not found.");
+        }
+
+        var item = booking.Items.FirstOrDefault(x => x.Id == itemId);
+        if (item is null)
+        {
+            return BookingItemActionResult.Fail("Booking item was not found.");
+        }
+
+        if (item.Supplier is null || string.IsNullOrWhiteSpace(item.Supplier.ContactEmail))
+        {
+            return BookingItemActionResult.Fail("Add a supplier contact email before sending a voucher.");
+        }
+
+        if (item.SupplierStatus != SupplierStatus.Confirmed)
+        {
+            return BookingItemActionResult.Fail("Voucher can only be sent after supplier confirmation.");
+        }
+
+        if (!item.VoucherGenerated || string.IsNullOrWhiteSpace(item.VoucherNumber))
+        {
+            return BookingItemActionResult.Fail("Generate the voucher before sending it.");
+        }
+
+        if (item.VoucherSent)
+        {
+            return BookingItemActionResult.Ok();
+        }
+
+        var branding = await _db.BrandingSettings.AsNoTracking()
+            .OrderBy(x => x.CreatedAt)
+            .FirstOrDefaultAsync() ?? new BrandingSettings();
+
+        var agencyName = GetAgencyName(branding);
+        var subject = $"Service voucher {booking.BookingRef} - {item.ServiceName}";
+        var htmlBody = _templateService.Render("SupplierVoucher", BuildSupplierVoucherVariables(booking, item, branding));
+        var plainTextBody = BuildSupplierVoucherPlainText(booking, item, branding);
+        var pdfBytes = _voucherDocumentService.Generate(booking, item, branding, agencyName);
+
+        var result = await _emailService.SendAsync(new EmailMessage(
+            To: item.Supplier.ContactEmail.Trim(),
+            Subject: subject,
+            HtmlBody: htmlBody,
+            PlainTextBody: plainTextBody,
+            Attachments:
+            [
+                new EmailAttachment(
+                    FileName: $"{item.VoucherNumber}.pdf",
+                    Content: pdfBytes,
+                    ContentType: "application/pdf")
+            ]));
+
+        if (!result.Success)
+        {
+            return BookingItemActionResult.Fail(result.ErrorMessage ?? "Voucher could not be sent.");
+        }
+
+        item.VoucherSent = true;
+        item.VoucherSentAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return BookingItemActionResult.Ok();
+    }
+
     public async Task<(byte[] PdfBytes, string FileName)?> GetVoucherPdfAsync(Guid bookingId, Guid itemId)
     {
         var booking = await _db.Bookings
@@ -504,6 +580,8 @@ public class BookingService : IBookingService
         else if (newStatus == SupplierStatus.Declined)
         {
             item.ConfirmedAt = null;
+            item.VoucherSent = false;
+            item.VoucherSentAt = null;
             item.VoucherGenerated = false;
             item.VoucherGeneratedAt = null;
             item.VoucherNumber = null;
@@ -672,6 +750,58 @@ public class BookingService : IBookingService
             string.Empty,
             $"Special requests: {Normalize(booking.SpecialRequests) ?? "No special requests recorded."}",
             $"Supplier notes: {Normalize(item.SupplierNotes) ?? "No supplier-specific notes recorded."}",
+            string.Empty,
+            $"Contact email: {Normalize(branding.PublicContactEmail) ?? "Reply to this email"}",
+            $"Contact phone: {Normalize(branding.ContactPhone) ?? "Phone not provided"}"
+        };
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private Dictionary<string, string> BuildSupplierVoucherVariables(Booking booking, BookingItem item, BrandingSettings branding)
+    {
+        var agencyName = GetAgencyName(branding);
+        var supplierName = item.Supplier?.Name ?? "Supplier";
+
+        return new Dictionary<string, string>
+        {
+            ["AgencyName"] = agencyName,
+            ["SupplierName"] = supplierName,
+            ["SupplierContactName"] = Normalize(item.Supplier?.ContactName) ?? supplierName,
+            ["BookingReference"] = booking.BookingRef,
+            ["VoucherNumber"] = item.VoucherNumber ?? "Pending voucher number",
+            ["ClientName"] = booking.Client?.Name ?? "Client",
+            ["LeadGuestName"] = Normalize(booking.LeadGuestName) ?? "Lead guest not recorded",
+            ["TravelWindow"] = FormatTravelWindow(booking.TravelStartDate, booking.TravelEndDate),
+            ["ServiceName"] = item.ServiceName,
+            ["ServiceKind"] = item.ServiceKind.ToString(),
+            ["ServiceWindow"] = FormatServiceWindow(item.ServiceDate, item.EndDate),
+            ["Quantity"] = item.Quantity.ToString(),
+            ["Pax"] = item.Pax.ToString(),
+            ["SupplierReference"] = Normalize(item.SupplierReference) ?? "Not provided",
+            ["SpecialRequests"] = Normalize(booking.SpecialRequests) ?? "No special requests recorded.",
+            ["ContactEmail"] = Normalize(branding.PublicContactEmail) ?? "Reply to this email",
+            ["ContactPhone"] = Normalize(branding.ContactPhone) ?? "Phone not provided"
+        };
+    }
+
+    private string BuildSupplierVoucherPlainText(Booking booking, BookingItem item, BrandingSettings branding)
+    {
+        var lines = new List<string>
+        {
+            $"{GetAgencyName(branding)} has attached the supplier voucher for booking {booking.BookingRef}.",
+            string.Empty,
+            $"Voucher number: {item.VoucherNumber}",
+            $"Client: {booking.Client?.Name ?? "Client"}",
+            $"Lead guest: {Normalize(booking.LeadGuestName) ?? "Lead guest not recorded"}",
+            $"Travel window: {FormatTravelWindow(booking.TravelStartDate, booking.TravelEndDate)}",
+            $"Service: {item.ServiceName} ({item.ServiceKind})",
+            $"Service dates: {FormatServiceWindow(item.ServiceDate, item.EndDate)}",
+            $"Quantity: {item.Quantity}",
+            $"Pax: {item.Pax}",
+            $"Supplier ref: {Normalize(item.SupplierReference) ?? "Not provided"}",
+            string.Empty,
+            $"Special requests: {Normalize(booking.SpecialRequests) ?? "No special requests recorded."}",
             string.Empty,
             $"Contact email: {Normalize(branding.PublicContactEmail) ?? "Reply to this email"}",
             $"Contact phone: {Normalize(branding.ContactPhone) ?? "Phone not provided"}"

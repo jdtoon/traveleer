@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text;
 using Microsoft.Extensions.Options;
 using saas.Shared;
 
@@ -37,7 +38,16 @@ public class MailerSendEmailService : IEmailService
             to = new[] { new { email = message.To } },
             subject = message.Subject,
             html = message.HtmlBody,
-            text = message.PlainTextBody ?? string.Empty
+            text = message.PlainTextBody ?? string.Empty,
+            attachments = (message.Attachments ?? [])
+                .Select(attachment => new
+                {
+                    content = Convert.ToBase64String(attachment.Content),
+                    disposition = attachment.Disposition,
+                    filename = attachment.FileName,
+                    id = attachment.ContentId
+                })
+                .ToArray()
         };
 
         try
@@ -50,7 +60,11 @@ public class MailerSendEmailService : IEmailService
                 return EmailSendResult.Failed($"MailerSend returned {(int)response.StatusCode}.");
             }
 
-            return EmailSendResult.Succeeded();
+            var providerMessageId = response.Headers.TryGetValues("x-message-id", out var values)
+                ? values.FirstOrDefault()
+                : null;
+
+            return EmailSendResult.Succeeded(providerMessageId);
         }
         catch (Exception ex)
         {

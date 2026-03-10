@@ -13,7 +13,16 @@ public record EmailMessage(
     string To,
     string Subject,
     string HtmlBody,
-    string? PlainTextBody = null
+    string? PlainTextBody = null,
+    IReadOnlyList<EmailAttachment>? Attachments = null
+);
+
+public record EmailAttachment(
+    string FileName,
+    byte[] Content,
+    string ContentType,
+    string Disposition = "attachment",
+    string? ContentId = null
 );
 
 public record EmailSendResult(bool Success, string? ErrorMessage = null, string? ProviderMessageId = null)

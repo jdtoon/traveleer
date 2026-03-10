@@ -217,6 +217,30 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task BookingItemsPartial_WhenVoucherGenerated_UserCanSendVoucher()
+    {
+        var (bookingId, itemId) = await SeedBookingWithItemAsync(status: SupplierStatus.Confirmed, generateVoucher: true);
+        var itemsResponse = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/items/{bookingId}");
+        itemsResponse.AssertSuccess();
+        await itemsResponse.AssertContainsAsync("Send Voucher");
+
+        var response = await _client.SubmitFormAsync(itemsResponse, $"form[hx-post='/{TenantSlug}/bookings/items/voucher/send/{bookingId}/{itemId}']", new Dictionary<string, string>());
+
+        response.AssertSuccess();
+        response.AssertToast("Voucher sent.");
+        response.AssertTrigger("bookings.items.refresh");
+
+        await using var db = OpenTenantDb();
+        var item = await db.BookingItems.SingleAsync(x => x.Id == itemId);
+        Assert.True(item.VoucherSent);
+        Assert.NotNull(item.VoucherSentAt);
+
+        var refreshedItems = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/items/{bookingId}");
+        refreshedItems.AssertSuccess();
+        await refreshedItems.AssertContainsAsync("Voucher sent:");
+    }
+
+    [Fact]
     public async Task BookingsPage_WhenUnauthenticated_Redirects()
     {
         var publicClient = _fixture.CreateClient();
@@ -257,7 +281,7 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
         return booking.Id;
     }
 
-    private async Task<(Guid BookingId, Guid ItemId)> SeedBookingWithItemAsync(SupplierStatus status = SupplierStatus.NotRequested, bool generateVoucher = false)
+    private async Task<(Guid BookingId, Guid ItemId)> SeedBookingWithItemAsync(SupplierStatus status = SupplierStatus.NotRequested, bool generateVoucher = false, bool sendVoucher = false)
     {
         await using var db = OpenTenantDb();
         var clientId = await db.Clients.OrderBy(x => x.Name).Select(x => x.Id).FirstAsync();
@@ -309,6 +333,8 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
             Nights = 3,
             RequestedAt = status == SupplierStatus.Requested || status == SupplierStatus.Confirmed ? DateTime.UtcNow.AddMinutes(-10) : null,
             ConfirmedAt = status == SupplierStatus.Confirmed ? DateTime.UtcNow.AddMinutes(-5) : null,
+            VoucherSent = sendVoucher,
+            VoucherSentAt = sendVoucher ? DateTime.UtcNow.AddMinutes(-1) : null,
             VoucherGenerated = generateVoucher,
             VoucherGeneratedAt = generateVoucher ? DateTime.UtcNow.AddMinutes(-2) : null,
             VoucherNumber = generateVoucher ? $"V-2026-{Guid.NewGuid():N}"[..16] : null

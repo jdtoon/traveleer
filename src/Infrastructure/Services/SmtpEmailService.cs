@@ -39,6 +39,11 @@ public class SmtpEmailService : IEmailService
         if (!string.IsNullOrWhiteSpace(message.PlainTextBody))
             bodyBuilder.TextBody = message.PlainTextBody;
 
+        foreach (var attachment in message.Attachments ?? [])
+        {
+            bodyBuilder.Attachments.Add(attachment.FileName, attachment.Content, ContentType.Parse(attachment.ContentType));
+        }
+
         mimeMessage.Body = bodyBuilder.ToMessageBody();
 
         try

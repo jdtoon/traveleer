@@ -64,6 +64,10 @@
                                         {
                                             <div>Voucher ready: @item.VoucherGeneratedAt.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div>
                                         }
+                                        @if (item.VoucherSentAt.HasValue)
+                                        {
+                                            <div>Voucher sent: @item.VoucherSentAt.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div>
+                                        }
                                     </div>
                                 }
                                 @if (item.VoucherGenerated && !string.IsNullOrWhiteSpace(item.VoucherNumber))
@@ -128,6 +132,13 @@
                                         }
                                         @if (item.VoucherGenerated)
                                         {
+                                            @if (!item.VoucherSent)
+                                            {
+                                                <form hx-post="@Url.Action("SendVoucher", "Booking", new { slug, bookingId = Model.Id, itemId = item.Id })" hx-swap="none">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-secondary btn-sm">Send Voucher</button>
+                                                </form>
+                                            }
                                             <a class="btn btn-outline btn-sm"
                                                href="@Url.Action("Voucher", "Booking", new { slug, bookingId = Model.Id, itemId = item.Id })"
                                                target="_blank"

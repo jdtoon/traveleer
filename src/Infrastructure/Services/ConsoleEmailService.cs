@@ -15,7 +15,12 @@ public class ConsoleEmailService : IEmailService
 
     public Task<EmailSendResult> SendAsync(EmailMessage message)
     {
-        _logger.LogInformation("[EMAIL] To={To} Subject={Subject}\n{Body}", message.To, message.Subject, message.HtmlBody);
+        _logger.LogInformation(
+            "[EMAIL] To={To} Subject={Subject} Attachments={Attachments}\n{Body}",
+            message.To,
+            message.Subject,
+            string.Join(", ", message.Attachments?.Select(x => x.FileName) ?? []),
+            message.HtmlBody);
         return Task.FromResult(EmailSendResult.Succeeded());
     }
 
