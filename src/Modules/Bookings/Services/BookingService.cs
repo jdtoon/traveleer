@@ -21,6 +21,8 @@ public interface IBookingService
     Task<BookingItemFormDto> CreateEmptyItemAsync(Guid bookingId);
     Task AddItemAsync(Guid bookingId, BookingItemFormDto dto);
     Task<BookingItemActionResult> SendSupplierRequestAsync(Guid bookingId, Guid itemId, bool isReminder = false);
+    Task<BookingItemActionResult> GenerateVoucherAsync(Guid bookingId, Guid itemId);
+    Task<(byte[] PdfBytes, string FileName)?> GetVoucherPdfAsync(Guid bookingId, Guid itemId);
     Task UpdateItemStatusAsync(Guid bookingId, Guid itemId, SupplierStatus newStatus);
 }
 
@@ -30,17 +32,20 @@ public class BookingService : IBookingService
     private readonly IEmailService _emailService;
     private readonly IEmailTemplateService _templateService;
     private readonly ITenantContext _tenantContext;
+    private readonly IBookingVoucherDocumentService _voucherDocumentService;
 
     public BookingService(
         TenantDbContext db,
         IEmailService emailService,
         IEmailTemplateService templateService,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        IBookingVoucherDocumentService voucherDocumentService)
     {
         _db = db;
         _emailService = emailService;
         _templateService = templateService;
         _tenantContext = tenantContext;
+        _voucherDocumentService = voucherDocumentService;
     }
 
     public async Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12)
@@ -277,6 +282,9 @@ public class BookingService : IBookingService
                         SupplierEmail = item.Supplier != null ? item.Supplier.ContactEmail : null,
                         RequestedAt = item.RequestedAt,
                         ConfirmedAt = item.ConfirmedAt,
+                        VoucherGenerated = item.VoucherGenerated,
+                        VoucherGeneratedAt = item.VoucherGeneratedAt,
+                        VoucherNumber = item.VoucherNumber,
                         SupplierReference = item.SupplierReference,
                         SupplierNotes = item.SupplierNotes
                     })
@@ -410,6 +418,70 @@ public class BookingService : IBookingService
         return BookingItemActionResult.Ok();
     }
 
+    public async Task<BookingItemActionResult> GenerateVoucherAsync(Guid bookingId, Guid itemId)
+    {
+        var booking = await _db.Bookings
+            .Include(x => x.Items)
+            .FirstOrDefaultAsync(x => x.Id == bookingId);
+
+        if (booking is null)
+        {
+            return BookingItemActionResult.Fail("Booking was not found.");
+        }
+
+        var item = booking.Items.FirstOrDefault(x => x.Id == itemId);
+        if (item is null)
+        {
+            return BookingItemActionResult.Fail("Booking item was not found.");
+        }
+
+        if (item.SupplierStatus != SupplierStatus.Confirmed)
+        {
+            return BookingItemActionResult.Fail("Voucher can only be generated after supplier confirmation.");
+        }
+
+        if (item.VoucherGenerated)
+        {
+            return BookingItemActionResult.Ok();
+        }
+
+        item.VoucherNumber = GenerateVoucherNumber(booking, itemId);
+        item.VoucherGenerated = true;
+        item.VoucherGeneratedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return BookingItemActionResult.Ok();
+    }
+
+    public async Task<(byte[] PdfBytes, string FileName)?> GetVoucherPdfAsync(Guid bookingId, Guid itemId)
+    {
+        var booking = await _db.Bookings
+            .AsNoTracking()
+            .Include(x => x.Client)
+            .Include(x => x.Items)
+                .ThenInclude(x => x.Supplier)
+            .FirstOrDefaultAsync(x => x.Id == bookingId);
+
+        if (booking is null)
+        {
+            return null;
+        }
+
+        var item = booking.Items.FirstOrDefault(x => x.Id == itemId);
+        if (item is null || !item.VoucherGenerated || string.IsNullOrWhiteSpace(item.VoucherNumber))
+        {
+            return null;
+        }
+
+        var branding = await _db.BrandingSettings.AsNoTracking()
+            .OrderBy(x => x.CreatedAt)
+            .FirstOrDefaultAsync() ?? new BrandingSettings();
+
+        var agencyName = GetAgencyName(branding);
+        var pdfBytes = _voucherDocumentService.Generate(booking, item, branding, agencyName);
+        return (pdfBytes, $"{item.VoucherNumber}.pdf");
+    }
+
     public async Task UpdateItemStatusAsync(Guid bookingId, Guid itemId, SupplierStatus newStatus)
     {
         var booking = await _db.Bookings
@@ -432,6 +504,9 @@ public class BookingService : IBookingService
         else if (newStatus == SupplierStatus.Declined)
         {
             item.ConfirmedAt = null;
+            item.VoucherGenerated = false;
+            item.VoucherGeneratedAt = null;
+            item.VoucherNumber = null;
         }
 
         if (booking.Items.Count > 0 && booking.Items.All(x => x.SupplierStatus == SupplierStatus.Confirmed))
@@ -609,6 +684,27 @@ public class BookingService : IBookingService
         => string.IsNullOrWhiteSpace(branding.AgencyName)
             ? _tenantContext.TenantName ?? "Your travel workspace"
             : branding.AgencyName.Trim();
+
+    private string GenerateVoucherNumber(Booking booking, Guid itemId)
+    {
+        var year = DateTime.UtcNow.Year;
+        var bookingSequence = ExtractBookingSequence(booking.BookingRef) ?? booking.Id.ToString("N")[..8].ToUpperInvariant();
+        var itemSequence = booking.Items
+            .OrderBy(x => x.ServiceDate)
+            .ThenBy(x => x.ServiceName)
+            .ThenBy(x => x.Id)
+            .Select((x, index) => new { x.Id, Sequence = index + 1 })
+            .First(x => x.Id == itemId)
+            .Sequence;
+
+        return $"V-{year}-{bookingSequence}-{itemSequence:00}";
+    }
+
+    private static string? ExtractBookingSequence(string bookingRef)
+    {
+        var parts = bookingRef.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length >= 3 ? parts[^1] : null;
+    }
 
     private static string FormatTravelWindow(DateOnly? startDate, DateOnly? endDate)
     {

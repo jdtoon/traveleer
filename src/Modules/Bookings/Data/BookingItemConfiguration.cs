@@ -15,6 +15,7 @@ public class BookingItemConfiguration : IEntityTypeConfiguration<BookingItem>, I
         builder.Property(x => x.Description).HasMaxLength(2000);
         builder.Property(x => x.CostCurrencyCode).HasMaxLength(10).IsRequired();
         builder.Property(x => x.SellingCurrencyCode).HasMaxLength(10).IsRequired();
+        builder.Property(x => x.VoucherNumber).HasMaxLength(50);
         builder.Property(x => x.SupplierReference).HasMaxLength(100);
         builder.Property(x => x.SupplierNotes).HasMaxLength(2000);
         builder.Property(x => x.CostPrice).HasPrecision(18, 2);

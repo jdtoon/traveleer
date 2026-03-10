@@ -47,6 +47,7 @@ public class BookingsModule : IModule
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IBookingVoucherDocumentService, BookingVoucherDocumentService>();
         services.AddScoped<IBookingService, BookingService>();
     }
 }

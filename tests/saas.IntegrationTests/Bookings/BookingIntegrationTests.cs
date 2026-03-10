@@ -182,6 +182,41 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task BookingItemsPartial_WhenConfirmed_UserCanGenerateVoucher()
+    {
+        var (bookingId, itemId) = await SeedBookingWithItemAsync(status: SupplierStatus.Confirmed);
+        var itemsResponse = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/items/{bookingId}");
+        itemsResponse.AssertSuccess();
+        await itemsResponse.AssertContainsAsync("Generate Voucher");
+
+        var response = await _client.SubmitFormAsync(itemsResponse, $"form[hx-post='/{TenantSlug}/bookings/items/voucher/generate/{bookingId}/{itemId}']", new Dictionary<string, string>());
+
+        response.AssertSuccess();
+        response.AssertToast("Voucher generated.");
+        response.AssertTrigger("bookings.items.refresh");
+
+        await using var db = OpenTenantDb();
+        var item = await db.BookingItems.SingleAsync(x => x.Id == itemId);
+        Assert.True(item.VoucherGenerated);
+        Assert.False(string.IsNullOrWhiteSpace(item.VoucherNumber));
+
+        var refreshedItems = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/items/{bookingId}");
+        refreshedItems.AssertSuccess();
+        await refreshedItems.AssertContainsAsync("Preview Voucher");
+        await refreshedItems.AssertContainsAsync("Voucher no:");
+    }
+
+    [Fact]
+    public async Task VoucherRoute_WhenGenerated_ReturnsPdfFile()
+    {
+        var (bookingId, itemId) = await SeedBookingWithItemAsync(status: SupplierStatus.Confirmed, generateVoucher: true);
+
+        var response = await _client.GetAsync($"/{TenantSlug}/bookings/items/voucher/{bookingId}/{itemId}");
+
+        response.AssertSuccess();
+    }
+
+    [Fact]
     public async Task BookingsPage_WhenUnauthenticated_Redirects()
     {
         var publicClient = _fixture.CreateClient();
@@ -222,7 +257,7 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
         return booking.Id;
     }
 
-    private async Task<(Guid BookingId, Guid ItemId)> SeedBookingWithItemAsync(SupplierStatus status = SupplierStatus.NotRequested)
+    private async Task<(Guid BookingId, Guid ItemId)> SeedBookingWithItemAsync(SupplierStatus status = SupplierStatus.NotRequested, bool generateVoucher = false)
     {
         await using var db = OpenTenantDb();
         var clientId = await db.Clients.OrderBy(x => x.Name).Select(x => x.Id).FirstAsync();
@@ -272,7 +307,11 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
             ServiceDate = new DateOnly(2026, 6, 1),
             EndDate = new DateOnly(2026, 6, 4),
             Nights = 3,
-            RequestedAt = status == SupplierStatus.Requested ? DateTime.UtcNow.AddMinutes(-10) : null
+            RequestedAt = status == SupplierStatus.Requested || status == SupplierStatus.Confirmed ? DateTime.UtcNow.AddMinutes(-10) : null,
+            ConfirmedAt = status == SupplierStatus.Confirmed ? DateTime.UtcNow.AddMinutes(-5) : null,
+            VoucherGenerated = generateVoucher,
+            VoucherGeneratedAt = generateVoucher ? DateTime.UtcNow.AddMinutes(-2) : null,
+            VoucherNumber = generateVoucher ? $"V-2026-{Guid.NewGuid():N}"[..16] : null
         };
         booking.Items.Add(item);
         booking.TotalCost = booking.Items.Sum(x => x.CostPrice * x.Quantity);

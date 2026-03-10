@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
 using saas.Infrastructure.Services;
+using saas.Modules.Branding.Entities;
 using saas.Modules.Bookings.DTOs;
 using saas.Modules.Bookings.Entities;
 using saas.Modules.Bookings.Services;
@@ -23,6 +24,7 @@ public class BookingServiceTests : IAsyncLifetime
     private FakeEmailService _emailService = null!;
     private FakeEmailTemplateService _templateService = null!;
     private FakeTenantContext _tenantContext = null!;
+    private FakeBookingVoucherDocumentService _voucherDocumentService = null!;
     private Client _client = null!;
     private InventoryItem _hotel = null!;
     private Quote _acceptedQuote = null!;
@@ -96,7 +98,8 @@ public class BookingServiceTests : IAsyncLifetime
         _emailService = new FakeEmailService();
         _templateService = new FakeEmailTemplateService();
         _tenantContext = new FakeTenantContext();
-        _service = new BookingService(_db, _emailService, _templateService, _tenantContext);
+        _voucherDocumentService = new FakeBookingVoucherDocumentService();
+        _service = new BookingService(_db, _emailService, _templateService, _tenantContext, _voucherDocumentService);
     }
 
     public async Task DisposeAsync()
@@ -354,6 +357,105 @@ public class BookingServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GenerateVoucherAsync_WhenItemConfirmed_AssignsVoucherMetadata()
+    {
+        var bookingId = await _service.CreateAsync(new BookingFormDto
+        {
+            ClientId = _client.Id,
+            SellingCurrencyCode = "USD",
+            Pax = 2
+        });
+
+        await _service.AddItemAsync(bookingId, new BookingItemFormDto
+        {
+            BookingId = bookingId,
+            InventoryItemId = _hotel.Id,
+            ServiceDate = new DateOnly(2026, 5, 1),
+            EndDate = new DateOnly(2026, 5, 4),
+            Quantity = 1,
+            Pax = 2,
+            SellingPrice = 600m
+        });
+
+        var itemId = await _db.BookingItems.Where(x => x.BookingId == bookingId).Select(x => x.Id).SingleAsync();
+        await _service.UpdateItemStatusAsync(bookingId, itemId, SupplierStatus.Requested);
+        await _service.UpdateItemStatusAsync(bookingId, itemId, SupplierStatus.Confirmed);
+
+        var result = await _service.GenerateVoucherAsync(bookingId, itemId);
+
+        var item = await _db.BookingItems.SingleAsync(x => x.Id == itemId);
+        Assert.True(result.Success);
+        Assert.True(item.VoucherGenerated);
+        Assert.NotNull(item.VoucherGeneratedAt);
+        Assert.StartsWith("V-", item.VoucherNumber);
+    }
+
+    [Fact]
+    public async Task GenerateVoucherAsync_WhenItemNotConfirmed_Fails()
+    {
+        var bookingId = await _service.CreateAsync(new BookingFormDto
+        {
+            ClientId = _client.Id,
+            SellingCurrencyCode = "USD",
+            Pax = 2
+        });
+
+        await _service.AddItemAsync(bookingId, new BookingItemFormDto
+        {
+            BookingId = bookingId,
+            InventoryItemId = _hotel.Id,
+            ServiceDate = new DateOnly(2026, 5, 1),
+            EndDate = new DateOnly(2026, 5, 4),
+            Quantity = 1,
+            Pax = 2,
+            SellingPrice = 600m
+        });
+
+        var itemId = await _db.BookingItems.Where(x => x.BookingId == bookingId).Select(x => x.Id).SingleAsync();
+
+        var result = await _service.GenerateVoucherAsync(bookingId, itemId);
+
+        Assert.False(result.Success);
+        Assert.Equal("Voucher can only be generated after supplier confirmation.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GetVoucherPdfAsync_WhenVoucherGenerated_ReturnsPdfBytes()
+    {
+        var bookingId = await _service.CreateAsync(new BookingFormDto
+        {
+            ClientId = _client.Id,
+            SellingCurrencyCode = "USD",
+            Pax = 2,
+            LeadGuestName = "Layla Ahmed"
+        });
+
+        await _service.AddItemAsync(bookingId, new BookingItemFormDto
+        {
+            BookingId = bookingId,
+            InventoryItemId = _hotel.Id,
+            ServiceDate = new DateOnly(2026, 5, 1),
+            EndDate = new DateOnly(2026, 5, 4),
+            Quantity = 1,
+            Pax = 2,
+            SellingPrice = 600m,
+            SupplierReference = "SUP-VCH-1"
+        });
+
+        var itemId = await _db.BookingItems.Where(x => x.BookingId == bookingId).Select(x => x.Id).SingleAsync();
+        await _service.UpdateItemStatusAsync(bookingId, itemId, SupplierStatus.Requested);
+        await _service.UpdateItemStatusAsync(bookingId, itemId, SupplierStatus.Confirmed);
+        await _service.GenerateVoucherAsync(bookingId, itemId);
+
+        var pdf = await _service.GetVoucherPdfAsync(bookingId, itemId);
+
+        Assert.NotNull(pdf);
+        Assert.Equal("application/pdf", _voucherDocumentService.LastMimeType);
+        Assert.StartsWith("V-", Path.GetFileNameWithoutExtension(pdf?.FileName));
+        Assert.NotEmpty(pdf?.PdfBytes ?? []);
+    }
+
+    [Fact]
     public async Task GetListAsync_SearchMatchesBookingReferenceAndClient()
     {
         var bookingId = await _service.CreateAsync(new BookingFormDto
@@ -403,5 +505,16 @@ public class BookingServiceTests : IAsyncLifetime
         public string? PlanSlug => "starter";
         public string? TenantName => "Acacia Journeys";
         public bool IsTenantRequest => true;
+    }
+
+    private sealed class FakeBookingVoucherDocumentService : IBookingVoucherDocumentService
+    {
+        public string LastMimeType { get; private set; } = string.Empty;
+
+        public byte[] Generate(Booking booking, BookingItem item, BrandingSettings branding, string agencyName)
+        {
+            LastMimeType = "application/pdf";
+            return System.Text.Encoding.ASCII.GetBytes($"PDF:{booking.BookingRef}:{item.VoucherNumber}:{agencyName}");
+        }
     }
 }

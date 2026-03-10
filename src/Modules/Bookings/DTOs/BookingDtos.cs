@@ -108,6 +108,9 @@ public class BookingItemListItemDto
     public string? SupplierEmail { get; set; }
     public DateTime? RequestedAt { get; set; }
     public DateTime? ConfirmedAt { get; set; }
+    public bool VoucherGenerated { get; set; }
+    public DateTime? VoucherGeneratedAt { get; set; }
+    public string? VoucherNumber { get; set; }
     public string? SupplierReference { get; set; }
     public string? SupplierNotes { get; set; }
     public decimal LineCostTotal => CostPrice * Quantity;

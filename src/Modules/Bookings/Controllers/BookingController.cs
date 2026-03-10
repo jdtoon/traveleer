@@ -177,6 +177,38 @@ public class BookingController : SwapController
             .Build();
     }
 
+    [HttpPost("items/voucher/generate/{bookingId:guid}/{itemId:guid}")]
+    [ValidateAntiForgeryToken]
+    [HasPermission(BookingPermissions.BookingsEdit)]
+    public async Task<IActionResult> GenerateVoucher(Guid bookingId, Guid itemId)
+    {
+        var result = await _service.GenerateVoucherAsync(bookingId, itemId);
+        if (!result.Success)
+        {
+            return SwapResponse()
+                .WithErrorToast(result.ErrorMessage ?? "Voucher could not be generated.")
+                .Build();
+        }
+
+        return SwapResponse()
+            .WithSuccessToast("Voucher generated.")
+            .WithTrigger(BookingEvents.ItemsRefresh)
+            .Build();
+    }
+
+    [HttpGet("items/voucher/{bookingId:guid}/{itemId:guid}")]
+    [HasPermission(BookingPermissions.BookingsRead)]
+    public async Task<IActionResult> Voucher(Guid bookingId, Guid itemId)
+    {
+        var pdf = await _service.GetVoucherPdfAsync(bookingId, itemId);
+        if (pdf is null)
+        {
+            return NotFound();
+        }
+
+        return File(pdf.Value.PdfBytes, "application/pdf", pdf.Value.FileName);
+    }
+
     [HttpPost("items/confirm/{bookingId:guid}/{itemId:guid}")]
     [ValidateAntiForgeryToken]
     [HasPermission(BookingPermissions.BookingsEdit)]

@@ -60,7 +60,15 @@
                                         {
                                             <div>Confirmed: @item.ConfirmedAt.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div>
                                         }
+                                        @if (item.VoucherGeneratedAt.HasValue)
+                                        {
+                                            <div>Voucher ready: @item.VoucherGeneratedAt.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div>
+                                        }
                                     </div>
+                                }
+                                @if (item.VoucherGenerated && !string.IsNullOrWhiteSpace(item.VoucherNumber))
+                                {
+                                    <div class="text-sm opacity-70">Voucher no: @item.VoucherNumber</div>
                                 }
                                 @if (!string.IsNullOrWhiteSpace(item.Description))
                                 {
@@ -110,6 +118,20 @@
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit" class="btn btn-ghost btn-sm">Mark Declined</button>
                                             </form>
+                                        }
+                                        @if (item.SupplierStatus == SupplierStatus.Confirmed && !item.VoucherGenerated)
+                                        {
+                                            <form hx-post="@Url.Action("GenerateVoucher", "Booking", new { slug, bookingId = Model.Id, itemId = item.Id })" hx-swap="none">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-primary btn-sm">Generate Voucher</button>
+                                            </form>
+                                        }
+                                        @if (item.VoucherGenerated)
+                                        {
+                                            <a class="btn btn-outline btn-sm"
+                                               href="@Url.Action("Voucher", "Booking", new { slug, bookingId = Model.Id, itemId = item.Id })"
+                                               target="_blank"
+                                               rel="noopener">Preview Voucher</a>
                                         }
                                     </div>
                                 </has-permission>
