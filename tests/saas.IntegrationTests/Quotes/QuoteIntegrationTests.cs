@@ -1,7 +1,9 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
 using saas.IntegrationTests.Fixtures;
 using saas.Modules.Clients.Entities;
+using saas.Modules.Quotes.DTOs;
 using saas.Modules.Inventory.Entities;
 using saas.Modules.Quotes.Entities;
 using saas.Modules.RateCards.Entities;
@@ -136,6 +138,48 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
         await using var db = OpenTenantDb();
         var quote = await db.Quotes.SingleAsync(x => x.Id == quoteId);
         Assert.Equal(QuoteStatus.Accepted, quote.Status);
+    }
+
+    [Fact]
+    public async Task QuoteDetailsPage_RendersVersionHistoryContainer()
+    {
+        var quoteId = await SeedQuoteAsync();
+
+        var response = await _client.GetAsync($"/{TenantSlug}/quotes/details/{quoteId}");
+
+        response.AssertSuccess();
+        await response.AssertElementExistsAsync("#quote-versions");
+    }
+
+    [Fact]
+    public async Task QuoteVersionsPartial_WhenVersionsExist_RendersWithoutLayout()
+    {
+        var quoteId = await SeedQuoteAsync();
+        await SeedQuoteVersionAsync(quoteId, 1, "USD", 1);
+        await SeedQuoteVersionAsync(quoteId, 2, "SAR", 2);
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/quotes/versions/{quoteId}");
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertContainsAsync("Version History");
+        await response.AssertContainsAsync("View Snapshot");
+        await response.AssertContainsAsync("v2");
+    }
+
+    [Fact]
+    public async Task QuoteVersionDetails_WhenRequested_RendersSnapshotModal()
+    {
+        var quoteId = await SeedQuoteAsync();
+        var versionId = await SeedQuoteVersionAsync(quoteId, 2, "SAR", 2);
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/quotes/versions/{quoteId}/{versionId}");
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertElementExistsAsync("dialog.modal");
+        await response.AssertContainsAsync("snapshot v2");
+        await response.AssertContainsAsync("SAR");
     }
 
     [Fact]
@@ -291,6 +335,43 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
         db.Quotes.Add(quote);
         await db.SaveChangesAsync();
         return quote.Id;
+    }
+
+    private async Task<Guid> SeedQuoteVersionAsync(Guid quoteId, int versionNumber, string outputCurrencyCode, int rateCardCount)
+    {
+        await using var db = OpenTenantDb();
+        var quote = await db.Quotes.SingleAsync(x => x.Id == quoteId);
+        var selectedRateCardIds = await db.QuoteRateCards
+            .Where(x => x.QuoteId == quoteId)
+            .OrderBy(x => x.SortOrder)
+            .Select(x => x.RateCardId)
+            .Take(rateCardCount)
+            .ToListAsync();
+
+        var version = new QuoteVersion
+        {
+            QuoteId = quoteId,
+            VersionNumber = versionNumber,
+            SnapshotJson = JsonSerializer.Serialize(new QuoteVersionSnapshotDto
+            {
+                ClientName = quote.ClientName,
+                ClientEmail = quote.ClientEmail,
+                OutputCurrencyCode = outputCurrencyCode,
+                MarkupPercentage = 12m + versionNumber,
+                GroupBy = "ratecard",
+                TravelStartDate = new DateOnly(2026, 10, 10),
+                TravelEndDate = new DateOnly(2026, 10, 15),
+                FilterByTravelDates = true,
+                Notes = $"Snapshot {versionNumber}",
+                SelectedRateCardIds = selectedRateCardIds
+            }),
+            CreatedAt = DateTime.UtcNow.AddMinutes(-versionNumber),
+            CreatedBy = "qa@acacia.test"
+        };
+
+        db.QuoteVersions.Add(version);
+        await db.SaveChangesAsync();
+        return version.Id;
     }
 
     private TenantDbContext OpenTenantDb()

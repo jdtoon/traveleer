@@ -149,6 +149,22 @@ public class QuoteController : SwapController
         return model is null ? NotFound() : PartialView("_Preview", model);
     }
 
+    [HttpGet("versions/{id:guid}")]
+    [HasPermission(QuotePermissions.QuotesRead)]
+    public async Task<IActionResult> Versions(Guid id)
+    {
+        var model = await _service.GetVersionHistoryAsync(id);
+        return model is null ? NotFound() : PartialView("_VersionHistory", model);
+    }
+
+    [HttpGet("versions/{id:guid}/{versionId:guid}")]
+    [HasPermission(QuotePermissions.QuotesRead)]
+    public async Task<IActionResult> VersionDetails(Guid id, Guid versionId)
+    {
+        var model = await _service.GetVersionDetailsAsync(id, versionId);
+        return model is null ? NotFound() : PartialView("_VersionDetails", model);
+    }
+
     [HttpPost("status/{id:guid}")]
     [ValidateAntiForgeryToken]
     [HasPermission(QuotePermissions.QuotesEdit)]

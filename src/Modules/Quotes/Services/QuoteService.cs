@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using saas.Data;
 using saas.Data.Tenant;
 using saas.Modules.Branding.Entities;
@@ -21,11 +22,14 @@ public interface IQuoteService
     Task<Guid> CreateAsync(QuoteBuilderDto dto);
     Task UpdateAsync(Guid id, QuoteBuilderDto dto);
     Task<QuoteDetailsDto?> GetDetailsAsync(Guid id);
+    Task<QuoteVersionHistoryDto?> GetVersionHistoryAsync(Guid id);
+    Task<QuoteVersionDetailsDto?> GetVersionDetailsAsync(Guid id, Guid versionId);
     Task UpdateStatusAsync(Guid id, QuoteStatus status);
 }
 
 public class QuoteService : IQuoteService
 {
+    private static readonly JsonSerializerOptions SnapshotJsonOptions = new(JsonSerializerDefaults.Web);
     private readonly TenantDbContext _db;
     private readonly IQuoteNumberingService _numberingService;
 
@@ -234,6 +238,7 @@ public class QuoteService : IQuoteService
         ApplySelectedRateCards(quote, dto.SelectedRateCardIds);
         _db.Quotes.Add(quote);
         await _db.SaveChangesAsync();
+        await CreateVersionAsync(quote);
         return quote.Id;
     }
 
@@ -241,9 +246,10 @@ public class QuoteService : IQuoteService
     {
         await HydrateClientSnapshotAsync(dto);
         var quote = await _db.Quotes
-            .Include(x => x.QuoteRateCards)
             .FirstOrDefaultAsync(x => x.Id == id)
             ?? throw new InvalidOperationException("Quote was not found.");
+
+        var selectedRateCardIds = dto.SelectedRateCardIds.Distinct().ToList();
 
         quote.ClientId = dto.ClientId;
         quote.ClientName = dto.ClientName.Trim();
@@ -259,9 +265,24 @@ public class QuoteService : IQuoteService
         quote.Notes = Normalize(dto.Notes);
         quote.InternalNotes = Normalize(dto.InternalNotes);
 
-        quote.QuoteRateCards.Clear();
-        ApplySelectedRateCards(quote, dto.SelectedRateCardIds);
+        var existingRateCards = await _db.QuoteRateCards
+            .Where(x => x.QuoteId == id)
+            .ToListAsync();
+
+        if (existingRateCards.Count > 0)
+        {
+            _db.QuoteRateCards.RemoveRange(existingRateCards);
+        }
+
+        _db.QuoteRateCards.AddRange(selectedRateCardIds.Select((rateCardId, index) => new QuoteRateCard
+        {
+            QuoteId = id,
+            RateCardId = rateCardId,
+            SortOrder = index + 1
+        }));
+
         await _db.SaveChangesAsync();
+        await CreateVersionAsync(quote, selectedRateCardIds);
     }
 
     public async Task<QuoteDetailsDto?> GetDetailsAsync(Guid id)
@@ -289,9 +310,79 @@ public class QuoteService : IQuoteService
                 Notes = x.Notes,
                 InternalNotes = x.InternalNotes,
                 RateCardCount = x.QuoteRateCards.Count,
+                VersionCount = x.QuoteVersions.Count,
                 UpdatedAt = x.UpdatedAt ?? x.CreatedAt
             })
             .FirstOrDefaultAsync();
+    }
+
+    public async Task<QuoteVersionHistoryDto?> GetVersionHistoryAsync(Guid id)
+    {
+        var quote = await _db.Quotes
+            .AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new { x.Id, x.ReferenceNumber })
+            .FirstOrDefaultAsync();
+
+        if (quote is null)
+        {
+            return null;
+        }
+
+        var latestVersionNumber = await _db.QuoteVersions
+            .AsNoTracking()
+            .Where(x => x.QuoteId == id)
+            .MaxAsync(x => (int?)x.VersionNumber) ?? 0;
+
+        var versions = await _db.QuoteVersions
+            .AsNoTracking()
+            .Where(x => x.QuoteId == id)
+            .OrderByDescending(x => x.VersionNumber)
+            .ToListAsync();
+
+        return new QuoteVersionHistoryDto
+        {
+            QuoteId = quote.Id,
+            ReferenceNumber = quote.ReferenceNumber,
+            Versions = versions.Select(x =>
+            {
+                var snapshot = DeserializeSnapshot(x.SnapshotJson);
+                return new QuoteVersionListItemDto
+                {
+                    Id = x.Id,
+                    VersionNumber = x.VersionNumber,
+                    IsCurrent = x.VersionNumber == latestVersionNumber,
+                    CreatedBy = x.CreatedBy,
+                    CreatedAt = x.CreatedAt,
+                    RateCardCount = snapshot?.SelectedRateCardIds.Count ?? 0,
+                    OutputCurrencyCode = snapshot?.OutputCurrencyCode ?? "USD"
+                };
+            }).ToList()
+        };
+    }
+
+    public async Task<QuoteVersionDetailsDto?> GetVersionDetailsAsync(Guid id, Guid versionId)
+    {
+        var version = await _db.QuoteVersions
+            .AsNoTracking()
+            .Include(x => x.Quote)
+            .FirstOrDefaultAsync(x => x.QuoteId == id && x.Id == versionId);
+
+        if (version is null)
+        {
+            return null;
+        }
+
+        return new QuoteVersionDetailsDto
+        {
+            QuoteId = version.QuoteId,
+            ReferenceNumber = version.Quote?.ReferenceNumber ?? string.Empty,
+            VersionId = version.Id,
+            VersionNumber = version.VersionNumber,
+            CreatedBy = version.CreatedBy,
+            CreatedAt = version.CreatedAt,
+            Snapshot = DeserializeSnapshot(version.SnapshotJson) ?? new QuoteVersionSnapshotDto()
+        };
     }
 
     public async Task UpdateStatusAsync(Guid id, QuoteStatus status)
@@ -329,6 +420,63 @@ public class QuoteService : IQuoteService
         if (string.IsNullOrWhiteSpace(dto.ClientPhone))
         {
             dto.ClientPhone = client.Phone;
+        }
+    }
+
+    private async Task CreateVersionAsync(Quote quote, IReadOnlyList<Guid>? selectedRateCardIds = null)
+    {
+        var latestVersionNumber = await _db.QuoteVersions
+            .Where(x => x.QuoteId == quote.Id)
+            .MaxAsync(x => (int?)x.VersionNumber) ?? 0;
+
+        var snapshot = BuildSnapshot(quote, selectedRateCardIds);
+        _db.QuoteVersions.Add(new QuoteVersion
+        {
+            QuoteId = quote.Id,
+            VersionNumber = latestVersionNumber + 1,
+            SnapshotJson = JsonSerializer.Serialize(snapshot, SnapshotJsonOptions)
+        });
+
+        await _db.SaveChangesAsync();
+    }
+
+    private static QuoteVersionSnapshotDto BuildSnapshot(Quote quote, IReadOnlyList<Guid>? selectedRateCardIds = null)
+    {
+        return new QuoteVersionSnapshotDto
+        {
+            ClientName = quote.ClientName,
+            ClientEmail = quote.ClientEmail,
+            ClientPhone = quote.ClientPhone,
+            OutputCurrencyCode = quote.OutputCurrencyCode,
+            MarkupPercentage = quote.MarkupPercentage,
+            GroupBy = quote.GroupBy,
+            ValidUntil = quote.ValidUntil,
+            TravelStartDate = quote.TravelStartDate,
+            TravelEndDate = quote.TravelEndDate,
+            FilterByTravelDates = quote.FilterByTravelDates,
+            Notes = quote.Notes,
+            InternalNotes = quote.InternalNotes,
+            SelectedRateCardIds = selectedRateCardIds?.ToList() ?? quote.QuoteRateCards
+                .OrderBy(x => x.SortOrder)
+                .Select(x => x.RateCardId)
+                .ToList()
+        };
+    }
+
+    private static QuoteVersionSnapshotDto? DeserializeSnapshot(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<QuoteVersionSnapshotDto>(json, SnapshotJsonOptions);
+        }
+        catch
+        {
+            return null;
         }
     }
 

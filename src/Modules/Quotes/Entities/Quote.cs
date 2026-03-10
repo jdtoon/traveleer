@@ -32,6 +32,20 @@ public class Quote : IAuditableEntity
     public string? InternalNotes { get; set; }
     public Client? Client { get; set; }
     public ICollection<QuoteRateCard> QuoteRateCards { get; set; } = [];
+    public ICollection<QuoteVersion> QuoteVersions { get; set; } = [];
+    public string? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string? UpdatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+}
+
+public class QuoteVersion : IAuditableEntity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid QuoteId { get; set; }
+    public int VersionNumber { get; set; }
+    public string SnapshotJson { get; set; } = string.Empty;
+    public Quote? Quote { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? UpdatedBy { get; set; }

@@ -1,0 +1,67 @@
+@model saas.Modules.Quotes.DTOs.QuoteVersionHistoryDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<div class="card border border-base-300 bg-base-100 shadow-sm">
+    <div class="card-body gap-4">
+        <div class="flex items-center justify-between gap-3">
+            <div>
+                <h2 class="card-title">Version History</h2>
+                <p class="text-sm opacity-70">Track saved quote snapshots as the builder changes over time.</p>
+            </div>
+            <div class="text-sm opacity-60">@Model.Versions.Count version@(Model.Versions.Count == 1 ? string.Empty : "s")</div>
+        </div>
+
+        @if (Model.Versions.Count == 0)
+        {
+            <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-sm opacity-70">
+                No quote versions have been recorded yet.
+            </div>
+        }
+        else
+        {
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
+                    <thead>
+                        <tr>
+                            <th>Version</th>
+                            <th>Saved</th>
+                            <th>By</th>
+                            <th>Currency</th>
+                            <th>Rate Cards</th>
+                            <th class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var version in Model.Versions)
+                        {
+                            <tr class="hover">
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium">v@(version.VersionNumber)</span>
+                                        @if (version.IsCurrent)
+                                        {
+                                            <span class="badge badge-primary badge-sm">Current</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>@version.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</td>
+                                <td>@(string.IsNullOrWhiteSpace(version.CreatedBy) ? "System" : version.CreatedBy)</td>
+                                <td>@version.OutputCurrencyCode</td>
+                                <td>@version.RateCardCount</td>
+                                <td class="text-right">
+                                    <button class="btn btn-ghost btn-sm"
+                                            hx-get="@Url.Action("VersionDetails", "Quote", new { slug, id = Model.QuoteId, versionId = version.Id })"
+                                            hx-target="#modal-container">
+                                        View Snapshot
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

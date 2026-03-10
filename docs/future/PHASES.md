@@ -21,7 +21,7 @@ Exit criteria:
 
 ## Phase 1 - Quote Version History
 
-Status: Next
+Status: Complete
 
 Scope:
 
@@ -40,7 +40,7 @@ Exit criteria:
 
 ## Phase 2 - Quote Depth Parity
 
-Status: Pending
+Status: Next
 
 Scope:
 

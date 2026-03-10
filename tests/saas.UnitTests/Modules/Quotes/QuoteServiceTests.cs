@@ -269,4 +269,65 @@ public class QuoteServiceTests : IAsyncLifetime
         Assert.Equal(DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(21)), empty.ValidUntil);
         Assert.Equal($"ACJ-{(DateTime.UtcNow.Year % 100):D2}-001", quote.ReferenceNumber);
     }
+
+    [Fact]
+    public async Task CreateAsync_CreatesInitialVersionSnapshot()
+    {
+        var quoteId = await _service.CreateAsync(new QuoteBuilderDto
+        {
+            ClientId = _client.Id,
+            ClientName = _client.Name,
+            OutputCurrencyCode = "USD",
+            SelectedRateCardIds = [_rateCard.Id]
+        });
+
+        var versions = await _db.QuoteVersions
+            .Where(x => x.QuoteId == quoteId)
+            .OrderBy(x => x.VersionNumber)
+            .ToListAsync();
+
+        var version = Assert.Single(versions);
+        Assert.Equal(1, version.VersionNumber);
+
+        var history = await _service.GetVersionHistoryAsync(quoteId);
+        Assert.NotNull(history);
+        Assert.Single(history!.Versions);
+        Assert.Equal("USD", history.Versions[0].OutputCurrencyCode);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_AppendsNewVersionSnapshot()
+    {
+        var quoteId = await _service.CreateAsync(new QuoteBuilderDto
+        {
+            ClientId = _client.Id,
+            ClientName = _client.Name,
+            OutputCurrencyCode = "USD",
+            MarkupPercentage = 10m,
+            SelectedRateCardIds = [_rateCard.Id]
+        });
+
+        await _service.UpdateAsync(quoteId, new QuoteBuilderDto
+        {
+            ClientId = _client.Id,
+            ClientName = _client.Name,
+            OutputCurrencyCode = "SAR",
+            MarkupPercentage = 18m,
+            SelectedRateCardIds = [_rateCard.Id, _secondRateCard.Id],
+            Notes = "Repriced with second contract"
+        });
+
+        var history = await _service.GetVersionHistoryAsync(quoteId);
+        Assert.NotNull(history);
+        Assert.Equal(2, history!.Versions.Count);
+        Assert.Equal(2, history.Versions[0].VersionNumber);
+        Assert.True(history.Versions[0].IsCurrent);
+
+        var versionDetails = await _service.GetVersionDetailsAsync(quoteId, history.Versions[0].Id);
+        Assert.NotNull(versionDetails);
+        Assert.Equal("SAR", versionDetails!.Snapshot.OutputCurrencyCode);
+        Assert.Equal(18m, versionDetails.Snapshot.MarkupPercentage);
+        Assert.Equal(2, versionDetails.Snapshot.SelectedRateCardIds.Count);
+        Assert.Equal("Repriced with second contract", versionDetails.Snapshot.Notes);
+    }
 }

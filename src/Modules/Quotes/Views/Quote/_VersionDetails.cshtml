@@ -1,0 +1,70 @@
+@model saas.Modules.Quotes.DTOs.QuoteVersionDetailsDto
+
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-3xl">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <h3 class="text-lg font-bold">@Model.ReferenceNumber snapshot v@(Model.VersionNumber)</h3>
+                <p class="text-sm opacity-70">Saved @Model.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm") by @(string.IsNullOrWhiteSpace(Model.CreatedBy) ? "System" : Model.CreatedBy)</p>
+            </div>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+        </div>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Client</div>
+                    <div class="font-medium">@Model.Snapshot.ClientName</div>
+                    <div class="text-sm opacity-70">@(string.IsNullOrWhiteSpace(Model.Snapshot.ClientEmail) ? "Email not set" : Model.Snapshot.ClientEmail)</div>
+                    <div class="text-sm opacity-70">@(string.IsNullOrWhiteSpace(Model.Snapshot.ClientPhone) ? "Phone not set" : Model.Snapshot.ClientPhone)</div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Pricing</div>
+                    <div class="font-medium">@Model.Snapshot.OutputCurrencyCode</div>
+                    <div class="text-sm opacity-70">Markup @Model.Snapshot.MarkupPercentage.ToString("0.##")%</div>
+                    <div class="text-sm opacity-70">Grouping: @Model.Snapshot.GroupBy</div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Travel</div>
+                    <div class="font-medium">@(Model.Snapshot.TravelStartDate?.ToString("dd MMM yyyy") ?? "Open") - @(Model.Snapshot.TravelEndDate?.ToString("dd MMM yyyy") ?? "Open")</div>
+                    <div class="text-sm opacity-70">@(Model.Snapshot.FilterByTravelDates ? "Season filtering enabled" : "All seasons included")</div>
+                    <div class="text-sm opacity-70">Valid until @(Model.Snapshot.ValidUntil?.ToString("dd MMM yyyy") ?? "not set")</div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Composition</div>
+                    <div class="font-medium">@Model.Snapshot.SelectedRateCardIds.Count rate card@(Model.Snapshot.SelectedRateCardIds.Count == 1 ? string.Empty : "s")</div>
+                    <div class="text-sm opacity-70 break-all">@string.Join(", ", Model.Snapshot.SelectedRateCardIds)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-2">
+                <div class="text-sm uppercase tracking-wide opacity-60">Notes</div>
+                <p class="text-sm opacity-80">@(string.IsNullOrWhiteSpace(Model.Snapshot.Notes) ? "No client-facing notes recorded." : Model.Snapshot.Notes)</p>
+                @if (!string.IsNullOrWhiteSpace(Model.Snapshot.InternalNotes))
+                {
+                    <div class="divider my-1"></div>
+                    <div class="text-sm uppercase tracking-wide opacity-60">Internal</div>
+                    <p class="text-sm opacity-80">@Model.Snapshot.InternalNotes</p>
+                }
+            </div>
+        </div>
+
+        <div class="modal-action">
+            <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

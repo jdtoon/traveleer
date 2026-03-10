@@ -50,6 +50,7 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<TenantOnboardingState> TenantOnboardingStates => Set<TenantOnboardingState>();
     public DbSet<Quote> Quotes => Set<Quote>();
     public DbSet<QuoteRateCard> QuoteRateCards => Set<QuoteRateCard>();
+    public DbSet<QuoteVersion> QuoteVersions => Set<QuoteVersion>();
     public DbSet<TeamInvitation> TeamInvitations => Set<TeamInvitation>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

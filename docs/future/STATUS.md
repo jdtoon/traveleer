@@ -41,12 +41,13 @@ Automated coverage also exists across the main migrated travel modules under:
 
 The remaining work is now concentrated in four areas:
 
-1. quote version history and snapshot parity
-2. remaining quote builder and quote PDF template depth
-3. rate-card template and import/export parity
-4. marketing and public-site parity against ACP business-site content
+1. remaining quote builder and quote PDF template depth
+2. rate-card template and import/export parity
+3. marketing and public-site parity against ACP business-site content
+4. final parity sweep across the implemented modules
 
 ## Current Phase
 
 - `Phase 0` complete: docs reset from speculative roadmap to live execution tracker
-- `Phase 1` next: quote version history parity
+- `Phase 1` complete: quote version history and snapshot details
+- `Phase 2` next: remaining quote builder and quote PDF template depth

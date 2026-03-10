@@ -25,4 +25,11 @@
          hx-swap="innerHTML show:none">
         <span class="loading loading-spinner loading-lg"></span>
     </div>
+
+    <div id="quote-versions"
+         hx-get="@Url.Action("Versions", "Quote", new { slug, id = Model.Id })"
+         hx-trigger="load"
+         hx-swap="innerHTML show:none">
+        <span class="loading loading-spinner loading-lg"></span>
+    </div>
 </div>

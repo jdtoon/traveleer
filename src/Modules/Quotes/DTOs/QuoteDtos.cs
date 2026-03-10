@@ -101,7 +101,54 @@ public class QuoteDetailsDto
     public string? Notes { get; set; }
     public string? InternalNotes { get; set; }
     public int RateCardCount { get; set; }
+    public int VersionCount { get; set; }
     public DateTime UpdatedAt { get; set; }
+}
+
+public class QuoteVersionSnapshotDto
+{
+    public string ClientName { get; set; } = string.Empty;
+    public string? ClientEmail { get; set; }
+    public string? ClientPhone { get; set; }
+    public string OutputCurrencyCode { get; set; } = "USD";
+    public decimal MarkupPercentage { get; set; }
+    public string GroupBy { get; set; } = "ratecard";
+    public DateOnly? ValidUntil { get; set; }
+    public DateOnly? TravelStartDate { get; set; }
+    public DateOnly? TravelEndDate { get; set; }
+    public bool FilterByTravelDates { get; set; }
+    public string? Notes { get; set; }
+    public string? InternalNotes { get; set; }
+    public List<Guid> SelectedRateCardIds { get; set; } = [];
+}
+
+public class QuoteVersionListItemDto
+{
+    public Guid Id { get; set; }
+    public int VersionNumber { get; set; }
+    public bool IsCurrent { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public int RateCardCount { get; set; }
+    public string OutputCurrencyCode { get; set; } = "USD";
+}
+
+public class QuoteVersionHistoryDto
+{
+    public Guid QuoteId { get; set; }
+    public string ReferenceNumber { get; set; } = string.Empty;
+    public List<QuoteVersionListItemDto> Versions { get; set; } = [];
+}
+
+public class QuoteVersionDetailsDto
+{
+    public Guid QuoteId { get; set; }
+    public string ReferenceNumber { get; set; } = string.Empty;
+    public Guid VersionId { get; set; }
+    public int VersionNumber { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public QuoteVersionSnapshotDto Snapshot { get; set; } = new();
 }
 
 public class QuotePreviewDto
