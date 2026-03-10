@@ -13,13 +13,13 @@ public class ConsoleEmailService : IEmailService
         _logger = logger;
     }
 
-    public Task SendAsync(EmailMessage message)
+    public Task<EmailSendResult> SendAsync(EmailMessage message)
     {
         _logger.LogInformation("[EMAIL] To={To} Subject={Subject}\n{Body}", message.To, message.Subject, message.HtmlBody);
-        return Task.CompletedTask;
+        return Task.FromResult(EmailSendResult.Succeeded());
     }
 
-    public Task SendMagicLinkAsync(string to, string magicLinkUrl)
+    public Task<EmailSendResult> SendMagicLinkAsync(string to, string magicLinkUrl)
     {
         var htmlBody = _templateService.Render("MagicLink", new Dictionary<string, string>
         {

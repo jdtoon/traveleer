@@ -23,12 +23,12 @@ public class MailerSendEmailService : IEmailService
         _logger = logger;
     }
 
-    public async Task SendAsync(EmailMessage message)
+    public async Task<EmailSendResult> SendAsync(EmailMessage message)
     {
         if (string.IsNullOrWhiteSpace(_options.FromAddress))
         {
             _logger.LogError("MailerSend email failed: FromAddress is not configured");
-            return;
+            return EmailSendResult.Failed("Email sender address is not configured.");
         }
 
         var payload = new
@@ -47,15 +47,19 @@ public class MailerSendEmailService : IEmailService
             {
                 var body = await response.Content.ReadAsStringAsync();
                 _logger.LogError("MailerSend API error {StatusCode}: {Body}", (int)response.StatusCode, body);
+                return EmailSendResult.Failed($"MailerSend returned {(int)response.StatusCode}.");
             }
+
+            return EmailSendResult.Succeeded();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "MailerSend email failed to send to {To}", message.To);
+            return EmailSendResult.Failed(ex.Message);
         }
     }
 
-    public Task SendMagicLinkAsync(string to, string magicLinkUrl)
+    public Task<EmailSendResult> SendMagicLinkAsync(string to, string magicLinkUrl)
     {
         var htmlBody = _templateService.Render("MagicLink", new Dictionary<string, string>
         {

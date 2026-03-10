@@ -5,8 +5,8 @@ namespace saas.Shared;
 /// </summary>
 public interface IEmailService
 {
-    Task SendAsync(EmailMessage message);
-    Task SendMagicLinkAsync(string to, string magicLinkUrl);
+    Task<EmailSendResult> SendAsync(EmailMessage message);
+    Task<EmailSendResult> SendMagicLinkAsync(string to, string magicLinkUrl);
 }
 
 public record EmailMessage(
@@ -15,3 +15,9 @@ public record EmailMessage(
     string HtmlBody,
     string? PlainTextBody = null
 );
+
+public record EmailSendResult(bool Success, string? ErrorMessage = null, string? ProviderMessageId = null)
+{
+    public static EmailSendResult Succeeded(string? providerMessageId = null) => new(true, null, providerMessageId);
+    public static EmailSendResult Failed(string errorMessage) => new(false, errorMessage);
+}

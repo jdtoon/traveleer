@@ -264,8 +264,13 @@ public class DunningServiceTests : IAsyncDisposable
     private class StubEmailService : IEmailService
     {
         public List<EmailMessage> SentMessages { get; } = [];
-        public Task SendAsync(EmailMessage message) { SentMessages.Add(message); return Task.CompletedTask; }
-        public Task SendMagicLinkAsync(string to, string magicLinkUrl) => Task.CompletedTask;
+        public Task<EmailSendResult> SendAsync(EmailMessage message)
+        {
+            SentMessages.Add(message);
+            return Task.FromResult(EmailSendResult.Succeeded());
+        }
+
+        public Task<EmailSendResult> SendMagicLinkAsync(string to, string magicLinkUrl) => Task.FromResult(EmailSendResult.Succeeded());
     }
 
     private class StubVariableChargeService : IVariableChargeService

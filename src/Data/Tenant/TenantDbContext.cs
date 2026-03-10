@@ -5,6 +5,7 @@ using saas.Modules.Branding.Entities;
 using saas.Modules.Auth.Entities;
 using saas.Modules.Bookings.Entities;
 using saas.Modules.Clients.Entities;
+using saas.Modules.Email.Entities;
 using saas.Modules.Inventory.Entities;
 using saas.Modules.Notifications.Entities;
 using saas.Modules.Onboarding.Entities;
@@ -34,6 +35,7 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<BookingItem> BookingItems => Set<BookingItem>();
     public DbSet<BrandingSettings> BrandingSettings => Set<BrandingSettings>();
     public DbSet<Client> Clients => Set<Client>();
+    public DbSet<QuoteEmailLog> QuoteEmailLogs => Set<QuoteEmailLog>();
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<RateCard> RateCards => Set<RateCard>();
     public DbSet<RateSeason> RateSeasons => Set<RateSeason>();

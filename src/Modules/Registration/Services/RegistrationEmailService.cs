@@ -38,10 +38,15 @@ public class RegistrationEmailService : IRegistrationEmailService
 
         try
         {
-            await _email.SendAsync(new EmailMessage(
+            var result = await _email.SendAsync(new EmailMessage(
                 To: email,
                 Subject: $"Verify your email — {_site.Name}",
                 HtmlBody: htmlBody));
+
+            if (!result.Success)
+            {
+                _logger.LogError("Verification email failed for {Email} in tenant {Slug}: {Error}", email, slug, result.ErrorMessage);
+            }
         }
         catch (Exception ex)
         {
@@ -62,10 +67,15 @@ public class RegistrationEmailService : IRegistrationEmailService
 
         try
         {
-            await _email.SendAsync(new EmailMessage(
+            var result = await _email.SendAsync(new EmailMessage(
                 To: adminEmail,
                 Subject: $"Welcome to {_site.Name} — Your Workspace is Ready",
                 HtmlBody: htmlBody));
+
+            if (!result.Success)
+            {
+                _logger.LogError("Welcome email failed for {Email} in tenant {Slug}: {Error}", adminEmail, tenantSlug, result.ErrorMessage);
+            }
         }
         catch (Exception ex)
         {

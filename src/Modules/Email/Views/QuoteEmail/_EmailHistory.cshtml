@@ -1,0 +1,61 @@
+@model saas.Modules.Email.DTOs.QuoteEmailHistoryDto
+
+<div class="card border border-base-300 bg-base-100 shadow-sm">
+    <div class="card-body gap-4">
+        <div class="flex items-center justify-between gap-3">
+            <div>
+                <h2 class="card-title text-lg">Email History</h2>
+                <p class="text-sm opacity-70">Recent delivery attempts for @Model.ReferenceNumber.</p>
+            </div>
+            <span class="badge badge-ghost badge-sm">@Model.Items.Count send@(Model.Items.Count == 1 ? string.Empty : "s")</span>
+        </div>
+
+        @if (Model.Items.Count == 0)
+        {
+            <div class="rounded-box border border-dashed border-base-300 bg-base-200/50 p-5 text-sm opacity-75">
+                No quote emails have been sent yet. Use the send action above to share this quote with the client.
+            </div>
+        }
+        else
+        {
+            <div class="space-y-3">
+                @foreach (var item in Model.Items)
+                {
+                    var badgeClass = item.Status switch
+                    {
+                        QuoteEmailDeliveryStatus.Sent => "badge-success",
+                        QuoteEmailDeliveryStatus.Failed => "badge-error",
+                        _ => "badge-warning"
+                    };
+
+                    <div class="rounded-box border border-base-300 bg-base-100 p-4">
+                        <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="font-medium">@item.ToEmail</span>
+                                    <span class="badge @badgeClass badge-sm">@item.Status</span>
+                                </div>
+                                <div class="mt-1 text-sm opacity-80">@item.Subject</div>
+                                @if (!string.IsNullOrWhiteSpace(item.CustomMessage))
+                                {
+                                    <p class="mt-2 text-sm opacity-70 line-clamp-3">@item.CustomMessage</p>
+                                }
+                            </div>
+                            <div class="text-sm opacity-70 md:text-right">
+                                <div>@(item.SentAt?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "In progress")</div>
+                                <div>@(string.IsNullOrWhiteSpace(item.SentByDisplayName) ? item.SentByEmail : item.SentByDisplayName)</div>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(item.ErrorMessage))
+                        {
+                            <div class="alert alert-error mt-3 text-sm">
+                                <span>@item.ErrorMessage</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

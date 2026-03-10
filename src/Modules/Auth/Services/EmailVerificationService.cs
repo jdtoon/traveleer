@@ -40,12 +40,19 @@ public class EmailVerificationService
             ["VerificationUrl"] = verifyUrl
         });
 
-        await _emailService.SendAsync(new Shared.EmailMessage(
+        var result = await _emailService.SendAsync(new Shared.EmailMessage(
             user.Email!,
             "Verify your email address",
             htmlBody));
 
-        _logger.LogInformation("Verification email sent to {Email} for tenant {Slug}", user.Email, slug);
+        if (result.Success)
+        {
+            _logger.LogInformation("Verification email sent to {Email} for tenant {Slug}", user.Email, slug);
+        }
+        else
+        {
+            _logger.LogError("Verification email failed for {Email} in tenant {Slug}: {Error}", user.Email, slug, result.ErrorMessage);
+        }
     }
 
     /// <summary>

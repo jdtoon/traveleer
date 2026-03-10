@@ -235,16 +235,16 @@ public class TenantAdminServiceTests : IAsyncLifetime
         public List<EmailMessage> SentEmails { get; } = [];
         public List<(string to, string url)> SentLinks { get; } = [];
 
-        public Task SendAsync(EmailMessage message)
+        public Task<EmailSendResult> SendAsync(EmailMessage message)
         {
             SentEmails.Add(message);
-            return Task.CompletedTask;
+            return Task.FromResult(EmailSendResult.Succeeded());
         }
 
-        public Task SendMagicLinkAsync(string to, string magicLinkUrl)
+        public Task<EmailSendResult> SendMagicLinkAsync(string to, string magicLinkUrl)
         {
             SentLinks.Add((to, magicLinkUrl));
-            return Task.CompletedTask;
+            return Task.FromResult(EmailSendResult.Succeeded());
         }
     }
 

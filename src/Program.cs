@@ -87,6 +87,7 @@ var modules = new IModule[]
     new saas.Modules.Branding.BrandingModule(),
     new saas.Modules.Bookings.BookingsModule(),
     new saas.Modules.Clients.ClientsModule(),
+    new saas.Modules.Email.EmailModule(),
     new saas.Modules.Inventory.InventoryModule(),
     new saas.Modules.Onboarding.OnboardingModule(),
     new saas.Modules.Quotes.QuotesModule(),

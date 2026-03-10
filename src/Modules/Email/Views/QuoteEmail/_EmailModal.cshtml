@@ -1,0 +1,71 @@
+@model saas.Modules.Email.DTOs.QuoteEmailComposeDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var action = Url.Action("Send", "QuoteEmail", new { slug, quoteId = Model.QuoteId });
+}
+
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-2xl">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h3 class="text-lg font-bold">Send Quote Email</h3>
+                <p class="mt-1 text-sm opacity-70">Deliver @Model.ReferenceNumber to the client with your current branding and quote summary.</p>
+            </div>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">X</button>
+        </div>
+
+        <div class="mt-4 grid gap-4 rounded-box border border-base-300 bg-base-200/60 p-4 md:grid-cols-2">
+            <div>
+                <div class="text-xs uppercase tracking-[0.2em] opacity-60">Client</div>
+                <div class="mt-1 font-medium">@Model.ClientName</div>
+                <div class="text-sm opacity-70">@(string.IsNullOrWhiteSpace(Model.ClientEmail) ? "No client email saved on the quote yet." : Model.ClientEmail)</div>
+            </div>
+            <div>
+                <div class="text-xs uppercase tracking-[0.2em] opacity-60">Quote Snapshot</div>
+                <div class="mt-1 font-medium">@Model.RateCardCount contract@(Model.RateCardCount == 1 ? string.Empty : "s")</div>
+                <div class="text-sm opacity-70">Travel @(Model.TravelWindowLabel ?? "Open") · Valid until @Model.ValidUntilLabel</div>
+            </div>
+        </div>
+
+        <form class="mt-5 space-y-4" hx-post="@action" hx-target="#modal-container" novalidate>
+            @Html.AntiForgeryToken()
+            <div class="form-control w-full">
+                <label class="label" for="ToEmail"><span class="label-text">Send to</span></label>
+                <input id="ToEmail" name="ToEmail" type="email" value="@Model.ToEmail" class="input input-bordered w-full" placeholder="client@example.com" />
+                <span asp-validation-for="ToEmail" class="text-error text-sm mt-1"></span>
+            </div>
+
+            <div class="form-control w-full">
+                <label class="label" for="Subject"><span class="label-text">Subject</span></label>
+                <input id="Subject" name="Subject" value="@Model.Subject" class="input input-bordered w-full" />
+                <span asp-validation-for="Subject" class="text-error text-sm mt-1"></span>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
+                <div class="form-control w-full">
+                    <label class="label" for="CustomMessage"><span class="label-text">Custom message</span></label>
+                    <textarea id="CustomMessage" name="CustomMessage" class="textarea textarea-bordered min-h-40 w-full" rows="7" placeholder="Add a personal note that will appear above the quote summary.">@Model.CustomMessage</textarea>
+                    <span asp-validation-for="CustomMessage" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="rounded-box border border-base-300 bg-base-100 p-4">
+                    <div class="text-xs uppercase tracking-[0.2em] opacity-60">What the email includes</div>
+                    <ul class="mt-3 space-y-2 text-sm opacity-80">
+                        <li>Reference number and travel window for @Model.ReferenceNumber</li>
+                        <li>The quote currency, markup context, and selected contract count</li>
+                        <li>Your client-facing notes already saved on the quote</li>
+                        <li>Reply details for @(string.IsNullOrWhiteSpace(Model.ReplyToEmail) ? Model.AgencyName : Model.ReplyToEmail)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Send Email</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

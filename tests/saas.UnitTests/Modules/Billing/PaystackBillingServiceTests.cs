@@ -1056,13 +1056,13 @@ public class PaystackBillingServiceTests : IAsyncDisposable
     {
         public List<EmailMessage> SentMessages { get; } = [];
 
-        public Task SendAsync(EmailMessage message)
+        public Task<EmailSendResult> SendAsync(EmailMessage message)
         {
             SentMessages.Add(message);
-            return Task.CompletedTask;
+            return Task.FromResult(EmailSendResult.Succeeded());
         }
 
-        public Task SendMagicLinkAsync(string to, string magicLinkUrl) => Task.CompletedTask;
+        public Task<EmailSendResult> SendMagicLinkAsync(string to, string magicLinkUrl) => Task.FromResult(EmailSendResult.Succeeded());
     }
 
     private class StubHttpHandler : HttpMessageHandler
