@@ -1,0 +1,37 @@
+@model saas.Modules.Onboarding.DTOs.OnboardingCompletionStepDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<div class="card border border-base-300 bg-base-100 shadow-sm">
+    <div class="card-body gap-6">
+        <div>
+            <p class="text-xs uppercase tracking-[0.25em] opacity-60">Step 3</p>
+            <h2 class="mt-2 text-2xl font-semibold">@Model.Headline</h2>
+            <p class="mt-2 text-sm opacity-70">@Model.Summary</p>
+        </div>
+
+        <div class="grid gap-3 md:grid-cols-3">
+            @foreach (var highlight in Model.Highlights)
+            {
+                <div class="rounded-box border border-base-300 bg-base-200/40 p-4 text-sm font-medium">@highlight</div>
+            }
+        </div>
+
+        @if (!Model.IsCompleted)
+        {
+            <form method="post" action="@Url.Action("Complete", "Onboarding", new { slug })" class="flex flex-wrap items-center gap-3">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary">Complete setup</button>
+                <a class="btn btn-ghost" href="@Url.Action("Index", "Onboarding", new { slug, step = 2 })">Back to defaults</a>
+            </form>
+        }
+        else
+        {
+            <div class="flex flex-wrap items-center gap-3">
+                <a class="btn btn-primary" href="@Model.NextActionUrl">@Model.NextActionLabel</a>
+                <a class="btn btn-ghost" href="/@slug">Open Dashboard</a>
+            </div>
+        }
+    </div>
+</div>

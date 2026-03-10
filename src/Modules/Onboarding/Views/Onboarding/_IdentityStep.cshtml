@@ -1,0 +1,66 @@
+@model saas.Modules.Onboarding.DTOs.OnboardingIdentityStepDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<div class="card border border-base-300 bg-base-100 shadow-sm">
+    <div class="card-body gap-6">
+        <div>
+            <p class="text-xs uppercase tracking-[0.25em] opacity-60">Step 1</p>
+            <h2 class="mt-2 text-2xl font-semibold">Shape the public identity clients will see.</h2>
+            <p class="mt-2 text-sm opacity-70">This does not replace your internal organization settings. It defines the client-facing brand shown in quotes and the tenant shell.</p>
+        </div>
+
+        <form method="post" action="@Url.Action("SaveIdentity", "Onboarding", new { slug })" class="space-y-5">
+            @Html.AntiForgeryToken()
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label" for="AgencyName"><span class="label-text">Public-facing agency name</span></label>
+                    <input id="AgencyName" name="AgencyName" value="@Model.AgencyName" class="input input-bordered w-full" placeholder="Leave blank to use your tenant name" />
+                    <span asp-validation-for="AgencyName" class="text-error text-sm mt-1"></span>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label" for="PublicContactEmail"><span class="label-text">Public contact email</span></label>
+                    <input id="PublicContactEmail" type="email" name="PublicContactEmail" value="@Model.PublicContactEmail" class="input input-bordered w-full" placeholder="quotes@example.com" />
+                    <span asp-validation-for="PublicContactEmail" class="text-error text-sm mt-1"></span>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label" for="ContactPhone"><span class="label-text">Contact phone</span></label>
+                    <input id="ContactPhone" name="ContactPhone" value="@Model.ContactPhone" class="input input-bordered w-full" placeholder="+27 11 555 1111" />
+                    <span asp-validation-for="ContactPhone" class="text-error text-sm mt-1"></span>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label" for="Website"><span class="label-text">Website</span></label>
+                    <input id="Website" name="Website" value="@Model.Website" class="input input-bordered w-full" placeholder="https://example.com" />
+                    <span asp-validation-for="Website" class="text-error text-sm mt-1"></span>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label" for="LogoUrl"><span class="label-text">Logo URL</span></label>
+                    <input id="LogoUrl" name="LogoUrl" value="@Model.LogoUrl" class="input input-bordered w-full" placeholder="https://example.com/logo.svg" />
+                    <span asp-validation-for="LogoUrl" class="text-error text-sm mt-1"></span>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label" for="PrimaryColor"><span class="label-text">Primary color</span></label>
+                    <div class="flex gap-3">
+                        <input id="PrimaryColorPicker" type="color" value="@Model.PrimaryColor" class="h-12 w-16 rounded-lg border border-base-300 bg-base-100" oninput="document.getElementById('PrimaryColor').value = this.value.toUpperCase()" />
+                        <input id="PrimaryColor" name="PrimaryColor" value="@Model.PrimaryColor" class="input input-bordered w-full" oninput="document.getElementById('PrimaryColorPicker').value = this.value" />
+                    </div>
+                    <span asp-validation-for="PrimaryColor" class="text-error text-sm mt-1"></span>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label" for="SecondaryColor"><span class="label-text">Secondary color</span></label>
+                    <div class="flex gap-3">
+                        <input id="SecondaryColorPicker" type="color" value="@Model.SecondaryColor" class="h-12 w-16 rounded-lg border border-base-300 bg-base-100" oninput="document.getElementById('SecondaryColor').value = this.value.toUpperCase()" />
+                        <input id="SecondaryColor" name="SecondaryColor" value="@Model.SecondaryColor" class="input input-bordered w-full" oninput="document.getElementById('SecondaryColorPicker').value = this.value" />
+                    </div>
+                    <span asp-validation-for="SecondaryColor" class="text-error text-sm mt-1"></span>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+                <button type="submit" class="btn btn-primary">Save and continue</button>
+                <a class="btn btn-ghost" href="@Url.Action("Index", "Onboarding", new { slug, step = 2 })">Skip ahead</a>
+            </div>
+        </form>
+    </div>
+</div>
