@@ -4,6 +4,7 @@ using saas.Data.Tenant;
 using saas.Modules.Bookings.DTOs;
 using saas.Modules.Bookings.Entities;
 using saas.Modules.Inventory.Entities;
+using saas.Modules.Quotes.Entities;
 
 namespace saas.Modules.Bookings.Services;
 
@@ -12,6 +13,7 @@ public interface IBookingService
     Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12);
     Task<BookingFormDto> CreateEmptyAsync();
     Task<Guid> CreateAsync(BookingFormDto dto);
+    Task<BookingConversionResult> ConvertFromQuoteAsync(Guid quoteId);
     Task<BookingDetailsDto?> GetDetailsAsync(Guid id);
     Task<BookingItemFormDto> CreateEmptyItemAsync(Guid bookingId);
     Task AddItemAsync(Guid bookingId, BookingItemFormDto dto);
@@ -58,6 +60,7 @@ public class BookingService : IBookingService
             .Select(x => new BookingListItemDto
             {
                 Id = x.Id,
+                QuoteId = x.QuoteId,
                 BookingRef = x.BookingRef,
                 ClientName = x.Client != null ? x.Client.Name : "Unknown client",
                 Status = x.Status,
@@ -112,6 +115,99 @@ public class BookingService : IBookingService
         return booking.Id;
     }
 
+    public async Task<BookingConversionResult> ConvertFromQuoteAsync(Guid quoteId)
+    {
+        var quote = await _db.Quotes
+            .Include(x => x.QuoteRateCards)
+                .ThenInclude(x => x.RateCard)
+                    .ThenInclude(x => x!.InventoryItem)
+            .FirstOrDefaultAsync(x => x.Id == quoteId);
+
+        if (quote is null)
+        {
+            return BookingConversionResult.Fail("Quote was not found.");
+        }
+
+        if (quote.Status != QuoteStatus.Accepted)
+        {
+            return BookingConversionResult.Fail("Only accepted quotes can be converted to bookings.");
+        }
+
+        if (!quote.ClientId.HasValue)
+        {
+            return BookingConversionResult.Fail("Link this quote to a saved client before converting it to a booking.");
+        }
+
+        var existing = await _db.Bookings
+            .AsNoTracking()
+            .Where(x => x.QuoteId == quoteId)
+            .Select(x => new { x.Id, x.BookingRef })
+            .FirstOrDefaultAsync();
+
+        if (existing is not null)
+        {
+            return BookingConversionResult.Ok(existing.Id, existing.BookingRef, alreadyExists: true);
+        }
+
+        if (quote.QuoteRateCards.Count == 0)
+        {
+            return BookingConversionResult.Fail("Add at least one rate card to the quote before converting it.");
+        }
+
+        var currency = await ResolveCurrencyAsync(quote.OutputCurrencyCode);
+        var booking = new Booking
+        {
+            QuoteId = quote.Id,
+            BookingRef = await GenerateNextReferenceAsync(),
+            ClientId = quote.ClientId.Value,
+            ClientReference = quote.ReferenceNumber,
+            TravelStartDate = quote.TravelStartDate,
+            TravelEndDate = quote.TravelEndDate,
+            SellingCurrencyCode = currency,
+            CostCurrencyCode = currency,
+            InternalNotes = Normalize(quote.InternalNotes),
+            SpecialRequests = Normalize(quote.Notes),
+            Status = BookingStatus.Provisional
+        };
+
+        foreach (var selectedRateCard in quote.QuoteRateCards.OrderBy(x => x.SortOrder))
+        {
+            var rateCard = selectedRateCard.RateCard;
+            var inventoryItem = rateCard?.InventoryItem;
+            var serviceKind = inventoryItem?.Kind ?? InventoryItemKind.Other;
+            var costPrice = inventoryItem?.BaseCost ?? 0m;
+
+            booking.Items.Add(new BookingItem
+            {
+                InventoryItemId = inventoryItem?.Id,
+                SupplierId = inventoryItem?.SupplierId,
+                ServiceName = inventoryItem?.Name ?? rateCard?.Name ?? "Service",
+                ServiceKind = serviceKind,
+                Description = Normalize(inventoryItem?.Description),
+                ServiceDate = quote.TravelStartDate,
+                EndDate = serviceKind == InventoryItemKind.Hotel ? quote.TravelEndDate : null,
+                Nights = CalculateNights(serviceKind, quote.TravelStartDate, quote.TravelEndDate),
+                CostPrice = costPrice,
+                SellingPrice = decimal.Round(costPrice * (1m + (quote.MarkupPercentage / 100m)), 2),
+                CostCurrencyCode = currency,
+                SellingCurrencyCode = currency,
+                Quantity = 1,
+                Pax = 1,
+                SupplierStatus = SupplierStatus.NotRequested
+            });
+        }
+
+        if (booking.Items.Count == 0)
+        {
+            return BookingConversionResult.Fail("The selected quote services could not be converted into booking items.");
+        }
+
+        RecalculateTotals(booking);
+        _db.Bookings.Add(booking);
+        await _db.SaveChangesAsync();
+        return BookingConversionResult.Ok(booking.Id, booking.BookingRef);
+    }
+
     public async Task<BookingDetailsDto?> GetDetailsAsync(Guid id)
     {
         return await _db.Bookings
@@ -123,6 +219,8 @@ public class BookingService : IBookingService
             .Select(x => new BookingDetailsDto
             {
                 Id = x.Id,
+                QuoteId = x.QuoteId,
+                QuoteReferenceNumber = x.Quote != null ? x.Quote.ReferenceNumber : null,
                 BookingRef = x.BookingRef,
                 Status = x.Status,
                 ClientId = x.ClientId,

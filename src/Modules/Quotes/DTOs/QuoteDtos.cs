@@ -84,6 +84,8 @@ public class QuoteBuilderDto
 public class QuoteDetailsDto
 {
     public Guid Id { get; set; }
+    public Guid? BookingId { get; set; }
+    public string? BookingReferenceNumber { get; set; }
     public string ReferenceNumber { get; set; } = string.Empty;
     public QuoteStatus Status { get; set; }
     public Guid? ClientId { get; set; }

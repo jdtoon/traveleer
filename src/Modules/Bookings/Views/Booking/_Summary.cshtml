@@ -14,6 +14,10 @@
         </div>
         <div class="flex gap-2">
             <a class="btn btn-ghost btn-sm" href="@Url.Action("Index", "Booking", new { slug })">Back to Bookings</a>
+            @if (Model.QuoteId.HasValue)
+            {
+                <a class="btn btn-outline btn-sm" href="@Url.Action("Details", "Quote", new { slug, id = Model.QuoteId })">View Quote</a>
+            }
             <has-permission name="bookings.edit">
                 <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewItem", "Booking", new { slug, id = Model.Id })" hx-target="#modal-container">+ Add Service</button>
             </has-permission>
@@ -42,6 +46,13 @@
                     <div class="font-medium">Cost: @Model.CostCurrencyCode @Model.TotalCost.ToString("N2")</div>
                     <div class="font-medium">Selling: @Model.SellingCurrencyCode @Model.TotalSelling.ToString("N2")</div>
                     <div class="text-sm opacity-70">Profit: @Model.SellingCurrencyCode @Model.TotalProfit.ToString("N2")</div>
+                </div>
+            </div>
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Source</div>
+                    <div class="font-medium">@(string.IsNullOrWhiteSpace(Model.QuoteReferenceNumber) ? "Standalone booking" : Model.QuoteReferenceNumber)</div>
+                    <div class="text-sm opacity-70">@(Model.QuoteId.HasValue ? "Created from an accepted quote." : "Created directly in bookings.")</div>
                 </div>
             </div>
             <div class="card border border-base-300 bg-base-100 shadow-sm">

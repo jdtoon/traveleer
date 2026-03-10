@@ -272,6 +272,8 @@ public class QuoteService : IQuoteService
             .Select(x => new QuoteDetailsDto
             {
                 Id = x.Id,
+                BookingId = _db.Bookings.Where(b => b.QuoteId == x.Id).Select(b => (Guid?)b.Id).FirstOrDefault(),
+                BookingReferenceNumber = _db.Bookings.Where(b => b.QuoteId == x.Id).Select(b => b.BookingRef).FirstOrDefault(),
                 ReferenceNumber = x.ReferenceNumber,
                 Status = x.Status,
                 ClientId = x.ClientId,

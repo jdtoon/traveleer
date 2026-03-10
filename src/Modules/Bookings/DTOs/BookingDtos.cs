@@ -13,6 +13,7 @@ public class BookingOptionDto
 public class BookingListItemDto
 {
     public Guid Id { get; set; }
+    public Guid? QuoteId { get; set; }
     public string BookingRef { get; set; } = string.Empty;
     public string ClientName { get; set; } = string.Empty;
     public BookingStatus Status { get; set; }
@@ -115,6 +116,8 @@ public class BookingItemListItemDto
 public class BookingDetailsDto
 {
     public Guid Id { get; set; }
+    public Guid? QuoteId { get; set; }
+    public string? QuoteReferenceNumber { get; set; }
     public string BookingRef { get; set; } = string.Empty;
     public BookingStatus Status { get; set; }
     public Guid ClientId { get; set; }
@@ -135,4 +138,29 @@ public class BookingDetailsDto
     public DateTime CreatedAt { get; set; }
     public DateTime? ConfirmedAt { get; set; }
     public List<BookingItemListItemDto> Items { get; set; } = [];
+}
+
+public class BookingConversionResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public Guid? BookingId { get; init; }
+    public string? BookingRef { get; init; }
+    public bool AlreadyExists { get; init; }
+
+    public static BookingConversionResult Ok(Guid bookingId, string bookingRef, bool alreadyExists = false)
+        => new()
+        {
+            Success = true,
+            BookingId = bookingId,
+            BookingRef = bookingRef,
+            AlreadyExists = alreadyExists
+        };
+
+    public static BookingConversionResult Fail(string errorMessage)
+        => new()
+        {
+            Success = false,
+            ErrorMessage = errorMessage
+        };
 }

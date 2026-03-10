@@ -68,6 +68,25 @@ public class BookingController : SwapController
             .Build();
     }
 
+    [HttpPost("convert-from-quote/{quoteId:guid}")]
+    [ValidateAntiForgeryToken]
+    [HasPermission(BookingPermissions.BookingsCreate)]
+    public async Task<IActionResult> ConvertFromQuote(Guid quoteId)
+    {
+        var result = await _service.ConvertFromQuoteAsync(quoteId);
+        if (!result.Success || !result.BookingId.HasValue)
+        {
+            return SwapResponse()
+                .WithErrorToast(result.ErrorMessage ?? "Quote could not be converted to a booking.")
+                .Build();
+        }
+
+        Response.Headers["HX-Redirect"] = Url.Action(nameof(Details), new { slug = RouteData.Values["slug"], id = result.BookingId.Value }) ?? string.Empty;
+        return SwapResponse()
+            .WithSuccessToast(result.AlreadyExists ? "Booking already exists for this quote." : "Booking created from quote.")
+            .Build();
+    }
+
     [HttpGet("details/{id:guid}")]
     [HasPermission(BookingPermissions.BookingsRead)]
     public async Task<IActionResult> Details(Guid id)

@@ -42,9 +42,10 @@ public partial class TenantProvisionerService : ITenantProvisioner
         _litestreamSync = litestreamSync;
 
         var tenantPath = configuration["Tenancy:DatabasePath"] ?? Path.Combine("db", "tenants");
+        var environment = serviceProvider.GetService<IHostEnvironment>();
         _tenantDbBasePath = Path.IsPathRooted(tenantPath)
             ? tenantPath
-            : Path.Combine(Directory.GetCurrentDirectory(), tenantPath);
+            : Path.Combine(environment?.ContentRootPath ?? Directory.GetCurrentDirectory(), tenantPath);
 
         // Collect reserved slugs from all modules (explicit + public route prefixes)
         _reservedSlugs = new HashSet<string>(

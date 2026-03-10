@@ -1,5 +1,6 @@
 using saas.Data;
 using saas.Modules.Clients.Entities;
+using saas.Modules.Quotes.Entities;
 
 namespace saas.Modules.Bookings.Entities;
 
@@ -15,10 +16,12 @@ public enum BookingStatus
 public class Booking : IAuditableEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? QuoteId { get; set; }
     public string BookingRef { get; set; } = string.Empty;
     public BookingStatus Status { get; set; } = BookingStatus.Provisional;
     public Guid ClientId { get; set; }
     public Client? Client { get; set; }
+    public Quote? Quote { get; set; }
     public string? ClientReference { get; set; }
     public DateOnly? TravelStartDate { get; set; }
     public DateOnly? TravelEndDate { get; set; }

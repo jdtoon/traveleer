@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using saas.Modules.Auth;
+using saas.Shared;
 using Swap.Testing;
 using Xunit;
 
@@ -118,8 +120,18 @@ public class AppFixture : IDisposable
         return new TestUserData(userId, email, name, roles, permissions);
     }
 
-    private static List<Claim> BuildTenantClaims(TestUserData user, string slug)
+    private List<Claim> BuildTenantClaims(TestUserData user, string slug)
     {
+        var permissions = new HashSet<string>(user.Permissions, StringComparer.OrdinalIgnoreCase);
+        if (user.Roles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+        {
+            var modules = Factory.Services.GetRequiredService<IReadOnlyList<IModule>>();
+            foreach (var permission in modules.SelectMany(x => x.Permissions))
+            {
+                permissions.Add(permission.Key);
+            }
+        }
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.UserId),
@@ -129,7 +141,7 @@ public class AppFixture : IDisposable
         };
         foreach (var role in user.Roles)
             claims.Add(new Claim(ClaimTypes.Role, role));
-        foreach (var permission in user.Permissions)
+        foreach (var permission in permissions)
             claims.Add(new Claim(AuthClaims.Permission, permission));
         return claims;
     }
@@ -172,10 +184,11 @@ public class AppFixture : IDisposable
     public string GetTenantDbPath(string slug = "demo")
     {
         var config = Factory.Services.GetRequiredService<IConfiguration>();
+        var environment = Factory.Services.GetRequiredService<IHostEnvironment>();
         var tenantPath = config["Tenancy:DatabasePath"] ?? Path.Combine("db", "tenants");
         var basePath = Path.IsPathRooted(tenantPath)
             ? tenantPath
-            : Path.Combine(Directory.GetCurrentDirectory(), tenantPath);
+            : Path.Combine(environment.ContentRootPath, tenantPath);
 
         return Path.Combine(basePath, $"{slug}.db");
     }

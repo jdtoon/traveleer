@@ -52,26 +52,28 @@ public class SettingsModule : IModule
     public async Task SeedTenantAsync(IServiceProvider scopedServices)
     {
         var db = scopedServices.GetRequiredService<TenantDbContext>();
-        if (await db.RoomTypes.AnyAsync())
-            return;
-
-        db.RoomTypes.AddRange(
+        var roomTypes = new[]
+        {
             CreateRoomType("SGL", "Single Room", 10),
             CreateRoomType("DBL", "Double Room", 20),
             CreateRoomType("TWN", "Twin Room", 30),
             CreateRoomType("TRP", "Triple Room", 40),
             CreateRoomType("QAD", "Quad Room", 50),
             CreateRoomType("STE", "Suite", 60),
-            CreateRoomType("FAM", "Family Room", 70));
+            CreateRoomType("FAM", "Family Room", 70)
+        };
 
-        db.MealPlans.AddRange(
+        var mealPlans = new[]
+        {
             CreateMealPlan("RO", "Room Only", 10),
             CreateMealPlan("BB", "Bed & Breakfast", 20),
             CreateMealPlan("HB", "Half Board", 30),
             CreateMealPlan("FB", "Full Board", 40),
-            CreateMealPlan("AI", "All Inclusive", 50));
+            CreateMealPlan("AI", "All Inclusive", 50)
+        };
 
-        db.Currencies.AddRange(
+        var currencies = new[]
+        {
             CreateCurrency("ZAR", "South African Rand", "R", 1m, true, 0m),
             CreateCurrency("USD", "US Dollar", "$", 0.055m, false, 12m),
             CreateCurrency("EUR", "Euro", "EUR", 0.051m, false, 12m),
@@ -80,9 +82,11 @@ public class SettingsModule : IModule
             CreateCurrency("AED", "UAE Dirham", "AED", 0.202m, false, 10m),
             CreateCurrency("INR", "Indian Rupee", "INR", 4.56m, false, 8m),
             CreateCurrency("PKR", "Pakistani Rupee", "PKR", 15.4m, false, 8m),
-            CreateCurrency("EGP", "Egyptian Pound", "EGP", 2.7m, false, 8m));
+            CreateCurrency("EGP", "Egyptian Pound", "EGP", 2.7m, false, 8m)
+        };
 
-        db.RateCategories.AddRange(
+        var rateCategories = new[]
+        {
             CreateRateCategory(InventoryType.Flight, "ECO", "Economy Class", 10),
             CreateRateCategory(InventoryType.Flight, "PRM", "Premium Economy", 20),
             CreateRateCategory(InventoryType.Flight, "BUS", "Business Class", 30),
@@ -101,7 +105,49 @@ public class SettingsModule : IModule
             CreateRateCategory(InventoryType.Visa, "STD", "Standard", 10),
             CreateRateCategory(InventoryType.Visa, "EXP", "Express", 20),
             CreateRateCategory(InventoryType.Visa, "URG", "Urgent", 30),
-            CreateRateCategory(InventoryType.Visa, "VIP", "VIP", 40));
+            CreateRateCategory(InventoryType.Visa, "VIP", "VIP", 40)
+        };
+
+        var existingRoomTypeCodes = await db.RoomTypes
+            .Select(x => x.Code)
+            .ToListAsync();
+        var existingMealPlanCodes = await db.MealPlans
+            .Select(x => x.Code)
+            .ToListAsync();
+        var existingCurrencyCodes = await db.Currencies
+            .Select(x => x.Code)
+            .ToListAsync();
+        var existingRateCategoryKeys = await db.RateCategories
+            .Select(x => new { x.ForType, x.Code })
+            .ToListAsync();
+
+        var roomTypeCodeSet = new HashSet<string>(existingRoomTypeCodes, StringComparer.OrdinalIgnoreCase);
+        var mealPlanCodeSet = new HashSet<string>(existingMealPlanCodes, StringComparer.OrdinalIgnoreCase);
+        var currencyCodeSet = new HashSet<string>(existingCurrencyCodes, StringComparer.OrdinalIgnoreCase);
+        var rateCategoryKeySet = new HashSet<string>(
+            existingRateCategoryKeys.Select(x => $"{(int)x.ForType}:{x.Code}"),
+            StringComparer.OrdinalIgnoreCase);
+
+        db.RoomTypes.AddRange(roomTypes.Where(x => !roomTypeCodeSet.Contains(x.Code)));
+        db.MealPlans.AddRange(mealPlans.Where(x => !mealPlanCodeSet.Contains(x.Code)));
+
+        var hasBaseCurrency = await db.Currencies.AnyAsync(x => x.IsBaseCurrency);
+        foreach (var currency in currencies.Where(x => !currencyCodeSet.Contains(x.Code)))
+        {
+            if (currency.IsBaseCurrency && hasBaseCurrency)
+            {
+                currency.IsBaseCurrency = false;
+            }
+
+            if (currency.IsBaseCurrency)
+            {
+                hasBaseCurrency = true;
+            }
+
+            db.Currencies.Add(currency);
+        }
+
+        db.RateCategories.AddRange(rateCategories.Where(x => !rateCategoryKeySet.Contains($"{(int)x.ForType}:{x.Code}")));
 
         await db.SaveChangesAsync();
     }

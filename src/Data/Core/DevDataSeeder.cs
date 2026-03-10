@@ -58,10 +58,11 @@ public static class DevDataSeeder
 
         // Create Member user on the demo tenant
         var configuration = services.GetRequiredService<IConfiguration>();
+        var environment = services.GetRequiredService<IHostEnvironment>();
         var tenantPath = configuration["Tenancy:DatabasePath"] ?? Path.Combine("db", "tenants");
         var tenantBasePath = Path.IsPathRooted(tenantPath)
             ? tenantPath
-            : Path.Combine(Directory.GetCurrentDirectory(), tenantPath);
+            : Path.Combine(environment.ContentRootPath, tenantPath);
         var tenantDbPath = Path.Combine(tenantBasePath, $"{options.TenantSlug.ToLowerInvariant()}.db");
         var connectionString = $"Data Source={tenantDbPath}";
 

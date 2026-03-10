@@ -52,10 +52,10 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddDatabaseConfig(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddDatabaseConfig(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
         // Ensure data directories exist
-        var dataPath = Path.Combine(Directory.GetCurrentDirectory(), "db");
+        var dataPath = Path.Combine(environment.ContentRootPath, "db");
         Directory.CreateDirectory(dataPath);
         Directory.CreateDirectory(Path.Combine(dataPath, "tenants"));
         Directory.CreateDirectory(Path.Combine(dataPath, "keys"));
@@ -91,7 +91,7 @@ public static class ServiceCollectionExtensions
                 var tenantPath = configuration["Tenancy:DatabasePath"] ?? Path.Combine("db", "tenants");
                 var basePath = Path.IsPathRooted(tenantPath)
                     ? tenantPath
-                    : Path.Combine(Directory.GetCurrentDirectory(), tenantPath);
+                    : Path.Combine(environment.ContentRootPath, tenantPath);
                 var dbPath = Path.Combine(basePath, $"{tenantContext.Slug}.db");
                 options.UseSqlite($"Data Source={dbPath}");
             }

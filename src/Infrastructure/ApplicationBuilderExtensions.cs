@@ -55,7 +55,10 @@ public static class ApplicationBuilderExtensions
             await CoreDataSeeder.SeedAsync(coreDb, app.Configuration, modules);
 
             // Sync permissions to all existing tenant DBs (idempotent)
-            await SyncPermissionsToTenantsAsync(modules, logger);
+            await SyncPermissionsToTenantsAsync(scope.ServiceProvider, modules, logger);
+
+            // Backfill module-owned tenant defaults for existing tenant DBs.
+            await SeedTenantModulesAsync(scope.ServiceProvider, modules, logger);
 
             // Dev seeding — only when explicitly enabled in config
             var devSeedOptions = app.Configuration.GetSection(DevSeedOptions.SectionName).Get<DevSeedOptions>();
@@ -91,7 +94,8 @@ public static class ApplicationBuilderExtensions
 
     private static async Task ApplyTenantMigrationsAsync(IServiceProvider services, ILogger logger)
     {
-        var basePath = Path.Combine(Directory.GetCurrentDirectory(), "db", "tenants");
+        var environment = services.GetRequiredService<IWebHostEnvironment>();
+        var basePath = Path.Combine(environment.ContentRootPath, "db", "tenants");
         if (!Directory.Exists(basePath))
             return;
 
@@ -137,9 +141,10 @@ public static class ApplicationBuilderExtensions
     /// Adds any new permissions that don't exist yet (idempotent by Key)
     /// and ensures role-permission mappings match module defaults for system roles.
     /// </summary>
-    private static async Task SyncPermissionsToTenantsAsync(IReadOnlyList<IModule> modules, ILogger logger)
+    private static async Task SyncPermissionsToTenantsAsync(IServiceProvider services, IReadOnlyList<IModule> modules, ILogger logger)
     {
-        var basePath = Path.Combine(Directory.GetCurrentDirectory(), "db", "tenants");
+        var environment = services.GetRequiredService<IWebHostEnvironment>();
+        var basePath = Path.Combine(environment.ContentRootPath, "db", "tenants");
         if (!Directory.Exists(basePath))
             return;
 
@@ -242,6 +247,33 @@ public static class ApplicationBuilderExtensions
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Failed to sync permissions to tenant DB {DbFile}", Path.GetFileName(dbFile));
+            }
+        }
+    }
+
+    private static async Task SeedTenantModulesAsync(IServiceProvider services, IReadOnlyList<IModule> modules, ILogger logger)
+    {
+        var environment = services.GetRequiredService<IWebHostEnvironment>();
+        var basePath = Path.Combine(environment.ContentRootPath, "db", "tenants");
+        if (!Directory.Exists(basePath))
+            return;
+
+        foreach (var dbFile in Directory.GetFiles(basePath, "*.db"))
+        {
+            try
+            {
+                using var scope = services.CreateScope();
+                var tenantDb = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+                tenantDb.Database.SetConnectionString($"Data Source={dbFile}");
+
+                foreach (var module in modules)
+                {
+                    await module.SeedTenantAsync(scope.ServiceProvider);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to seed tenant defaults for DB {DbFile}", Path.GetFileName(dbFile));
             }
         }
     }

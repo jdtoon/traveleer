@@ -139,6 +139,60 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task QuoteDetails_WhenAcceptedAndNotConverted_ShowsConvertAction()
+    {
+        var quoteId = await SeedQuoteAsync(status: QuoteStatus.Accepted);
+
+        var response = await _client.GetAsync($"/{TenantSlug}/quotes/details/{quoteId}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("Convert To Booking");
+    }
+
+    [Fact]
+    public async Task QuoteDetails_WhenBookingExists_ShowsViewBookingAction()
+    {
+        var quoteId = await SeedQuoteAsync(status: QuoteStatus.Accepted);
+
+        await using (var db = OpenTenantDb())
+        {
+            db.Bookings.Add(new saas.Modules.Bookings.Entities.Booking
+            {
+                QuoteId = quoteId,
+                BookingRef = $"BK-Q-{Guid.NewGuid():N}"[..13],
+                ClientId = await db.Clients.OrderBy(x => x.Name).Select(x => x.Id).FirstAsync(),
+                CostCurrencyCode = "USD",
+                SellingCurrencyCode = "USD",
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.GetAsync($"/{TenantSlug}/quotes/details/{quoteId}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("View Booking");
+    }
+
+    [Fact]
+    public async Task QuoteDetails_UserCanConvertAcceptedQuoteToBooking()
+    {
+        var quoteId = await SeedQuoteAsync(status: QuoteStatus.Accepted);
+        var details = await _client.GetAsync($"/{TenantSlug}/quotes/details/{quoteId}");
+        details.AssertSuccess();
+
+        var response = await _client.SubmitFormAsync(details, $"form[hx-post='/{TenantSlug}/bookings/convert-from-quote/{quoteId}']", new Dictionary<string, string>());
+
+        response.AssertSuccess();
+        response.AssertToast("Booking created from quote.");
+
+        await using var db = OpenTenantDb();
+        var booking = await db.Bookings.Include(x => x.Items).SingleAsync(x => x.QuoteId == quoteId);
+        Assert.Single(booking.Items);
+        Assert.Equal("USD", booking.SellingCurrencyCode);
+    }
+
+    [Fact]
     public async Task QuotesPage_WhenUnauthenticated_Redirects()
     {
         var publicClient = _fixture.CreateClient();
@@ -208,27 +262,21 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
         return rateCard.Id;
     }
 
-    private async Task<Guid> SeedQuoteAsync()
+    private async Task<Guid> SeedQuoteAsync(QuoteStatus status = QuoteStatus.Draft)
     {
         await using var db = OpenTenantDb();
-        var existing = await db.Quotes.FirstOrDefaultAsync(x => x.ReferenceNumber == "QT-TEST-0001");
-        if (existing is not null)
-        {
-            return existing.Id;
-        }
-
         var client = await db.Clients.OrderBy(x => x.Name).FirstAsync();
         var rateCardId = await SeedRateCardAsync();
 
         var quote = new Quote
         {
-            ReferenceNumber = "QT-TEST-0001",
+            ReferenceNumber = $"QT-TEST-{Guid.NewGuid():N}"[..13],
             ClientId = client.Id,
             ClientName = client.Name,
             ClientEmail = client.Email,
             OutputCurrencyCode = "USD",
             MarkupPercentage = 10m,
-            Status = QuoteStatus.Draft,
+            Status = status,
             CreatedAt = DateTime.UtcNow,
             QuoteRateCards =
             {

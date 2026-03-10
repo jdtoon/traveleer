@@ -50,7 +50,7 @@ builder.Services.AddSchedulingConfig(builder.Configuration);
 // DATABASE & CORE SERVICES
 // =============================================================================
 
-builder.Services.AddDatabaseConfig(builder.Configuration);
+builder.Services.AddDatabaseConfig(builder.Configuration, builder.Environment);
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<CoreDbContext>("core-database")
     .AddCheck<TenantDirectoryHealthCheck>("tenant-directory")

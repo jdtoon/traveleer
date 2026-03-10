@@ -11,6 +11,7 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>, ITenantEn
     {
         builder.ToTable("Bookings");
         builder.HasKey(x => x.Id);
+        builder.HasIndex(x => x.QuoteId).IsUnique();
         builder.Property(x => x.BookingRef).HasMaxLength(32).IsRequired();
         builder.Property(x => x.ClientReference).HasMaxLength(100);
         builder.Property(x => x.LeadGuestName).HasMaxLength(200);
@@ -25,6 +26,10 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>, ITenantEn
         builder.HasIndex(x => x.BookingRef).IsUnique();
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => x.TravelStartDate);
+        builder.HasOne(x => x.Quote)
+            .WithMany()
+            .HasForeignKey(x => x.QuoteId)
+            .OnDelete(DeleteBehavior.SetNull);
         builder.HasOne(x => x.Client)
             .WithMany()
             .HasForeignKey(x => x.ClientId)

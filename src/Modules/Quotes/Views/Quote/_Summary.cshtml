@@ -14,6 +14,19 @@
         </div>
         <div class="flex flex-wrap gap-2">
             <a class="btn btn-ghost btn-sm" href="@Url.Action("Index", "Quote", new { slug })">Back to Quotes</a>
+            @if (Model.BookingId.HasValue)
+            {
+                <a class="btn btn-outline btn-sm" href="@Url.Action("Details", "Booking", new { slug, id = Model.BookingId })">View Booking</a>
+            }
+            else if (Model.Status == QuoteStatus.Accepted && Model.ClientId.HasValue && Model.RateCardCount > 0)
+            {
+                <has-permission name="bookings.create">
+                    <form hx-post="@Url.Action("ConvertFromQuote", "Booking", new { slug, quoteId = Model.Id })" hx-swap="none">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-secondary btn-sm">Convert To Booking</button>
+                    </form>
+                </has-permission>
+            }
             <has-permission name="email.send">
                 <button class="btn btn-primary btn-sm" hx-get="@Url.Action("Compose", "QuoteEmail", new { slug, quoteId = Model.Id })" hx-target="#modal-container">Send Email</button>
             </has-permission>

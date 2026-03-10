@@ -6,6 +6,8 @@ using saas.Modules.Bookings.Entities;
 using saas.Modules.Bookings.Services;
 using saas.Modules.Clients.Entities;
 using saas.Modules.Inventory.Entities;
+using saas.Modules.Quotes.Entities;
+using saas.Modules.RateCards.Entities;
 using saas.Modules.Settings.Entities;
 using Xunit;
 
@@ -18,6 +20,7 @@ public class BookingServiceTests : IAsyncLifetime
     private BookingService _service = null!;
     private Client _client = null!;
     private InventoryItem _hotel = null!;
+    private Quote _acceptedQuote = null!;
 
     public async Task InitializeAsync()
     {
@@ -46,6 +49,40 @@ public class BookingServiceTests : IAsyncLifetime
 
         _db.Clients.Add(_client);
         _db.InventoryItems.Add(_hotel);
+        var rateCard = new RateCard
+        {
+            Name = "Grand Haram Contract",
+            InventoryItem = _hotel,
+            ContractCurrencyCode = "USD",
+            Status = RateCardStatus.Active,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _acceptedQuote = new Quote
+        {
+            ReferenceNumber = "QT-BKG-0001",
+            ClientId = _client.Id,
+            ClientName = _client.Name,
+            ClientEmail = _client.Email,
+            OutputCurrencyCode = "USD",
+            MarkupPercentage = 20m,
+            Status = QuoteStatus.Accepted,
+            TravelStartDate = new DateOnly(2026, 7, 10),
+            TravelEndDate = new DateOnly(2026, 7, 14),
+            Notes = "Client requested airport meet-and-greet.",
+            InternalNotes = "Preferred supplier for this client.",
+            CreatedAt = DateTime.UtcNow,
+            QuoteRateCards =
+            {
+                new QuoteRateCard
+                {
+                    RateCard = rateCard,
+                    SortOrder = 1
+                }
+            }
+        };
+
+        _db.Quotes.Add(_acceptedQuote);
         _db.Currencies.AddRange(
             new Currency { Code = "USD", Name = "US Dollar", Symbol = "$", ExchangeRate = 1m, IsBaseCurrency = true, IsActive = true, CreatedAt = DateTime.UtcNow },
             new Currency { Code = "SAR", Name = "Saudi Riyal", Symbol = "SAR", ExchangeRate = 3.75m, IsBaseCurrency = false, IsActive = true, CreatedAt = DateTime.UtcNow });
@@ -90,6 +127,51 @@ public class BookingServiceTests : IAsyncLifetime
         var second = await _db.Bookings.SingleAsync(x => x.Id == secondId);
         Assert.EndsWith("0001", first.BookingRef);
         Assert.EndsWith("0002", second.BookingRef);
+    }
+
+    [Fact]
+    public async Task ConvertFromQuoteAsync_CreatesBookingLinkedToQuote()
+    {
+        var result = await _service.ConvertFromQuoteAsync(_acceptedQuote.Id);
+
+        var booking = await _db.Bookings.Include(x => x.Items).SingleAsync(x => x.QuoteId == _acceptedQuote.Id);
+        var item = Assert.Single(booking.Items);
+
+        Assert.True(result.Success);
+        Assert.False(result.AlreadyExists);
+        Assert.Equal(booking.Id, result.BookingId);
+        Assert.Equal(_acceptedQuote.ReferenceNumber, booking.ClientReference);
+        Assert.Equal(_acceptedQuote.InternalNotes, booking.InternalNotes);
+        Assert.Equal(_acceptedQuote.Notes, booking.SpecialRequests);
+        Assert.Equal(500m, item.CostPrice);
+        Assert.Equal(600m, item.SellingPrice);
+        Assert.Equal(4, item.Nights);
+    }
+
+    [Fact]
+    public async Task ConvertFromQuoteAsync_WhenBookingAlreadyExists_ReturnsExistingBooking()
+    {
+        var first = await _service.ConvertFromQuoteAsync(_acceptedQuote.Id);
+        var second = await _service.ConvertFromQuoteAsync(_acceptedQuote.Id);
+
+        Assert.True(first.Success);
+        Assert.True(second.Success);
+        Assert.True(second.AlreadyExists);
+        Assert.Equal(first.BookingId, second.BookingId);
+        Assert.Equal(1, await _db.Bookings.CountAsync(x => x.QuoteId == _acceptedQuote.Id));
+    }
+
+    [Fact]
+    public async Task ConvertFromQuoteAsync_WhenQuoteIsNotAccepted_Fails()
+    {
+        _acceptedQuote.Status = QuoteStatus.Sent;
+        await _db.SaveChangesAsync();
+
+        var result = await _service.ConvertFromQuoteAsync(_acceptedQuote.Id);
+
+        Assert.False(result.Success);
+        Assert.Equal("Only accepted quotes can be converted to bookings.", result.ErrorMessage);
+        Assert.Equal(0, await _db.Bookings.CountAsync(x => x.QuoteId == _acceptedQuote.Id));
     }
 
     [Fact]
