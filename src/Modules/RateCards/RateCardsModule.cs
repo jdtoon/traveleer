@@ -53,6 +53,7 @@ public class RateCardsModule : IModule
     {
         services.AddScoped<IRateCardService, RateCardService>();
         services.AddScoped<IRateCardTemplateService, RateCardTemplateService>();
+        services.AddScoped<IRateCardImportExportService, RateCardImportExportService>();
     }
 
     public async Task SeedTenantAsync(IServiceProvider scopedServices)

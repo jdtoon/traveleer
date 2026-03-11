@@ -16,6 +16,7 @@
             <a class="btn btn-ghost btn-sm" href="@Url.Action("Index", "RateCard", new { slug })">Back to Rate Cards</a>
             <has-permission name="ratecards.edit">
                 <button class="btn btn-outline btn-sm" hx-get="@Url.Action("NewSeason", "RateCard", new { slug, id = Model.Id })" hx-target="#modal-container">+ Add Season</button>
+                <button class="btn btn-outline btn-sm" hx-get="@Url.Action("ImportCsv", "RateCard", new { slug, id = Model.Id })" hx-target="#modal-container">Import CSV</button>
                 @if (Model.Status != RateCardStatus.Active)
                 {
                     <form hx-post="@Url.Action("Activate", "RateCard", new { slug, id = Model.Id })" hx-swap="none">
@@ -37,6 +38,10 @@
                         <button type="submit" class="btn btn-ghost btn-sm">Set Draft</button>
                     </form>
                 }
+            </has-permission>
+            <has-permission name="ratecards.read">
+                <a class="btn btn-ghost btn-sm" href="@Url.Action("ExportJson", "RateCard", new { slug, id = Model.Id })">Export JSON</a>
+                <a class="btn btn-ghost btn-sm" href="@Url.Action("ExportCsv", "RateCard", new { slug, id = Model.Id })">Export CSV</a>
             </has-permission>
             <has-permission name="ratecards.create">
                 <button class="btn btn-outline btn-sm" hx-get="@Url.Action("SaveAsTemplate", "RateCard", new { slug, id = Model.Id })" hx-target="#modal-container">Save As Template</button>

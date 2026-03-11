@@ -1,0 +1,104 @@
+@model saas.Modules.RateCards.DTOs.RateCardCsvImportPreviewDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="alert alert-error text-sm">
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+else
+{
+    <div class="space-y-4">
+        <div class="grid gap-3 md:grid-cols-3">
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="text-xs uppercase tracking-wide opacity-60">Rows checked</div>
+                    <div class="text-xl font-semibold">@Model.TotalRowCount</div>
+                </div>
+            </div>
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="text-xs uppercase tracking-wide opacity-60">Ready to import</div>
+                    <div class="text-xl font-semibold text-success">@Model.ValidRowCount</div>
+                </div>
+            </div>
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="text-xs uppercase tracking-wide opacity-60">Needs fixes</div>
+                    <div class="text-xl font-semibold @(Model.InvalidRowCount > 0 ? "text-error" : string.Empty)">@Model.InvalidRowCount</div>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.Warnings.Count > 0)
+        {
+            <div class="alert alert-warning text-sm">
+                <div>
+                    <div class="font-semibold">Warnings</div>
+                    <ul class="mt-2 list-disc pl-5">
+                        @foreach (var warning in Model.Warnings.Take(6))
+                        {
+                            <li>@warning</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+
+        <div class="overflow-x-auto rounded-box border border-base-300">
+            <table class="table table-zebra table-sm">
+                <thead>
+                    <tr>
+                        <th>Line</th>
+                        <th>Season</th>
+                        <th>Room Type</th>
+                        <th>Weekday</th>
+                        <th>Weekend</th>
+                        <th>Included</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows.Take(20))
+                    {
+                        <tr>
+                            <td>@row.LineNumber</td>
+                            <td>@row.SeasonName</td>
+                            <td>@(!string.IsNullOrWhiteSpace(row.RoomTypeCode) ? row.RoomTypeCode : row.RoomTypeName)</td>
+                            <td>@row.RawWeekdayRate</td>
+                            <td>@row.RawWeekendRate</td>
+                            <td>@row.IsIncluded</td>
+                            <td>
+                                @if (row.IsValid)
+                                {
+                                    <span class="badge badge-success badge-sm">Ready</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-error badge-sm">@row.ErrorMessage</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.Rows.Count > 20)
+        {
+            <div class="text-sm opacity-60">Showing the first 20 rows from this preview.</div>
+        }
+
+        @if (Model.CanImport)
+        {
+            <form hx-post="@Url.Action("ExecuteImportCsv", "RateCard", new { slug, id = Model.RateCardId })" hx-target="#modal-container">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ImportToken" value="@Model.ImportToken" />
+                <button type="submit" class="btn btn-primary btn-sm">Import @Model.ValidRowCount Rate Update@(Model.ValidRowCount == 1 ? string.Empty : "s")</button>
+            </form>
+        }
+    </div>
+}

@@ -213,6 +213,59 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task RateCardDetails_RendersExportAndImportActions()
+    {
+        var rateCardId = await SeedRateCardAsync();
+        await SeedSeasonAsync(rateCardId);
+
+        var response = await _client.GetAsync($"/{TenantSlug}/rate-cards/details/{rateCardId}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("Export JSON");
+        await response.AssertContainsAsync("Export CSV");
+        await response.AssertContainsAsync("Import CSV");
+    }
+
+    [Fact]
+    public async Task RateCardExportJson_ReturnsJsonFile()
+    {
+        var rateCardId = await SeedRateCardAsync();
+        await SeedSeasonAsync(rateCardId);
+
+        var response = await _client.GetAsync($"/{TenantSlug}/rate-cards/export/json/{rateCardId}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("\"rateCard\"");
+        await response.AssertContainsAsync("\"seasons\"");
+    }
+
+    [Fact]
+    public async Task RateCardExportCsv_ReturnsCsvFile()
+    {
+        var rateCardId = await SeedRateCardAsync();
+        await SeedSeasonAsync(rateCardId);
+
+        var response = await _client.GetAsync($"/{TenantSlug}/rate-cards/export/csv/{rateCardId}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("SeasonName,RoomTypeCode,RoomTypeName,WeekdayRate,WeekendRate,IsIncluded");
+        await response.AssertContainsAsync("Existing Season");
+    }
+
+    [Fact]
+    public async Task RateCardImportCsvModal_RendersUploadFlow()
+    {
+        var rateCardId = await SeedRateCardAsync();
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/rate-cards/import/csv/{rateCardId}");
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertContainsAsync("Import Rates From CSV");
+        await response.AssertContainsAsync("Download CSV Template");
+    }
+
+    [Fact]
     public async Task RateCardsPage_WhenUnauthenticated_Redirects()
     {
         var publicClient = _fixture.CreateClient();

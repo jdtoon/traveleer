@@ -1,0 +1,45 @@
+@model saas.Modules.RateCards.DTOs.RateCardCsvImportFormDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-3xl">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-lg font-bold">Import Rates From CSV</h3>
+                <p class="text-sm opacity-70">Upload a CSV for @Model.RateCardName to preview updates before replacing room-rate values.</p>
+            </div>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+        </div>
+
+        <div class="alert alert-info mb-4 text-sm">
+            <span>Expected columns: <code>SeasonName</code>, <code>RoomTypeCode</code> or <code>RoomTypeName</code>, <code>WeekdayRate</code>, optional <code>WeekendRate</code>, optional <code>IsIncluded</code>.</span>
+        </div>
+
+        <form hx-post="@Url.Action("PreviewImportCsv", "RateCard", new { slug, id = Model.RateCardId })"
+              hx-target="#csv-import-preview"
+              hx-swap="innerHTML"
+              hx-encoding="multipart/form-data"
+              class="space-y-4">
+            @Html.AntiForgeryToken()
+            <div class="form-control w-full">
+                <label class="label" for="ImportFile"><span class="label-text">CSV file</span></label>
+                <input id="ImportFile" type="file" name="file" accept=".csv,text/csv" class="file-input file-input-bordered w-full" />
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <a class="btn btn-outline btn-sm" href="@Url.Action("ExportCsv", "RateCard", new { slug, id = Model.RateCardId })">Download CSV Template</a>
+                <button type="submit" class="btn btn-primary btn-sm">Preview Import</button>
+            </div>
+        </form>
+
+        <div id="csv-import-preview" class="mt-6">
+            <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-sm opacity-70">
+                Upload a CSV to validate each season and room type before updating this contract.
+            </div>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

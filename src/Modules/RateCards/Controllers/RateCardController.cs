@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
+using System.Text.Json;
 using saas.Modules.Auth.Filters;
 using saas.Modules.RateCards.DTOs;
 using saas.Modules.RateCards.Events;
@@ -15,11 +17,13 @@ public class RateCardController : SwapController
 {
     private readonly IRateCardService _service;
     private readonly IRateCardTemplateService _templateService;
+    private readonly IRateCardImportExportService _importExportService;
 
-    public RateCardController(IRateCardService service, IRateCardTemplateService templateService)
+    public RateCardController(IRateCardService service, IRateCardTemplateService templateService, IRateCardImportExportService importExportService)
     {
         _service = service;
         _templateService = templateService;
+        _importExportService = importExportService;
     }
 
     [HttpGet("")]
@@ -334,5 +338,103 @@ public class RateCardController : SwapController
                 .WithView("_SaveAsTemplateForm", dto)
                 .Build();
         }
+    }
+
+    [HttpGet("export/json/{id:guid}")]
+    [HasPermission(RateCardPermissions.RateCardsRead)]
+    public async Task<IActionResult> ExportJson(Guid id)
+    {
+        var export = await _importExportService.ExportJsonAsync(id, User.Identity?.Name);
+        var fileName = $"ratecard-{SanitizeFileName(export.RateCard.Name)}-{DateTime.UtcNow:yyyyMMdd}.json";
+        var json = JsonSerializer.Serialize(export, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
+        return File(Encoding.UTF8.GetBytes(json), "application/json", fileName);
+    }
+
+    [HttpGet("export/csv/{id:guid}")]
+    [HasPermission(RateCardPermissions.RateCardsRead)]
+    public async Task<IActionResult> ExportCsv(Guid id)
+    {
+        var details = await _service.GetDetailsAsync(id);
+        if (details is null)
+        {
+            return NotFound();
+        }
+
+        var csv = await _importExportService.ExportCsvAsync(id);
+        var fileName = $"ratecard-{SanitizeFileName(details.Name)}-{DateTime.UtcNow:yyyyMMdd}.csv";
+        return File(Encoding.UTF8.GetBytes(csv), "text/csv", fileName);
+    }
+
+    [HttpGet("import/csv/{id:guid}")]
+    [HasPermission(RateCardPermissions.RateCardsEdit)]
+    public async Task<IActionResult> ImportCsv(Guid id)
+    {
+        var details = await _service.GetDetailsAsync(id);
+        if (details is null)
+        {
+            return NotFound();
+        }
+
+        return PartialView("_ImportCsvForm", new RateCardCsvImportFormDto
+        {
+            RateCardId = id,
+            RateCardName = details.Name
+        });
+    }
+
+    [HttpPost("import/csv/preview/{id:guid}")]
+    [ValidateAntiForgeryToken]
+    [HasPermission(RateCardPermissions.RateCardsEdit)]
+    public async Task<IActionResult> PreviewImportCsv(Guid id, IFormFile? file)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return SwapResponse().WithErrorToast("Choose a CSV file to preview.").Build();
+        }
+
+        try
+        {
+            using var stream = file.OpenReadStream();
+            using var reader = new StreamReader(stream);
+            var csvContent = await reader.ReadToEndAsync();
+            var preview = await _importExportService.PreviewCsvImportAsync(id, csvContent);
+            return PartialView("_ImportCsvPreview", preview);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return SwapResponse().WithErrorToast(ex.Message).Build();
+        }
+    }
+
+    [HttpPost("import/csv/execute/{id:guid}")]
+    [ValidateAntiForgeryToken]
+    [HasPermission(RateCardPermissions.RateCardsEdit)]
+    public async Task<IActionResult> ExecuteImportCsv(Guid id, [FromForm] RateCardCsvImportExecuteDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return SwapResponse().WithErrorToast("Import session expired. Upload the CSV again.").Build();
+        }
+
+        try
+        {
+            var result = await _importExportService.ExecuteCsvImportAsync(id, dto.ImportToken);
+            return SwapResponse()
+                .WithView("_ModalClose")
+                .WithSuccessToast($"Imported {result.ImportedRowCount} rate update{(result.ImportedRowCount == 1 ? string.Empty : "s") }.")
+                .WithTrigger(RateCardEvents.DetailsRefresh)
+                .Build();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return SwapResponse().WithErrorToast(ex.Message).Build();
+        }
+    }
+
+    private static string SanitizeFileName(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var sanitized = new string(value.Select(ch => invalid.Contains(ch) ? '-' : ch).ToArray()).Trim();
+        return string.IsNullOrWhiteSpace(sanitized) ? "ratecard" : sanitized;
     }
 }

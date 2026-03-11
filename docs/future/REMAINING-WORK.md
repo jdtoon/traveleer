@@ -24,7 +24,7 @@ This file lists only verified ACP implementation gaps that are still worth closi
 
 ### Still Open
 
-- ACP-style import/export workflow
+- ACP-style bulk JSON import/export workflow and any remaining advanced import/export depth
 - any clearly missing non-hotel pricing support that ACP already implements and Traveleer still lacks
 
 ### Already Done
@@ -32,6 +32,9 @@ This file lists only verified ACP implementation gaps that are still worth closi
 - rate-card CRUD
 - reusable hotel rate-card templates
 - save current rate-card season structures as reusable templates
+- single-card JSON export
+- single-card CSV export
+- CSV preview and re-import into an existing hotel rate card
 - season editing
 - details and summary flow
 - activation workflow

@@ -122,6 +122,100 @@ public class SaveRateCardTemplateDto
     public string? Description { get; set; }
 }
 
+public class RateCardJsonExportDto
+{
+    public string ExportVersion { get; set; } = "1.0";
+    public DateTime ExportedAt { get; set; }
+    public string? ExportedBy { get; set; }
+    public RateCardJsonExportCardDto RateCard { get; set; } = new();
+}
+
+public class RateCardJsonExportCardDto
+{
+    public string Name { get; set; } = string.Empty;
+    public RateCardStatus Status { get; set; }
+    public string InventoryItemName { get; set; } = string.Empty;
+    public string? DestinationName { get; set; }
+    public string ContractCurrencyCode { get; set; } = "USD";
+    public string? DefaultMealPlanCode { get; set; }
+    public string? DefaultMealPlanName { get; set; }
+    public DateOnly? ValidFrom { get; set; }
+    public DateOnly? ValidTo { get; set; }
+    public string? Notes { get; set; }
+    public List<RateCardJsonExportSeasonDto> Seasons { get; set; } = [];
+}
+
+public class RateCardJsonExportSeasonDto
+{
+    public string Name { get; set; } = string.Empty;
+    public DateOnly StartDate { get; set; }
+    public DateOnly EndDate { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsBlackout { get; set; }
+    public string? Notes { get; set; }
+    public List<RateCardJsonExportRateDto> Rates { get; set; } = [];
+}
+
+public class RateCardJsonExportRateDto
+{
+    public string RoomTypeCode { get; set; } = string.Empty;
+    public string RoomTypeName { get; set; } = string.Empty;
+    public decimal WeekdayRate { get; set; }
+    public decimal? WeekendRate { get; set; }
+    public bool IsIncluded { get; set; }
+}
+
+public class RateCardCsvImportFormDto
+{
+    public Guid RateCardId { get; set; }
+    public string RateCardName { get; set; } = string.Empty;
+}
+
+public class RateCardCsvImportPreviewDto
+{
+    public Guid RateCardId { get; set; }
+    public string RateCardName { get; set; } = string.Empty;
+    public string? ImportToken { get; set; }
+    public string? ErrorMessage { get; set; }
+    public int ValidRowCount { get; set; }
+    public int InvalidRowCount { get; set; }
+    public int TotalRowCount => Rows.Count;
+    public bool CanImport => !string.IsNullOrWhiteSpace(ImportToken) && ValidRowCount > 0;
+    public List<string> Warnings { get; set; } = [];
+    public List<RateCardCsvImportPreviewRowDto> Rows { get; set; } = [];
+}
+
+public class RateCardCsvImportPreviewRowDto
+{
+    public int LineNumber { get; set; }
+    public Guid? SeasonId { get; set; }
+    public Guid? RoomTypeId { get; set; }
+    public string SeasonName { get; set; } = string.Empty;
+    public string RoomTypeCode { get; set; } = string.Empty;
+    public string RoomTypeName { get; set; } = string.Empty;
+    public string RawWeekdayRate { get; set; } = string.Empty;
+    public string RawWeekendRate { get; set; } = string.Empty;
+    public string RawIsIncluded { get; set; } = string.Empty;
+    public decimal? WeekdayRate { get; set; }
+    public decimal? WeekendRate { get; set; }
+    public bool IsIncluded { get; set; } = true;
+    public bool IsValid { get; set; }
+    public string? ErrorMessage { get; set; }
+}
+
+public class RateCardCsvImportExecuteDto
+{
+    [Required]
+    public string ImportToken { get; set; } = string.Empty;
+}
+
+public class RateCardCsvImportResultDto
+{
+    public Guid RateCardId { get; set; }
+    public string RateCardName { get; set; } = string.Empty;
+    public int ImportedRowCount { get; set; }
+}
+
 public class RateSeasonFormDto
 {
     public Guid Id { get; set; }
