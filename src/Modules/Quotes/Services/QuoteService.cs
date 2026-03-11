@@ -119,6 +119,11 @@ public class QuoteService : IQuoteService
         var selectedRateCardIds = quote.QuoteRateCards.OrderBy(x => x.SortOrder).Select(x => x.RateCardId).ToList();
         var dto = new QuoteBuilderDto
         {
+            TemplateLayout = quote.TemplateLayout,
+            ShowImages = quote.ShowImages,
+            ShowMealPlan = quote.ShowMealPlan,
+            ShowFooter = quote.ShowFooter,
+            ShowRoomDescriptions = quote.ShowRoomDescriptions,
             ClientId = quote.ClientId,
             ClientName = quote.ClientName,
             ClientEmail = quote.ClientEmail,
@@ -168,7 +173,12 @@ public class QuoteService : IQuoteService
                 OutputCurrencyCode = dto.OutputCurrencyCode,
                 CurrencySymbol = outputCurrency?.Symbol ?? dto.OutputCurrencyCode,
                 MarkupPercentage = dto.MarkupPercentage,
-                FooterText = branding?.PdfFooterText,
+                TemplateLayout = NormalizeTemplateLayout(dto.TemplateLayout),
+                ShowImages = dto.ShowImages,
+                ShowMealPlan = dto.ShowMealPlan,
+                ShowFooter = dto.ShowFooter,
+                ShowRoomDescriptions = dto.ShowRoomDescriptions,
+                FooterText = dto.ShowFooter ? branding?.PdfFooterText : null,
                 FilterByTravelDates = dto.FilterByTravelDates,
                 TravelStartDate = dto.TravelStartDate,
                 TravelEndDate = dto.TravelEndDate
@@ -179,6 +189,7 @@ public class QuoteService : IQuoteService
             .AsNoTracking()
             .Include(x => x.InventoryItem)
                 .ThenInclude(x => x!.Destination)
+            .Include(x => x.DefaultMealPlan)
             .Include(x => x.Seasons.OrderBy(s => s.SortOrder))
                 .ThenInclude(x => x.Rates)
                     .ThenInclude(x => x.RoomType)
@@ -197,7 +208,12 @@ public class QuoteService : IQuoteService
             OutputCurrencyCode = outputCurrency?.Code ?? dto.OutputCurrencyCode,
             CurrencySymbol = outputCurrency?.Symbol ?? outputCurrency?.Code ?? dto.OutputCurrencyCode,
             MarkupPercentage = dto.MarkupPercentage,
-            FooterText = await _db.BrandingSettings.AsNoTracking().Select(x => x.PdfFooterText).FirstOrDefaultAsync(),
+            TemplateLayout = NormalizeTemplateLayout(dto.TemplateLayout),
+            ShowImages = dto.ShowImages,
+            ShowMealPlan = dto.ShowMealPlan,
+            ShowFooter = dto.ShowFooter,
+            ShowRoomDescriptions = dto.ShowRoomDescriptions,
+            FooterText = dto.ShowFooter ? await _db.BrandingSettings.AsNoTracking().Select(x => x.PdfFooterText).FirstOrDefaultAsync() : null,
             FilterByTravelDates = dto.FilterByTravelDates,
             TravelStartDate = dto.TravelStartDate,
             TravelEndDate = dto.TravelEndDate,
@@ -226,7 +242,12 @@ public class QuoteService : IQuoteService
             ClientPhone = Normalize(dto.ClientPhone),
             OutputCurrencyCode = await ResolveCurrencyCodeAsync(dto.OutputCurrencyCode),
             MarkupPercentage = dto.MarkupPercentage,
+            TemplateLayout = NormalizeTemplateLayout(dto.TemplateLayout),
             GroupBy = string.IsNullOrWhiteSpace(dto.GroupBy) ? "ratecard" : dto.GroupBy.Trim().ToLowerInvariant(),
+            ShowImages = dto.ShowImages,
+            ShowMealPlan = dto.ShowMealPlan,
+            ShowFooter = dto.ShowFooter,
+            ShowRoomDescriptions = dto.ShowRoomDescriptions,
             ValidUntil = dto.ValidUntil,
             TravelStartDate = dto.TravelStartDate,
             TravelEndDate = dto.TravelEndDate,
@@ -257,7 +278,12 @@ public class QuoteService : IQuoteService
         quote.ClientPhone = Normalize(dto.ClientPhone);
         quote.OutputCurrencyCode = await ResolveCurrencyCodeAsync(dto.OutputCurrencyCode);
         quote.MarkupPercentage = dto.MarkupPercentage;
+        quote.TemplateLayout = NormalizeTemplateLayout(dto.TemplateLayout);
         quote.GroupBy = string.IsNullOrWhiteSpace(dto.GroupBy) ? "ratecard" : dto.GroupBy.Trim().ToLowerInvariant();
+        quote.ShowImages = dto.ShowImages;
+        quote.ShowMealPlan = dto.ShowMealPlan;
+        quote.ShowFooter = dto.ShowFooter;
+        quote.ShowRoomDescriptions = dto.ShowRoomDescriptions;
         quote.ValidUntil = dto.ValidUntil;
         quote.TravelStartDate = dto.TravelStartDate;
         quote.TravelEndDate = dto.TravelEndDate;
@@ -303,6 +329,7 @@ public class QuoteService : IQuoteService
                 ClientPhone = x.ClientPhone,
                 OutputCurrencyCode = x.OutputCurrencyCode,
                 MarkupPercentage = x.MarkupPercentage,
+                TemplateLayout = x.TemplateLayout,
                 ValidUntil = x.ValidUntil,
                 TravelStartDate = x.TravelStartDate,
                 TravelEndDate = x.TravelEndDate,
@@ -449,7 +476,12 @@ public class QuoteService : IQuoteService
             ClientPhone = quote.ClientPhone,
             OutputCurrencyCode = quote.OutputCurrencyCode,
             MarkupPercentage = quote.MarkupPercentage,
+            TemplateLayout = quote.TemplateLayout,
             GroupBy = quote.GroupBy,
+            ShowImages = quote.ShowImages,
+            ShowMealPlan = quote.ShowMealPlan,
+            ShowFooter = quote.ShowFooter,
+            ShowRoomDescriptions = quote.ShowRoomDescriptions,
             ValidUntil = quote.ValidUntil,
             TravelStartDate = quote.TravelStartDate,
             TravelEndDate = quote.TravelEndDate,
@@ -493,7 +525,8 @@ public class QuoteService : IQuoteService
             {
                 Id = x.Id,
                 Code = x.Code,
-                Name = x.Name
+                Name = x.Name,
+                Description = x.Description
             })
             .ToList();
 
@@ -530,7 +563,12 @@ public class QuoteService : IQuoteService
             RateCardId = card.Id,
             RateCardName = card.Name,
             HotelName = card.InventoryItem?.Name ?? "Unknown hotel",
+            Description = card.InventoryItem?.Description,
             DestinationName = card.InventoryItem?.Destination?.Name,
+            ImageUrl = card.InventoryItem?.ImageUrl,
+            Rating = card.InventoryItem?.Rating,
+            MealPlanCode = card.DefaultMealPlan?.Code,
+            MealPlanName = card.DefaultMealPlan?.Name,
             ContractCurrencyCode = card.ContractCurrencyCode,
             Status = card.Status,
             RoomTypes = roomTypes,
@@ -637,6 +675,16 @@ public class QuoteService : IQuoteService
 
     private static string? Normalize(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string NormalizeTemplateLayout(string? layout)
+    {
+        return layout?.Trim().ToLowerInvariant() switch
+        {
+            "list" => "list",
+            "compact" => "compact",
+            _ => "grid"
+        };
+    }
 
     private static bool SeasonOverlapsTravelWindow(DateOnly seasonStart, DateOnly seasonEnd, DateOnly? travelStart, DateOnly? travelEnd)
     {

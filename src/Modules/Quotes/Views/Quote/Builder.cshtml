@@ -100,10 +100,60 @@
                         </div>
                         <div class="form-control w-full md:col-span-2">
                             <label class="label cursor-pointer justify-start gap-3">
+                                <input type="hidden" name="FilterByTravelDates" value="false" />
                                 <input type="checkbox" name="FilterByTravelDates" value="true" class="checkbox" checked="@Model.FilterByTravelDates" />
                                 <span class="label-text">Filter seasons to the travel date window</span>
                             </label>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <div>
+                        <h2 class="card-title text-lg">Template & Display</h2>
+                        <p class="text-sm opacity-70">Choose how the quote preview is structured and what details the client should see.</p>
+                    </div>
+
+                    <div class="grid gap-3 md:grid-cols-3">
+                        @foreach (var layout in new[] { ("grid", "Grid", "Structured tables for detailed room-by-room comparison."), ("list", "List", "Readable vertical sections with compact seasonal pricing."), ("compact", "Compact", "Dense summary view for quick scanning and smaller quotes.") })
+                        {
+                            <label class="card cursor-pointer border border-base-300 bg-base-100 shadow-sm transition hover:border-primary/50">
+                                <div class="card-body gap-3 p-4">
+                                    <div class="flex items-start gap-3">
+                                        <input type="radio" name="TemplateLayout" value="@layout.Item1" class="radio radio-primary radio-sm mt-1" checked="@(string.Equals(Model.TemplateLayout, layout.Item1, StringComparison.OrdinalIgnoreCase))" />
+                                        <div>
+                                            <div class="font-semibold">@layout.Item2</div>
+                                            <p class="text-sm opacity-70">@layout.Item3</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                        }
+                    </div>
+
+                    <div class="grid gap-3 md:grid-cols-2">
+                        <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 px-4 py-3">
+                            <input type="hidden" name="ShowImages" value="false" />
+                            <input type="checkbox" name="ShowImages" value="true" class="checkbox checkbox-sm" checked="@Model.ShowImages" />
+                            <span class="label-text">Show property images when available</span>
+                        </label>
+                        <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 px-4 py-3">
+                            <input type="hidden" name="ShowMealPlan" value="false" />
+                            <input type="checkbox" name="ShowMealPlan" value="true" class="checkbox checkbox-sm" checked="@Model.ShowMealPlan" />
+                            <span class="label-text">Show default meal plan badges</span>
+                        </label>
+                        <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 px-4 py-3">
+                            <input type="hidden" name="ShowFooter" value="false" />
+                            <input type="checkbox" name="ShowFooter" value="true" class="checkbox checkbox-sm" checked="@Model.ShowFooter" />
+                            <span class="label-text">Show branded footer guidance</span>
+                        </label>
+                        <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 px-4 py-3">
+                            <input type="hidden" name="ShowRoomDescriptions" value="false" />
+                            <input type="checkbox" name="ShowRoomDescriptions" value="true" class="checkbox checkbox-sm" checked="@Model.ShowRoomDescriptions" />
+                            <span class="label-text">Show room type descriptions in the preview</span>
+                        </label>
                     </div>
                 </div>
             </div>

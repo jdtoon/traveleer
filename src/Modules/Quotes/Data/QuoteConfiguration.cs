@@ -17,6 +17,7 @@ public class QuoteConfiguration : IEntityTypeConfiguration<Quote>, ITenantEntity
         builder.Property(x => x.ClientPhone).HasMaxLength(50);
         builder.Property(x => x.OutputCurrencyCode).HasMaxLength(10).IsRequired();
         builder.Property(x => x.MarkupPercentage).HasPrecision(6, 2);
+        builder.Property(x => x.TemplateLayout).HasMaxLength(16).IsRequired();
         builder.Property(x => x.GroupBy).HasMaxLength(32).IsRequired();
         builder.Property(x => x.Notes).HasMaxLength(2000);
         builder.Property(x => x.InternalNotes).HasMaxLength(4000);

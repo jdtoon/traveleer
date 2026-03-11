@@ -23,6 +23,7 @@ public class QuoteServiceTests : IAsyncLifetime
     private RateCard _rateCard = null!;
     private RateCard _secondRateCard = null!;
     private RoomType _doubleRoom = null!;
+    private MealPlan _bedBreakfast = null!;
 
     public async Task InitializeAsync()
     {
@@ -38,7 +39,8 @@ public class QuoteServiceTests : IAsyncLifetime
 
         var destination = new Destination { Name = "Makkah", SortOrder = 10, IsActive = true, CreatedAt = DateTime.UtcNow };
         var supplier = new Supplier { Name = "Haram Supplier", IsActive = true, CreatedAt = DateTime.UtcNow };
-        _doubleRoom = new RoomType { Code = "DBL", Name = "Double", SortOrder = 10, IsActive = true, CreatedAt = DateTime.UtcNow };
+        _doubleRoom = new RoomType { Code = "DBL", Name = "Double", Description = "Spacious double room with city-facing windows.", SortOrder = 10, IsActive = true, CreatedAt = DateTime.UtcNow };
+        _bedBreakfast = new MealPlan { Code = "BB", Name = "Bed & Breakfast", SortOrder = 10, IsActive = true, CreatedAt = DateTime.UtcNow };
         var usd = new Currency { Code = "USD", Name = "US Dollar", Symbol = "$", ExchangeRate = 1m, DefaultMarkup = 12m, IsBaseCurrency = true, IsActive = true, CreatedAt = DateTime.UtcNow };
         var sar = new Currency { Code = "SAR", Name = "Saudi Riyal", Symbol = "SAR", ExchangeRate = 3.75m, DefaultMarkup = 10m, IsBaseCurrency = false, IsActive = true, CreatedAt = DateTime.UtcNow };
 
@@ -54,6 +56,9 @@ public class QuoteServiceTests : IAsyncLifetime
         {
             Name = "Grand Haram Hotel",
             Kind = InventoryItemKind.Hotel,
+            Description = "Five-star property overlooking the Haram precinct.",
+            ImageUrl = "/favicon.svg",
+            Rating = 5,
             BaseCost = 18000m,
             Destination = destination,
             Supplier = supplier,
@@ -74,6 +79,7 @@ public class QuoteServiceTests : IAsyncLifetime
         {
             Name = "Main Contract",
             InventoryItem = hotel,
+            DefaultMealPlan = _bedBreakfast,
             ContractCurrencyCode = "SAR",
             Status = RateCardStatus.Active,
             CreatedAt = DateTime.UtcNow
@@ -141,6 +147,7 @@ public class QuoteServiceTests : IAsyncLifetime
 
         _db.Clients.Add(_client);
         _db.Currencies.AddRange(usd, sar);
+        _db.MealPlans.Add(_bedBreakfast);
         _db.RoomTypes.Add(_doubleRoom);
         _db.RateCards.AddRange(_rateCard, _secondRateCard);
         await _db.SaveChangesAsync();
@@ -327,7 +334,52 @@ public class QuoteServiceTests : IAsyncLifetime
         Assert.NotNull(versionDetails);
         Assert.Equal("SAR", versionDetails!.Snapshot.OutputCurrencyCode);
         Assert.Equal(18m, versionDetails.Snapshot.MarkupPercentage);
+        Assert.Equal("grid", versionDetails.Snapshot.TemplateLayout);
         Assert.Equal(2, versionDetails.Snapshot.SelectedRateCardIds.Count);
         Assert.Equal("Repriced with second contract", versionDetails.Snapshot.Notes);
+    }
+
+    [Fact]
+    public async Task CreateAndPreview_PersistAndReflectTemplateDisplaySettings()
+    {
+        _db.BrandingSettings.Add(new BrandingSettings
+        {
+            AgencyName = "Acacia Journeys",
+            PdfFooterText = "Subject to supplier reconfirmation."
+        });
+        await _db.SaveChangesAsync();
+
+        var quoteId = await _service.CreateAsync(new QuoteBuilderDto
+        {
+            ClientId = _client.Id,
+            ClientName = _client.Name,
+            OutputCurrencyCode = "USD",
+            MarkupPercentage = 14m,
+            TemplateLayout = "compact",
+            ShowImages = true,
+            ShowMealPlan = true,
+            ShowFooter = false,
+            ShowRoomDescriptions = true,
+            SelectedRateCardIds = [_rateCard.Id]
+        });
+
+        var quote = await _db.Quotes.SingleAsync(x => x.Id == quoteId);
+        Assert.Equal("compact", quote.TemplateLayout);
+        Assert.True(quote.ShowImages);
+        Assert.True(quote.ShowMealPlan);
+        Assert.False(quote.ShowFooter);
+        Assert.True(quote.ShowRoomDescriptions);
+
+        var preview = await _service.BuildPreviewAsync(quoteId);
+        Assert.NotNull(preview);
+        Assert.Equal("compact", preview!.TemplateLayout);
+        Assert.False(preview.ShowFooter);
+        Assert.Null(preview.FooterText);
+
+        var item = Assert.Single(preview.Items);
+        Assert.Equal("/favicon.svg", item.ImageUrl);
+        Assert.Equal("BB", item.MealPlanCode);
+        Assert.Equal("Bed & Breakfast", item.MealPlanName);
+        Assert.Equal("Spacious double room with city-facing windows.", Assert.Single(item.RoomTypes).Description);
     }
 }

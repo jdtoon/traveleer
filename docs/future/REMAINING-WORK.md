@@ -6,13 +6,14 @@ This file lists only verified ACP implementation gaps that are still worth closi
 
 ### Still Open
 
-- any ACP builder-state or autosave behavior still missing after versioning is added
-- any ACP quote PDF template surface still missing after the current Traveleer quote preview flow is reviewed in detail
+- any residual quote autosave or export depth that still proves justified during the final parity sweep
 
 ### Already Done
 
 - quote builder create and edit flow
 - quote version history and snapshot details
+- quote display settings and template layout selection
+- live preview layout switching and display toggles
 - quote preview flow
 - quote details flow
 - quote status updates

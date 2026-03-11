@@ -40,12 +40,13 @@ Exit criteria:
 
 ## Phase 2 - Quote Depth Parity
 
-Status: Next
+Status: Complete
 
 Scope:
 
-- close any remaining quote builder state or autosave gaps that are still justified by ACP code
-- close any remaining quote PDF template parity gaps that are still justified by ACP code
+- persist ACP-style quote display settings in Traveleer quotes
+- expose template-layout selection and preview display toggles in the quote builder
+- make the saved quote preview reflect those settings reliably
 
 Exit criteria:
 
@@ -57,7 +58,7 @@ Exit criteria:
 
 ## Phase 3 - RateCards Depth Parity
 
-Status: Pending
+Status: Next
 
 Scope:
 

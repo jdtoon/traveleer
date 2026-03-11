@@ -25,7 +25,7 @@
                     <div class="text-sm uppercase tracking-wide opacity-60">Pricing</div>
                     <div class="font-medium">@Model.Snapshot.OutputCurrencyCode</div>
                     <div class="text-sm opacity-70">Markup @Model.Snapshot.MarkupPercentage.ToString("0.##")%</div>
-                    <div class="text-sm opacity-70">Grouping: @Model.Snapshot.GroupBy</div>
+                    <div class="text-sm opacity-70">Layout: @Model.Snapshot.TemplateLayout · Grouping: @Model.Snapshot.GroupBy</div>
                 </div>
             </div>
 
@@ -43,6 +43,18 @@
                     <div class="text-sm uppercase tracking-wide opacity-60">Composition</div>
                     <div class="font-medium">@Model.Snapshot.SelectedRateCardIds.Count rate card@(Model.Snapshot.SelectedRateCardIds.Count == 1 ? string.Empty : "s")</div>
                     <div class="text-sm opacity-70 break-all">@string.Join(", ", Model.Snapshot.SelectedRateCardIds)</div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300 bg-base-100 shadow-sm md:col-span-2">
+                <div class="card-body gap-2">
+                    <div class="text-sm uppercase tracking-wide opacity-60">Display</div>
+                    <div class="flex flex-wrap gap-2 text-sm">
+                        <span class="badge badge-outline badge-sm">Images @(Model.Snapshot.ShowImages ? "On" : "Off")</span>
+                        <span class="badge badge-outline badge-sm">Meal Plan @(Model.Snapshot.ShowMealPlan ? "On" : "Off")</span>
+                        <span class="badge badge-outline badge-sm">Footer @(Model.Snapshot.ShowFooter ? "On" : "Off")</span>
+                        <span class="badge badge-outline badge-sm">Room Notes @(Model.Snapshot.ShowRoomDescriptions ? "On" : "Off")</span>
+                    </div>
                 </div>
             </div>
         </div>

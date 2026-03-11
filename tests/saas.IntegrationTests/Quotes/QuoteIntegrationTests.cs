@@ -64,6 +64,32 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task QuoteBuilderPage_RendersTemplateAndDisplayControls()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}/quotes/new");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("Template & Display");
+        await response.AssertContainsAsync("Show property images when available");
+        await response.AssertContainsAsync("Show default meal plan badges");
+        await response.AssertContainsAsync("Compact");
+    }
+
+    [Fact]
+    public async Task QuotePreview_WhenTemplateSettingsProvided_ReflectsLayoutAndToggles()
+    {
+        var rateCardId = await SeedRateCardAsync();
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/quotes/preview?ClientName=Preview%20Client&OutputCurrencyCode=USD&SelectedRateCardIds={rateCardId}&MarkupPercentage=10&TemplateLayout=list&ShowImages=true&ShowMealPlan=true&ShowFooter=false&ShowRoomDescriptions=true");
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertContainsAsync("Layout: List");
+        await response.AssertContainsAsync("Generous room layout for family groups.");
+        await response.AssertDoesNotContainAsync("Subject to supplier reconfirmation.");
+    }
+
+    [Fact]
     public async Task CreateQuote_OnValidSubmit_PersistsQuoteAndRedirectsToDetails()
     {
         var rateCardId = await SeedRateCardAsync();
@@ -77,6 +103,9 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
             ["ClientName"] = "Acacia Travel Group",
             ["OutputCurrencyCode"] = "USD",
             ["MarkupPercentage"] = "12",
+            ["TemplateLayout"] = "compact",
+            ["ShowImages"] = "true",
+            ["ShowMealPlan"] = "true",
             ["SelectedRateCardIds"] = rateCardId.ToString(),
             ["TravelStartDate"] = "2026-10-10",
             ["TravelEndDate"] = "2026-10-15",
@@ -91,6 +120,9 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
             .OrderByDescending(x => x.CreatedAt)
             .FirstAsync(x => x.ClientId == clientId && x.OutputCurrencyCode == "USD");
         Assert.Equal(QuoteStatus.Draft, quote.Status);
+        Assert.Equal("compact", quote.TemplateLayout);
+        Assert.True(quote.ShowImages);
+        Assert.True(quote.ShowMealPlan);
         Assert.Equal("USD", quote.OutputCurrencyCode);
         Assert.Single(quote.QuoteRateCards);
     }
@@ -255,8 +287,18 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
     {
         await using var db = OpenTenantDb();
         var existing = await db.RateCards.FirstOrDefaultAsync(x => x.Name == "QA Quote Contract");
+        var roomType = await db.RoomTypes.OrderBy(x => x.SortOrder).FirstAsync();
+        roomType.Description = "Generous room layout for family groups.";
+        var mealPlan = await db.MealPlans.OrderBy(x => x.SortOrder).FirstAsync();
+
         if (existing is not null)
         {
+            var inventory = await db.InventoryItems.FirstAsync(x => x.Id == existing.InventoryItemId);
+            inventory.Description = "Seafront stay with concierge-led arrival support.";
+            inventory.ImageUrl = "/favicon.svg";
+            inventory.Rating = 5;
+            existing.DefaultMealPlanId = mealPlan.Id;
+            await db.SaveChangesAsync();
             return existing.Id;
         }
 
@@ -266,16 +308,19 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
         {
             Name = "Grand QA Hotel",
             Kind = InventoryItemKind.Hotel,
+            Description = "Seafront stay with concierge-led arrival support.",
+            ImageUrl = "/favicon.svg",
+            Rating = 5,
             BaseCost = 1200m,
             Destination = destination,
             Supplier = supplier,
             CreatedAt = DateTime.UtcNow
         };
-        var roomType = await db.RoomTypes.OrderBy(x => x.SortOrder).FirstAsync();
         var rateCard = new RateCard
         {
             Name = "QA Quote Contract",
             InventoryItem = hotel,
+            DefaultMealPlanId = mealPlan.Id,
             ContractCurrencyCode = "USD",
             Status = RateCardStatus.Active,
             CreatedAt = DateTime.UtcNow,

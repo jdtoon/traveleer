@@ -23,7 +23,12 @@ public class Quote : IAuditableEntity
     public string? ClientPhone { get; set; }
     public string OutputCurrencyCode { get; set; } = "USD";
     public decimal MarkupPercentage { get; set; }
+    public string TemplateLayout { get; set; } = "grid";
     public string GroupBy { get; set; } = "ratecard";
+    public bool ShowImages { get; set; } = true;
+    public bool ShowMealPlan { get; set; } = true;
+    public bool ShowFooter { get; set; } = true;
+    public bool ShowRoomDescriptions { get; set; }
     public DateOnly? ValidUntil { get; set; }
     public DateOnly? TravelStartDate { get; set; }
     public DateOnly? TravelEndDate { get; set; }

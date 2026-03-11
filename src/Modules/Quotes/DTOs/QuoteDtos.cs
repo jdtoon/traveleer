@@ -41,6 +41,12 @@ public class QuoteRateCardOptionDto
 
 public class QuoteBuilderDto
 {
+    public string TemplateLayout { get; set; } = "grid";
+    public bool ShowImages { get; set; } = true;
+    public bool ShowMealPlan { get; set; } = true;
+    public bool ShowFooter { get; set; } = true;
+    public bool ShowRoomDescriptions { get; set; }
+
     public Guid? ClientId { get; set; }
 
     [Required(ErrorMessage = "Client name is required.")]
@@ -94,6 +100,7 @@ public class QuoteDetailsDto
     public string? ClientPhone { get; set; }
     public string OutputCurrencyCode { get; set; } = "USD";
     public decimal MarkupPercentage { get; set; }
+    public string TemplateLayout { get; set; } = "grid";
     public DateOnly? ValidUntil { get; set; }
     public DateOnly? TravelStartDate { get; set; }
     public DateOnly? TravelEndDate { get; set; }
@@ -112,7 +119,12 @@ public class QuoteVersionSnapshotDto
     public string? ClientPhone { get; set; }
     public string OutputCurrencyCode { get; set; } = "USD";
     public decimal MarkupPercentage { get; set; }
+    public string TemplateLayout { get; set; } = "grid";
     public string GroupBy { get; set; } = "ratecard";
+    public bool ShowImages { get; set; } = true;
+    public bool ShowMealPlan { get; set; } = true;
+    public bool ShowFooter { get; set; } = true;
+    public bool ShowRoomDescriptions { get; set; }
     public DateOnly? ValidUntil { get; set; }
     public DateOnly? TravelStartDate { get; set; }
     public DateOnly? TravelEndDate { get; set; }
@@ -157,6 +169,11 @@ public class QuotePreviewDto
     public string OutputCurrencyCode { get; set; } = "USD";
     public string CurrencySymbol { get; set; } = "$";
     public decimal MarkupPercentage { get; set; }
+    public string TemplateLayout { get; set; } = "grid";
+    public bool ShowImages { get; set; } = true;
+    public bool ShowMealPlan { get; set; } = true;
+    public bool ShowFooter { get; set; } = true;
+    public bool ShowRoomDescriptions { get; set; }
     public string? FooterText { get; set; }
     public bool FilterByTravelDates { get; set; }
     public DateOnly? TravelStartDate { get; set; }
@@ -169,7 +186,12 @@ public class QuotePreviewItemDto
     public Guid RateCardId { get; set; }
     public string RateCardName { get; set; } = string.Empty;
     public string HotelName { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public string? DestinationName { get; set; }
+    public string? ImageUrl { get; set; }
+    public int? Rating { get; set; }
+    public string? MealPlanCode { get; set; }
+    public string? MealPlanName { get; set; }
     public string ContractCurrencyCode { get; set; } = "USD";
     public RateCardStatus Status { get; set; }
     public List<QuotePreviewRoomTypeDto> RoomTypes { get; set; } = [];
@@ -181,6 +203,7 @@ public class QuotePreviewRoomTypeDto
     public Guid Id { get; set; }
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
 }
 
 public class QuotePreviewSeasonDto

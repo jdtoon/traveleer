@@ -1,4 +1,12 @@
 @model saas.Modules.Quotes.DTOs.QuotePreviewDto
+@{
+    string LayoutLabel() => Model.TemplateLayout switch
+    {
+        "list" => "List",
+        "compact" => "Compact",
+        _ => "Grid"
+    };
+}
 
 <div class="card border border-base-300 bg-base-100 shadow-sm">
     <div class="card-body gap-4">
@@ -7,7 +15,10 @@
                 <h2 class="card-title">Quote Preview</h2>
                 <p class="text-sm opacity-70">Client: @(string.IsNullOrWhiteSpace(Model.ClientName) ? "Name pending" : Model.ClientName)</p>
             </div>
-            <div class="text-sm opacity-70">Output: @Model.OutputCurrencyCode · Markup @Model.MarkupPercentage.ToString("0.##")%</div>
+            <div class="flex flex-wrap items-center gap-2 text-sm opacity-70">
+                <span>Output: @Model.OutputCurrencyCode · Markup @Model.MarkupPercentage.ToString("0.##")%</span>
+                <span class="badge badge-outline badge-sm">Layout: @LayoutLabel()</span>
+            </div>
         </div>
 
         @if (Model.FilterByTravelDates)
@@ -17,7 +28,7 @@
             </div>
         }
 
-        @if (!string.IsNullOrWhiteSpace(Model.FooterText))
+        @if (Model.ShowFooter && !string.IsNullOrWhiteSpace(Model.FooterText))
         {
             <div class="rounded-box border border-base-300 bg-base-200/40 p-4 text-sm opacity-80">
                 @Model.FooterText
@@ -37,72 +48,189 @@
                 @foreach (var item in Model.Items)
                 {
                     <section class="rounded-box border border-base-300 bg-base-100 p-4">
-                        <div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-                            <div>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <h3 class="text-lg font-semibold">@item.HotelName</h3>
-                                    <span class="badge badge-sm @(item.Status == RateCardStatus.Active ? "badge-success" : "badge-warning")">@item.Status</span>
+                        <div class="flex flex-col gap-4 @(Model.ShowImages && !string.IsNullOrWhiteSpace(item.ImageUrl) ? "lg:flex-row" : string.Empty)">
+                            @if (Model.ShowImages && !string.IsNullOrWhiteSpace(item.ImageUrl))
+                            {
+                                <div class="lg:w-56 lg:shrink-0">
+                                    <img src="@item.ImageUrl" alt="@item.HotelName" class="h-40 w-full rounded-box object-cover" />
                                 </div>
-                                <div class="text-sm opacity-70">@item.RateCardName@if (!string.IsNullOrWhiteSpace(item.DestinationName)) { <text> · @item.DestinationName</text> }</div>
-                            </div>
-                            <div class="text-sm opacity-70">Contract @item.ContractCurrencyCode</div>
-                        </div>
+                            }
 
-                        @if (item.Seasons.Count == 0)
-                        {
-                            <div class="mt-4 rounded-box border border-dashed border-base-300 bg-base-200/40 p-4 text-sm opacity-70">
-                                This rate card has no seasons available for the current quote window.
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="mt-4 overflow-x-auto">
-                                <table class="table table-zebra min-w-225">
-                                    <thead>
-                                        <tr>
-                                            <th class="min-w-56">Season</th>
-                                            @foreach (var roomType in item.RoomTypes)
+                            <div class="min-w-0 flex-1 space-y-4">
+                                <div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                                    <div>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <h3 class="text-lg font-semibold">@item.HotelName</h3>
+                                            @if (item.Rating.HasValue)
                                             {
-                                                <th class="min-w-48">@roomType.Code</th>
+                                                <span class="badge badge-ghost badge-sm">@(new string('*', item.Rating.Value))</span>
                                             }
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                                            <span class="badge badge-sm @(item.Status == RateCardStatus.Active ? "badge-success" : "badge-warning")">@item.Status</span>
+                                            @if (Model.ShowMealPlan && !string.IsNullOrWhiteSpace(item.MealPlanCode))
+                                            {
+                                                <span class="badge badge-primary badge-sm">@item.MealPlanCode</span>
+                                            }
+                                        </div>
+                                        <div class="text-sm opacity-70">@item.RateCardName@if (!string.IsNullOrWhiteSpace(item.DestinationName)) { <text> · @item.DestinationName</text> }</div>
+                                        @if (!string.IsNullOrWhiteSpace(item.Description))
+                                        {
+                                            <p class="mt-2 text-sm opacity-75">@item.Description</p>
+                                        }
+                                        @if (Model.ShowMealPlan && (!string.IsNullOrWhiteSpace(item.MealPlanName) || !string.IsNullOrWhiteSpace(item.MealPlanCode)))
+                                        {
+                                            <div class="mt-2 text-sm opacity-70">Meal plan: @(string.IsNullOrWhiteSpace(item.MealPlanName) ? item.MealPlanCode : item.MealPlanName)</div>
+                                        }
+                                    </div>
+                                    <div class="text-sm opacity-70">Contract @item.ContractCurrencyCode</div>
+                                </div>
+
+                                @if (item.Seasons.Count == 0)
+                                {
+                                    <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-4 text-sm opacity-70">
+                                        This rate card has no seasons available for the current quote window.
+                                    </div>
+                                }
+                                else if (Model.TemplateLayout == "list")
+                                {
+                                    <div class="space-y-3">
                                         @foreach (var season in item.Seasons)
                                         {
-                                            <tr>
-                                                <td class="align-top">
-                                                    <div class="space-y-1">
+                                            <div class="rounded-box border border-base-300 bg-base-200/30 p-4">
+                                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                                    <div>
                                                         <div class="font-medium">@season.Name</div>
                                                         <div class="text-sm opacity-70">@season.StartDate.ToString("dd MMM yyyy") - @season.EndDate.ToString("dd MMM yyyy")</div>
-                                                        @if (season.IsBlackout)
-                                                        {
-                                                            <span class="badge badge-ghost badge-sm">Blackout</span>
-                                                        }
                                                     </div>
-                                                </td>
-                                                @foreach (var rate in season.Rates)
-                                                {
-                                                    <td class="align-top">
-                                                        @if (!rate.IsIncluded)
-                                                        {
-                                                            <span class="text-sm opacity-50">Excluded</span>
-                                                        }
-                                                        else
-                                                        {
-                                                            <div class="space-y-1 text-sm">
-                                                                <div>Wkday: @Model.CurrencySymbol@rate.WeekdayRate.ToString("N2")</div>
-                                                                <div>Wkend: @(rate.WeekendRate.HasValue ? $"{Model.CurrencySymbol}{rate.WeekendRate.Value.ToString("N2")}" : "Same as weekday")</div>
-                                                            </div>
-                                                        }
-                                                    </td>
-                                                }
-                                            </tr>
+                                                    @if (season.IsBlackout)
+                                                    {
+                                                        <span class="badge badge-ghost badge-sm">Blackout</span>
+                                                    }
+                                                </div>
+                                                <div class="mt-3 grid gap-3 md:grid-cols-2">
+                                                    @foreach (var rate in season.Rates)
+                                                    {
+                                                        var roomType = item.RoomTypes.First(x => x.Id == rate.RoomTypeId);
+                                                        <div class="rounded-box border border-base-300 bg-base-100 p-3 text-sm">
+                                                            <div class="font-medium">@roomType.Name <span class="opacity-60">(@roomType.Code)</span></div>
+                                                            @if (Model.ShowRoomDescriptions && !string.IsNullOrWhiteSpace(roomType.Description))
+                                                            {
+                                                                <div class="mt-1 opacity-70">@roomType.Description</div>
+                                                            }
+                                                            @if (!rate.IsIncluded)
+                                                            {
+                                                                <div class="mt-2 opacity-50">Excluded</div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="mt-2 space-y-1">
+                                                                    <div>Weekday: @Model.CurrencySymbol@rate.WeekdayRate.ToString("N2")</div>
+                                                                    <div>Weekend: @(rate.WeekendRate.HasValue ? $"{Model.CurrencySymbol}{rate.WeekendRate.Value.ToString("N2")}" : "Same as weekday")</div>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
                                         }
-                                    </tbody>
-                                </table>
+                                    </div>
+                                }
+                                else if (Model.TemplateLayout == "compact")
+                                {
+                                    <div class="space-y-2">
+                                        @foreach (var season in item.Seasons)
+                                        {
+                                            <div class="rounded-box border border-base-300 bg-base-200/20 p-3">
+                                                <div class="flex flex-wrap items-center gap-3 text-sm">
+                                                    <span class="font-medium">@season.Name</span>
+                                                    <span class="opacity-70">@season.StartDate.ToString("dd MMM yyyy") - @season.EndDate.ToString("dd MMM yyyy")</span>
+                                                    @if (season.IsBlackout)
+                                                    {
+                                                        <span class="badge badge-ghost badge-sm">Blackout</span>
+                                                    }
+                                                </div>
+                                                <div class="mt-2 flex flex-wrap gap-2 text-sm">
+                                                    @foreach (var rate in season.Rates)
+                                                    {
+                                                        var roomType = item.RoomTypes.First(x => x.Id == rate.RoomTypeId);
+                                                        <div class="rounded-box bg-base-100 px-3 py-2 shadow-sm">
+                                                            <span class="font-medium">@roomType.Code</span>
+                                                            <span class="opacity-70">:</span>
+                                                            @if (!rate.IsIncluded)
+                                                            {
+                                                                <span class="opacity-50">Excluded</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span>@Model.CurrencySymbol@rate.WeekdayRate.ToString("N2")</span>
+                                                            }
+                                                            @if (Model.ShowRoomDescriptions && !string.IsNullOrWhiteSpace(roomType.Description))
+                                                            {
+                                                                <span class="block opacity-60">@roomType.Description</span>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="overflow-x-auto">
+                                        <table class="table table-zebra min-w-225">
+                                            <thead>
+                                                <tr>
+                                                    <th class="min-w-56">Season</th>
+                                                    @foreach (var roomType in item.RoomTypes)
+                                                    {
+                                                        <th class="min-w-48">
+                                                            <div>@roomType.Code</div>
+                                                            @if (Model.ShowRoomDescriptions && !string.IsNullOrWhiteSpace(roomType.Description))
+                                                            {
+                                                                <div class="mt-1 text-xs font-normal opacity-60">@roomType.Description</div>
+                                                            }
+                                                        </th>
+                                                    }
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var season in item.Seasons)
+                                                {
+                                                    <tr>
+                                                        <td class="align-top">
+                                                            <div class="space-y-1">
+                                                                <div class="font-medium">@season.Name</div>
+                                                                <div class="text-sm opacity-70">@season.StartDate.ToString("dd MMM yyyy") - @season.EndDate.ToString("dd MMM yyyy")</div>
+                                                                @if (season.IsBlackout)
+                                                                {
+                                                                    <span class="badge badge-ghost badge-sm">Blackout</span>
+                                                                }
+                                                            </div>
+                                                        </td>
+                                                        @foreach (var rate in season.Rates)
+                                                        {
+                                                            <td class="align-top">
+                                                                @if (!rate.IsIncluded)
+                                                                {
+                                                                    <span class="text-sm opacity-50">Excluded</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <div class="space-y-1 text-sm">
+                                                                        <div>Wkday: @Model.CurrencySymbol@rate.WeekdayRate.ToString("N2")</div>
+                                                                        <div>Wkend: @(rate.WeekendRate.HasValue ? $"{Model.CurrencySymbol}{rate.WeekendRate.Value.ToString("N2")}" : "Same as weekday")</div>
+                                                                    </div>
+                                                                }
+                                                            </td>
+                                                        }
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
                             </div>
-                        }
+                        </div>
                     </section>
                 }
             </div>
