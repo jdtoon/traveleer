@@ -45,11 +45,13 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task RateCardNewPartial_RendersModalForm()
     {
+        await SeedTemplateAsync();
         var response = await _client.HtmxGetAsync($"/{TenantSlug}/rate-cards/new");
 
         response.AssertSuccess();
         await response.AssertElementExistsAsync("dialog.modal");
         await response.AssertContainsAsync("New Rate Card");
+        await response.AssertContainsAsync("Starting template");
     }
 
     [Fact]
@@ -68,6 +70,34 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
 
         response.AssertSuccess();
         response.AssertToast("Rate card created.");
+    }
+
+    [Fact]
+    public async Task RateCardsPage_UserCanCreateRateCardFromTemplate()
+    {
+        var hotelId = await GetFirstHotelIdAsync();
+        var templateId = await SeedTemplateAsync();
+        var formResponse = await _client.HtmxGetAsync($"/{TenantSlug}/rate-cards/new");
+        formResponse.AssertSuccess();
+
+        var response = await _client.SubmitFormAsync(formResponse, "form", new Dictionary<string, string>
+        {
+            ["Name"] = $"QA Template {Guid.NewGuid():N}"[..18],
+            ["InventoryItemId"] = hotelId.ToString(),
+            ["ContractCurrencyCode"] = "USD",
+            ["TemplateId"] = templateId.ToString(),
+            ["ValidFrom"] = "2027-01-01"
+        });
+
+        response.AssertSuccess();
+        response.AssertToast("Rate card created.");
+
+        await using var db = OpenTenantDb();
+        var created = await db.RateCards
+            .Include(x => x.Seasons)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstAsync(x => x.InventoryItemId == hotelId && x.Name.StartsWith("QA Template"));
+        Assert.Equal(2, created.Seasons.Count);
     }
 
     [Fact]
@@ -158,6 +188,31 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task RateCardDetails_UserCanSaveTemplateFromExistingCard()
+    {
+        var rateCardId = await SeedRateCardAsync();
+        await SeedSeasonAsync(rateCardId);
+
+        var modal = await _client.HtmxGetAsync($"/{TenantSlug}/rate-cards/templates/save/{rateCardId}");
+
+        modal.AssertSuccess();
+        await modal.AssertPartialViewAsync();
+        await modal.AssertContainsAsync("Save As Template");
+
+        var response = await _client.SubmitFormAsync(modal, "form", new Dictionary<string, string>
+        {
+            ["Name"] = $"Saved Template {Guid.NewGuid():N}"[..24],
+            ["Description"] = "Saved from integration test"
+        });
+
+        response.AssertSuccess();
+        response.AssertToast("Template saved.");
+
+        await using var db = OpenTenantDb();
+        Assert.True(await db.RateCardTemplates.AnyAsync(x => x.Description == "Saved from integration test"));
+    }
+
+    [Fact]
     public async Task RateCardsPage_WhenUnauthenticated_Redirects()
     {
         var publicClient = _fixture.CreateClient();
@@ -213,6 +268,30 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
         }
         db.RateSeasons.Add(season);
         await db.SaveChangesAsync();
+    }
+
+    private async Task<Guid> SeedTemplateAsync()
+    {
+        await using var db = OpenTenantDb();
+        var existing = await db.RateCardTemplates.FirstOrDefaultAsync(x => x.Name == "QA Hotel Template");
+        if (existing is not null)
+        {
+            return existing.Id;
+        }
+
+        var template = new RateCardTemplate
+        {
+            Name = "QA Hotel Template",
+            ForKind = InventoryItemKind.Hotel,
+            Description = "Reusable QA hotel windows.",
+            SeasonsJson = "[{\"name\":\"Peak\",\"monthStart\":10,\"dayStart\":1,\"monthEnd\":10,\"dayEnd\":31,\"sortOrder\":10},{\"name\":\"Late\",\"monthStart\":11,\"dayStart\":1,\"monthEnd\":11,\"dayEnd\":30,\"sortOrder\":20}]",
+            IsSystemTemplate = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        db.RateCardTemplates.Add(template);
+        await db.SaveChangesAsync();
+        return template.Id;
     }
 
     private async Task<RateCard?> GetRateCardDetailsAsync(Guid rateCardId)

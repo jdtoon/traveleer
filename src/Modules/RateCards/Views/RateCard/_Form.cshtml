@@ -32,6 +32,26 @@
                     </select>
                     <span asp-validation-for="InventoryItemId" class="text-error text-sm mt-1"></span>
                 </div>
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label" for="TemplateId"><span class="label-text">Starting template</span></label>
+                    <select id="TemplateId" name="TemplateId" class="select select-bordered w-full">
+                        <option value="">Start from a blank contract</option>
+                        @foreach (var template in Model.TemplateOptions)
+                        {
+                            <option value="@template.Id" selected="@(Model.TemplateId == template.Id)">@template.Name (@template.SeasonCount season@(template.SeasonCount == 1 ? string.Empty : "s"))</option>
+                        }
+                    </select>
+                    <div class="mt-2 space-y-1 text-sm opacity-70">
+                        @if (Model.TemplateOptions.Count == 0)
+                        {
+                            <p>No hotel templates have been saved yet.</p>
+                        }
+                        else
+                        {
+                            <p>Templates prebuild the season structure so the contract starts with usable windows instead of a blank grid.</p>
+                        }
+                    </div>
+                </div>
                 <div class="form-control w-full">
                     <label class="label" for="ContractCurrencyCode"><span class="label-text">Contract currency</span></label>
                     <select id="ContractCurrencyCode" name="ContractCurrencyCode" class="select select-bordered w-full">

@@ -28,10 +28,12 @@ public interface IRateCardService
 public class RateCardService : IRateCardService
 {
     private readonly TenantDbContext _db;
+    private readonly IRateCardTemplateService _templateService;
 
-    public RateCardService(TenantDbContext db)
+    public RateCardService(TenantDbContext db, IRateCardTemplateService templateService)
     {
         _db = db;
+        _templateService = templateService;
     }
 
     public async Task<PaginatedList<RateCardListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12)
@@ -86,6 +88,7 @@ public class RateCardService : IRateCardService
         return new RateCardFormDto
         {
             InventoryOptions = await GetHotelInventoryOptionsAsync(),
+            TemplateOptions = await _templateService.GetOptionsAsync(InventoryItemKind.Hotel),
             MealPlanOptions = await GetMealPlanOptionsAsync(),
             CurrencyOptions = await GetCurrencyOptionsAsync()
         };
@@ -112,6 +115,18 @@ public class RateCardService : IRateCardService
 
         _db.RateCards.Add(card);
         await _db.SaveChangesAsync();
+
+        if (dto.TemplateId.HasValue)
+        {
+            var templateSeasons = await _templateService.GetSeasonDefinitionsAsync(dto.TemplateId.Value);
+            var targetYear = dto.ValidFrom?.Year ?? DateTime.UtcNow.Year;
+            var seasonForms = RateCardTemplateService.BuildSeasonForms(templateSeasons, targetYear);
+            foreach (var seasonForm in seasonForms)
+            {
+                await CreateSeasonAsync(card.Id, seasonForm);
+            }
+        }
+
         return card.Id;
     }
 
@@ -159,6 +174,7 @@ public class RateCardService : IRateCardService
             ValidTo = card.ValidTo,
             Notes = card.Notes,
             UpdatedAt = card.UpdatedAt ?? card.CreatedAt,
+            AvailableTemplateCount = await _db.RateCardTemplates.AsNoTracking().CountAsync(x => x.ForKind == InventoryItemKind.Hotel),
             RoomTypes = roomTypes,
             Seasons = card.Seasons
                 .OrderBy(s => s.SortOrder)

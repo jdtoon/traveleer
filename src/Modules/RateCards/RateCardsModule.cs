@@ -1,5 +1,9 @@
 using saas.Modules.RateCards.Services;
 using saas.Shared;
+using Microsoft.EntityFrameworkCore;
+using saas.Data.Tenant;
+using saas.Modules.Inventory.Entities;
+using saas.Modules.RateCards.Entities;
 
 namespace saas.Modules.RateCards;
 
@@ -48,5 +52,36 @@ public class RateCardsModule : IModule
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IRateCardService, RateCardService>();
+        services.AddScoped<IRateCardTemplateService, RateCardTemplateService>();
+    }
+
+    public async Task SeedTenantAsync(IServiceProvider scopedServices)
+    {
+        var templates = scopedServices.GetRequiredService<IRateCardTemplateService>();
+        await templates.EnsureSystemTemplatesAsync();
+    }
+
+    public async Task SeedDemoDataAsync(IServiceProvider scopedServices)
+    {
+        var db = scopedServices.GetRequiredService<TenantDbContext>();
+        if (await db.RateCardTemplates.AnyAsync(x => !x.IsSystemTemplate))
+        {
+            return;
+        }
+
+        var hotelCard = await db.RateCards
+            .AsNoTracking()
+            .Include(x => x.InventoryItem)
+            .Include(x => x.Seasons)
+            .OrderByDescending(x => x.Seasons.Count)
+            .FirstOrDefaultAsync(x => x.InventoryItem != null && x.InventoryItem.Kind == InventoryItemKind.Hotel && x.Seasons.Count > 0);
+
+        if (hotelCard is null)
+        {
+            return;
+        }
+
+        var templateService = scopedServices.GetRequiredService<IRateCardTemplateService>();
+        await templateService.CreateFromRateCardAsync(hotelCard.Id, $"{hotelCard.Name} Template", "Seeded from the demo tenant's existing hotel contract.");
     }
 }

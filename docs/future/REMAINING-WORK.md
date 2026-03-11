@@ -24,13 +24,14 @@ This file lists only verified ACP implementation gaps that are still worth closi
 
 ### Still Open
 
-- ACP-style rate-card templates
 - ACP-style import/export workflow
 - any clearly missing non-hotel pricing support that ACP already implements and Traveleer still lacks
 
 ### Already Done
 
 - rate-card CRUD
+- reusable hotel rate-card templates
+- save current rate-card season structures as reusable templates
 - season editing
 - details and summary flow
 - activation workflow

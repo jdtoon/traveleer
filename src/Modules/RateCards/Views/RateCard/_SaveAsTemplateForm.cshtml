@@ -1,0 +1,40 @@
+@model saas.Modules.RateCards.DTOs.SaveRateCardTemplateDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-lg">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-lg font-bold">Save As Template</h3>
+                <p class="text-sm opacity-70">Capture this season structure so future hotel contracts can start from the same layout.</p>
+            </div>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+        </div>
+
+        <form hx-post="@Url.Action("SaveAsTemplate", "RateCard", new { slug, id = Model.RateCardId })" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="space-y-4">
+                <div class="form-control w-full">
+                    <label class="label" for="TemplateName"><span class="label-text">Template name</span></label>
+                    <input id="TemplateName" name="Name" value="@Model.Name" class="input input-bordered w-full" />
+                    <span asp-validation-for="Name" class="text-error text-sm mt-1"></span>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label" for="TemplateDescription"><span class="label-text">Description</span></label>
+                    <textarea id="TemplateDescription" name="Description" class="textarea textarea-bordered w-full" rows="4">@Model.Description</textarea>
+                    <span asp-validation-for="Description" class="text-error text-sm mt-1"></span>
+                </div>
+            </div>
+
+            <div class="modal-action mt-6">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Template</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

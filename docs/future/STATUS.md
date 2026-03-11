@@ -41,7 +41,7 @@ Automated coverage also exists across the main migrated travel modules under:
 
 The remaining work is now concentrated in four areas:
 
-1. rate-card template and import/export parity
+1. rate-card import/export parity and any verified non-hotel pricing depth
 2. marketing and public-site parity against ACP business-site content
 3. final parity sweep across the implemented modules
 4. any residual quote polish discovered during the final sweep
@@ -51,4 +51,4 @@ The remaining work is now concentrated in four areas:
 - `Phase 0` complete: docs reset from speculative roadmap to live execution tracker
 - `Phase 1` complete: quote version history and snapshot details
 - `Phase 2` complete: quote display settings, template layouts, and live preview parity
-- `Phase 3` next: rate-card template and import/export parity
+- `Phase 3` in progress: reusable rate-card templates are live; import/export and verified non-hotel gaps remain

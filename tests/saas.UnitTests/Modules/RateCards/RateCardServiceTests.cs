@@ -15,6 +15,7 @@ public class RateCardServiceTests : IAsyncLifetime
     private SqliteConnection _connection = null!;
     private TenantDbContext _db = null!;
     private RateCardService _service = null!;
+    private RateCardTemplateService _templateService = null!;
     private InventoryItem _hotel = null!;
     private RoomType _doubleRoom = null!;
     private RoomType _familyRoom = null!;
@@ -54,7 +55,8 @@ public class RateCardServiceTests : IAsyncLifetime
             new Currency { Code = "SAR", Name = "Saudi Riyal", Symbol = "SAR", ExchangeRate = 3.75m, IsBaseCurrency = false, IsActive = true, CreatedAt = DateTime.UtcNow });
         await _db.SaveChangesAsync();
 
-        _service = new RateCardService(_db);
+        _templateService = new RateCardTemplateService(_db);
+        _service = new RateCardService(_db, _templateService);
     }
 
     public async Task DisposeAsync()
@@ -69,8 +71,43 @@ public class RateCardServiceTests : IAsyncLifetime
         var dto = await _service.CreateEmptyAsync();
 
         Assert.Contains(dto.InventoryOptions, x => x.Label.Contains(_hotel.Name, StringComparison.Ordinal));
+        Assert.NotEmpty(dto.TemplateOptions);
         Assert.Contains(dto.MealPlanOptions, x => x.Label.Contains("BB", StringComparison.Ordinal));
         Assert.Contains("USD", dto.CurrencyOptions);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithTemplate_CreatesTemplateSeasons()
+    {
+        var template = new RateCardTemplate
+        {
+            Name = "QA Template",
+            ForKind = InventoryItemKind.Hotel,
+            SeasonsJson = "[{\"name\":\"Peak\",\"monthStart\":10,\"dayStart\":1,\"monthEnd\":10,\"dayEnd\":31,\"sortOrder\":10},{\"name\":\"Late\",\"monthStart\":11,\"dayStart\":1,\"monthEnd\":11,\"dayEnd\":30,\"sortOrder\":20}]"
+        };
+        _db.RateCardTemplates.Add(template);
+        await _db.SaveChangesAsync();
+
+        var rateCardId = await _service.CreateAsync(new RateCardFormDto
+        {
+            Name = "Templated Contract",
+            InventoryItemId = _hotel.Id,
+            ContractCurrencyCode = "USD",
+            TemplateId = template.Id,
+            ValidFrom = new DateOnly(2027, 1, 1)
+        });
+
+        var seasons = await _db.RateSeasons
+            .Include(x => x.Rates)
+            .Where(x => x.RateCardId == rateCardId)
+            .OrderBy(x => x.SortOrder)
+            .ToListAsync();
+
+        Assert.Equal(2, seasons.Count);
+        Assert.Equal("Peak", seasons[0].Name);
+        Assert.Equal(new DateOnly(2027, 10, 1), seasons[0].StartDate);
+        Assert.Equal(new DateOnly(2027, 10, 31), seasons[0].EndDate);
+        Assert.Equal(2, seasons[0].Rates.Count);
     }
 
     [Fact]
@@ -175,6 +212,33 @@ public class RateCardServiceTests : IAsyncLifetime
         Assert.Single(duplicate.Seasons);
         Assert.Equal(2, duplicate.Seasons.Single().Rates.Count);
         Assert.Contains(duplicate.Seasons.Single().Rates, x => x.RoomTypeId == _doubleRoom.Id && x.WeekdayRate == 2100m);
+    }
+
+    [Fact]
+    public async Task CreateFromRateCardAsync_CapturesSeasonStructureAsTemplate()
+    {
+        var rateCardId = await CreateRateCardAsync("Template Source");
+        await _service.CreateSeasonAsync(rateCardId, new RateSeasonFormDto
+        {
+            RateCardId = rateCardId,
+            Name = "Shoulder",
+            StartDate = new DateOnly(2026, 5, 1),
+            EndDate = new DateOnly(2026, 8, 31),
+            IsBlackout = true,
+            Notes = "Limited allotment"
+        });
+
+        await _templateService.CreateFromRateCardAsync(rateCardId, "Saved Contract Template", "Reusable hotel windows");
+
+        var template = await _db.RateCardTemplates.SingleAsync(x => x.Name == "Saved Contract Template");
+        var definitions = await _templateService.GetSeasonDefinitionsAsync(template.Id);
+
+        var season = Assert.Single(definitions);
+        Assert.Equal("Shoulder", season.Name);
+        Assert.Equal(5, season.MonthStart);
+        Assert.Equal(31, season.DayEnd);
+        Assert.True(season.IsBlackout);
+        Assert.Equal("Limited allotment", season.Notes);
     }
 
     private async Task<Guid> CreateRateCardAsync(string name = "Main Contract")

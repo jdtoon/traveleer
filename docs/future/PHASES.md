@@ -58,7 +58,7 @@ Exit criteria:
 
 ## Phase 3 - RateCards Depth Parity
 
-Status: Next
+Status: In Progress
 
 Scope:
 

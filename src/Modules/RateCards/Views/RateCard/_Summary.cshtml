@@ -39,6 +39,7 @@
                 }
             </has-permission>
             <has-permission name="ratecards.create">
+                <button class="btn btn-outline btn-sm" hx-get="@Url.Action("SaveAsTemplate", "RateCard", new { slug, id = Model.Id })" hx-target="#modal-container">Save As Template</button>
                 <form hx-post="@Url.Action("Duplicate", "RateCard", new { slug, id = Model.Id })" hx-swap="none">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-ghost btn-sm">Duplicate</button>
@@ -74,7 +75,7 @@
                 <div class="card-body gap-2">
                     <div class="text-sm uppercase tracking-wide opacity-60">Coverage</div>
                     <div class="font-medium">@Model.RoomTypes.Count active room type@(Model.RoomTypes.Count == 1 ? string.Empty : "s")</div>
-                    <div class="text-sm opacity-70">Updated @Model.UpdatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div>
+                    <div class="text-sm opacity-70">@Model.AvailableTemplateCount template@(Model.AvailableTemplateCount == 1 ? string.Empty : "s") available</div>
                 </div>
             </div>
         </div>
@@ -83,6 +84,7 @@
             <div class="card-body gap-2">
                 <div class="text-sm uppercase tracking-wide opacity-60">Notes</div>
                 <p class="text-sm opacity-80">@(string.IsNullOrWhiteSpace(Model.Notes) ? "No contract notes recorded yet." : Model.Notes)</p>
+                <div class="text-sm opacity-60">Updated @Model.UpdatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div>
             </div>
         </div>
     </div>

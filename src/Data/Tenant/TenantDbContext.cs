@@ -38,6 +38,7 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<QuoteEmailLog> QuoteEmailLogs => Set<QuoteEmailLog>();
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<RateCard> RateCards => Set<RateCard>();
+    public DbSet<RateCardTemplate> RateCardTemplates => Set<RateCardTemplate>();
     public DbSet<RateSeason> RateSeasons => Set<RateSeason>();
     public DbSet<RoomRate> RoomRates => Set<RoomRate>();
     public DbSet<RoomType> RoomTypes => Set<RoomType>();

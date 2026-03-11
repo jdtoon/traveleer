@@ -9,6 +9,15 @@ public class RateCardOptionDto
     public string Label { get; set; } = string.Empty;
 }
 
+public class RateCardTemplateOptionDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsSystemTemplate { get; set; }
+    public int SeasonCount { get; set; }
+}
+
 public class RateCardListItemDto
 {
     public Guid Id { get; set; }
@@ -32,6 +41,8 @@ public class RateCardFormDto
     [Required(ErrorMessage = "Hotel inventory item is required.")]
     public Guid? InventoryItemId { get; set; }
 
+    public Guid? TemplateId { get; set; }
+
     public Guid? DefaultMealPlanId { get; set; }
 
     [Required(ErrorMessage = "Contract currency is required.")]
@@ -45,6 +56,7 @@ public class RateCardFormDto
     public string? Notes { get; set; }
 
     public List<RateCardOptionDto> InventoryOptions { get; set; } = [];
+    public List<RateCardTemplateOptionDto> TemplateOptions { get; set; } = [];
     public List<RateCardOptionDto> MealPlanOptions { get; set; } = [];
     public List<string> CurrencyOptions { get; set; } = [];
 }
@@ -93,8 +105,21 @@ public class RateCardDetailsDto
     public DateOnly? ValidTo { get; set; }
     public string? Notes { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public int AvailableTemplateCount { get; set; }
     public List<RateCardRoomTypeDto> RoomTypes { get; set; } = [];
     public List<RateCardSeasonEditorDto> Seasons { get; set; } = [];
+}
+
+public class SaveRateCardTemplateDto
+{
+    public Guid RateCardId { get; set; }
+
+    [Required(ErrorMessage = "Template name is required.")]
+    [StringLength(160)]
+    public string Name { get; set; } = string.Empty;
+
+    [StringLength(500)]
+    public string? Description { get; set; }
 }
 
 public class RateSeasonFormDto

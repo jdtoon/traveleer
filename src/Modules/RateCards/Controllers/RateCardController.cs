@@ -14,10 +14,12 @@ namespace saas.Modules.RateCards.Controllers;
 public class RateCardController : SwapController
 {
     private readonly IRateCardService _service;
+    private readonly IRateCardTemplateService _templateService;
 
-    public RateCardController(IRateCardService service)
+    public RateCardController(IRateCardService service, IRateCardTemplateService templateService)
     {
         _service = service;
+        _templateService = templateService;
     }
 
     [HttpGet("")]
@@ -53,6 +55,7 @@ public class RateCardController : SwapController
         {
             var empty = await _service.CreateEmptyAsync();
             dto.InventoryOptions = empty.InventoryOptions;
+            dto.TemplateOptions = empty.TemplateOptions;
             dto.MealPlanOptions = empty.MealPlanOptions;
             dto.CurrencyOptions = empty.CurrencyOptions;
             return SwapResponse()
@@ -74,6 +77,7 @@ public class RateCardController : SwapController
         {
             var empty = await _service.CreateEmptyAsync();
             dto.InventoryOptions = empty.InventoryOptions;
+            dto.TemplateOptions = empty.TemplateOptions;
             dto.MealPlanOptions = empty.MealPlanOptions;
             dto.CurrencyOptions = empty.CurrencyOptions;
             return SwapResponse()
@@ -281,5 +285,54 @@ public class RateCardController : SwapController
         return SwapResponse()
             .WithSuccessToast("Rate card duplicated.")
             .Build();
+    }
+
+    [HttpGet("templates/save/{id:guid}")]
+    [HasPermission(RateCardPermissions.RateCardsCreate)]
+    public async Task<IActionResult> SaveAsTemplate(Guid id)
+    {
+        var details = await _service.GetDetailsAsync(id);
+        if (details is null)
+        {
+            return NotFound();
+        }
+
+        return PartialView("_SaveAsTemplateForm", new SaveRateCardTemplateDto
+        {
+            RateCardId = id,
+            Name = $"{details.Name} Template"
+        });
+    }
+
+    [HttpPost("templates/save/{id:guid}")]
+    [ValidateAntiForgeryToken]
+    [HasPermission(RateCardPermissions.RateCardsCreate)]
+    public async Task<IActionResult> SaveTemplate(Guid id, [FromForm] SaveRateCardTemplateDto dto)
+    {
+        dto.RateCardId = id;
+        if (!ModelState.IsValid)
+        {
+            return SwapResponse()
+                .WithErrorToast("Please fix the errors below.")
+                .WithView("_SaveAsTemplateForm", dto)
+                .Build();
+        }
+
+        try
+        {
+            await _templateService.CreateFromRateCardAsync(id, dto.Name, dto.Description);
+            return SwapResponse()
+                .WithView("_ModalClose")
+                .WithSuccessToast("Template saved.")
+                .WithTrigger(RateCardEvents.DetailsRefresh)
+                .Build();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return SwapResponse()
+                .WithErrorToast(ex.Message)
+                .WithView("_SaveAsTemplateForm", dto)
+                .Build();
+        }
     }
 }

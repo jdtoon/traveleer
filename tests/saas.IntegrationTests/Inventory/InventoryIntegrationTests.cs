@@ -53,7 +53,7 @@ public class InventoryIntegrationTests : IClassFixture<AppFixture>
         });
         createResponse.AssertSuccess();
 
-        var response = await _client.HtmxGetAsync($"/{TenantSlug}/inventory/list?type=Excursion");
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/inventory/list?type=Excursion&search={Uri.EscapeDataString(excursionName)}");
 
         response.AssertSuccess();
         await response.AssertContainsAsync(excursionName);
