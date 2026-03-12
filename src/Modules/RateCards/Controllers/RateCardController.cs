@@ -350,6 +350,15 @@ public class RateCardController : SwapController
         return File(Encoding.UTF8.GetBytes(json), "application/json", fileName);
     }
 
+    [HttpGet("export/json")]
+    [HasPermission(RateCardPermissions.RateCardsRead)]
+    public async Task<IActionResult> ExportAllJson()
+    {
+        var export = await _importExportService.ExportAllJsonAsync(User.Identity?.Name);
+        var json = JsonSerializer.Serialize(export, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
+        return File(Encoding.UTF8.GetBytes(json), "application/json", $"ratecards-{DateTime.UtcNow:yyyyMMdd}.json");
+    }
+
     [HttpGet("export/csv/{id:guid}")]
     [HasPermission(RateCardPermissions.RateCardsRead)]
     public async Task<IActionResult> ExportCsv(Guid id)
@@ -380,6 +389,60 @@ public class RateCardController : SwapController
             RateCardId = id,
             RateCardName = details.Name
         });
+    }
+
+    [HttpGet("import/json")]
+    [HasPermission(RateCardPermissions.RateCardsCreate)]
+    public IActionResult ImportJson()
+        => PartialView("_ImportJsonForm");
+
+    [HttpPost("import/json/preview")]
+    [ValidateAntiForgeryToken]
+    [HasPermission(RateCardPermissions.RateCardsCreate)]
+    public async Task<IActionResult> PreviewImportJson(IFormFile? file)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return SwapResponse().WithErrorToast("Choose a JSON file to preview.").Build();
+        }
+
+        try
+        {
+            using var stream = file.OpenReadStream();
+            using var reader = new StreamReader(stream);
+            var jsonContent = await reader.ReadToEndAsync();
+            var preview = await _importExportService.PreviewJsonImportAsync(jsonContent);
+            return PartialView("_ImportJsonPreview", preview);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return SwapResponse().WithErrorToast(ex.Message).Build();
+        }
+    }
+
+    [HttpPost("import/json/execute")]
+    [ValidateAntiForgeryToken]
+    [HasPermission(RateCardPermissions.RateCardsCreate)]
+    public async Task<IActionResult> ExecuteImportJson([FromForm] RateCardJsonImportExecuteDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return SwapResponse().WithErrorToast("Import session expired. Upload the JSON again.").Build();
+        }
+
+        try
+        {
+            var result = await _importExportService.ExecuteJsonImportAsync(dto.ImportToken, dto.Actions);
+            return SwapResponse()
+                .WithView("_ModalClose")
+                .WithSuccessToast($"Imported {result.ImportedCount} rate card{(result.ImportedCount == 1 ? string.Empty : "s")}." + (result.SkippedCount > 0 ? $" Skipped {result.SkippedCount}." : string.Empty))
+                .WithTrigger(RateCardEvents.Refresh)
+                .Build();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return SwapResponse().WithErrorToast(ex.Message).Build();
+        }
     }
 
     [HttpPost("import/csv/preview/{id:guid}")]

@@ -130,6 +130,14 @@ public class RateCardJsonExportDto
     public RateCardJsonExportCardDto RateCard { get; set; } = new();
 }
 
+public class RateCardJsonExportBundleDto
+{
+    public string ExportVersion { get; set; } = "1.0";
+    public DateTime ExportedAt { get; set; }
+    public string? ExportedBy { get; set; }
+    public List<RateCardJsonExportCardDto> RateCards { get; set; } = [];
+}
+
 public class RateCardJsonExportCardDto
 {
     public string Name { get; set; } = string.Empty;
@@ -214,6 +222,45 @@ public class RateCardCsvImportResultDto
     public Guid RateCardId { get; set; }
     public string RateCardName { get; set; } = string.Empty;
     public int ImportedRowCount { get; set; }
+}
+
+public class RateCardJsonImportPreviewDto
+{
+    public string? ImportToken { get; set; }
+    public string? ErrorMessage { get; set; }
+    public int DuplicateCount => Items.Count(x => x.IsDuplicate);
+    public int CreateCount => Items.Count(x => !x.IsDuplicate);
+    public bool CanImport => !string.IsNullOrWhiteSpace(ImportToken) && Items.Count > 0 && string.IsNullOrWhiteSpace(ErrorMessage);
+    public List<string> Warnings { get; set; } = [];
+    public List<RateCardJsonImportPreviewItemDto> Items { get; set; } = [];
+}
+
+public class RateCardJsonImportPreviewItemDto
+{
+    public int Index { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string InventoryItemName { get; set; } = string.Empty;
+    public string? DestinationName { get; set; }
+    public int SeasonCount { get; set; }
+    public bool IsDuplicate { get; set; }
+    public Guid? ExistingRateCardId { get; set; }
+    public bool CreatesInventoryItem { get; set; }
+    public bool CreatesDestination { get; set; }
+}
+
+public class RateCardJsonImportExecuteDto
+{
+    [Required]
+    public string ImportToken { get; set; } = string.Empty;
+
+    public Dictionary<int, string> Actions { get; set; } = [];
+}
+
+public class RateCardJsonImportResultDto
+{
+    public int ImportedCount { get; set; }
+    public int SkippedCount { get; set; }
+    public List<Guid> RateCardIds { get; set; } = [];
 }
 
 public class RateSeasonFormDto

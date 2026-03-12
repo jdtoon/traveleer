@@ -12,7 +12,10 @@ namespace saas.Modules.RateCards.Services;
 public interface IRateCardImportExportService
 {
     Task<RateCardJsonExportDto> ExportJsonAsync(Guid rateCardId, string? exportedBy = null);
+    Task<RateCardJsonExportBundleDto> ExportAllJsonAsync(string? exportedBy = null);
     Task<string> ExportCsvAsync(Guid rateCardId);
+    Task<RateCardJsonImportPreviewDto> PreviewJsonImportAsync(string jsonContent);
+    Task<RateCardJsonImportResultDto> ExecuteJsonImportAsync(string importToken, Dictionary<int, string>? actions = null);
     Task<RateCardCsvImportPreviewDto> PreviewCsvImportAsync(Guid rateCardId, string csvContent);
     Task<RateCardCsvImportResultDto> ExecuteCsvImportAsync(Guid rateCardId, string importToken);
 }
@@ -103,6 +106,162 @@ public class RateCardImportExportService : IRateCardImportExportService
         }
 
         return builder.ToString();
+    }
+
+    public async Task<RateCardJsonExportBundleDto> ExportAllJsonAsync(string? exportedBy = null)
+    {
+        var rateCards = await _db.RateCards
+            .AsNoTracking()
+            .Include(x => x.InventoryItem)
+                .ThenInclude(x => x!.Destination)
+            .Include(x => x.DefaultMealPlan)
+            .Include(x => x.Seasons.OrderBy(s => s.SortOrder))
+                .ThenInclude(x => x.Rates)
+                    .ThenInclude(x => x.RoomType)
+            .OrderBy(x => x.Name)
+            .ToListAsync();
+
+        return new RateCardJsonExportBundleDto
+        {
+            ExportVersion = "1.0",
+            ExportedAt = DateTime.UtcNow,
+            ExportedBy = string.IsNullOrWhiteSpace(exportedBy) ? null : exportedBy.Trim(),
+            RateCards = rateCards.Select(MapExportCard).ToList()
+        };
+    }
+
+    public async Task<RateCardJsonImportPreviewDto> PreviewJsonImportAsync(string jsonContent)
+    {
+        var preview = new RateCardJsonImportPreviewDto();
+        var cards = DeserializeImportCards(jsonContent);
+
+        if (cards.Count == 0)
+        {
+            preview.ErrorMessage = "The JSON file did not contain any rate cards.";
+            return preview;
+        }
+
+        var existingRateCards = await _db.RateCards
+            .AsNoTracking()
+            .Include(x => x.InventoryItem)
+            .ToListAsync();
+        var inventoryItems = await _db.InventoryItems.AsNoTracking().Include(x => x.Destination).Where(x => x.Kind == saas.Modules.Inventory.Entities.InventoryItemKind.Hotel).ToListAsync();
+        var destinations = await _db.Destinations.AsNoTracking().ToListAsync();
+
+        for (var i = 0; i < cards.Count; i++)
+        {
+            var card = cards[i];
+            if (string.IsNullOrWhiteSpace(card.Name))
+            {
+                preview.Warnings.Add($"Item {i + 1} is missing a rate-card name and will be skipped.");
+                continue;
+            }
+
+            if (card.Seasons.Count == 0)
+            {
+                preview.Warnings.Add($"{card.Name} has no seasons and will be skipped.");
+                continue;
+            }
+
+            var existing = existingRateCards.FirstOrDefault(x =>
+                string.Equals(x.Name, card.Name, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(x.InventoryItem?.Name, card.InventoryItemName, StringComparison.OrdinalIgnoreCase));
+
+            var createsDestination = !string.IsNullOrWhiteSpace(card.DestinationName) && !destinations.Any(x => string.Equals(x.Name, card.DestinationName, StringComparison.OrdinalIgnoreCase));
+            var createsInventory = !inventoryItems.Any(x =>
+                string.Equals(x.Name, card.InventoryItemName, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(x.Destination?.Name, card.DestinationName, StringComparison.OrdinalIgnoreCase));
+
+            preview.Items.Add(new RateCardJsonImportPreviewItemDto
+            {
+                Index = i,
+                Name = card.Name,
+                InventoryItemName = card.InventoryItemName,
+                DestinationName = card.DestinationName,
+                SeasonCount = card.Seasons.Count,
+                IsDuplicate = existing is not null,
+                ExistingRateCardId = existing?.Id,
+                CreatesDestination = createsDestination,
+                CreatesInventoryItem = createsInventory
+            });
+        }
+
+        if (preview.Items.Count == 0)
+        {
+            preview.ErrorMessage = "No valid rate cards were found in the import file.";
+            return preview;
+        }
+
+        preview.ImportToken = Guid.NewGuid().ToString("N");
+        await _cache.SetAsync(JsonCacheKey(preview.ImportToken), new RateCardJsonImportSession { RateCards = cards }, ImportSessionLifetime);
+        return preview;
+    }
+
+    public async Task<RateCardJsonImportResultDto> ExecuteJsonImportAsync(string importToken, Dictionary<int, string>? actions = null)
+    {
+        var session = await _cache.GetAsync<RateCardJsonImportSession>(JsonCacheKey(importToken))
+            ?? throw new InvalidOperationException("Import session expired. Upload the JSON again.");
+
+        var result = new RateCardJsonImportResultDto();
+        actions ??= new Dictionary<int, string>();
+
+        foreach (var tuple in session.RateCards.Select((card, index) => new { card, index }))
+        {
+            var card = tuple.card;
+            if (string.IsNullOrWhiteSpace(card.Name) || card.Seasons.Count == 0)
+            {
+                result.SkippedCount++;
+                continue;
+            }
+
+            var inventory = await EnsureImportedInventoryAsync(card);
+            var existing = await _db.RateCards
+                .Include(x => x.InventoryItem)
+                .Include(x => x.Seasons)
+                    .ThenInclude(x => x.Rates)
+                .FirstOrDefaultAsync(x => x.Name == card.Name && x.InventoryItem != null && x.InventoryItem.Name == card.InventoryItemName);
+
+            var action = actions.TryGetValue(tuple.index, out var selectedAction) ? selectedAction : "skip";
+
+            if (existing is not null && string.Equals(action, "skip", StringComparison.OrdinalIgnoreCase))
+            {
+                result.SkippedCount++;
+                continue;
+            }
+
+            RateCard target;
+            if (existing is not null && string.Equals(action, "replace", StringComparison.OrdinalIgnoreCase))
+            {
+                _db.RoomRates.RemoveRange(existing.Seasons.SelectMany(x => x.Rates));
+                _db.RateSeasons.RemoveRange(existing.Seasons);
+                target = existing;
+            }
+            else
+            {
+                target = new RateCard();
+                _db.RateCards.Add(target);
+            }
+
+            target.Name = existing is not null && string.Equals(action, "copy", StringComparison.OrdinalIgnoreCase)
+                ? await BuildImportedCopyNameAsync(card.Name)
+                : card.Name.Trim();
+            target.InventoryItemId = inventory.Id;
+            target.DefaultMealPlanId = await EnsureImportedMealPlanAsync(card.DefaultMealPlanCode, card.DefaultMealPlanName);
+            target.ContractCurrencyCode = await ResolveImportedCurrencyAsync(card.ContractCurrencyCode);
+            target.ValidFrom = card.ValidFrom;
+            target.ValidTo = card.ValidTo;
+            target.Notes = Normalize(card.Notes);
+            target.Status = RateCardStatus.Draft;
+
+            await _db.SaveChangesAsync();
+
+            await ImportCardSeasonsAsync(target.Id, card.Seasons);
+            result.ImportedCount++;
+            result.RateCardIds.Add(target.Id);
+        }
+
+        await _cache.RemoveAsync(JsonCacheKey(importToken));
+        return result;
     }
 
     public async Task<RateCardCsvImportPreviewDto> PreviewCsvImportAsync(Guid rateCardId, string csvContent)
@@ -252,6 +411,233 @@ public class RateCardImportExportService : IRateCardImportExportService
                 .ThenInclude(x => x.Rates)
                     .ThenInclude(x => x.RoomType)
             .FirstOrDefaultAsync(x => x.Id == rateCardId);
+    }
+
+    private static RateCardJsonExportCardDto MapExportCard(RateCard rateCard)
+    {
+        return new RateCardJsonExportCardDto
+        {
+            Name = rateCard.Name,
+            Status = rateCard.Status,
+            InventoryItemName = rateCard.InventoryItem?.Name ?? "Unknown hotel",
+            DestinationName = rateCard.InventoryItem?.Destination?.Name,
+            ContractCurrencyCode = rateCard.ContractCurrencyCode,
+            DefaultMealPlanCode = rateCard.DefaultMealPlan?.Code,
+            DefaultMealPlanName = rateCard.DefaultMealPlan?.Name,
+            ValidFrom = rateCard.ValidFrom,
+            ValidTo = rateCard.ValidTo,
+            Notes = rateCard.Notes,
+            Seasons = rateCard.Seasons
+                .OrderBy(x => x.SortOrder)
+                .Select(x => new RateCardJsonExportSeasonDto
+                {
+                    Name = x.Name,
+                    StartDate = x.StartDate,
+                    EndDate = x.EndDate,
+                    SortOrder = x.SortOrder,
+                    IsBlackout = x.IsBlackout,
+                    Notes = x.Notes,
+                    Rates = x.Rates
+                        .OrderBy(r => r.RoomType != null ? r.RoomType.SortOrder : int.MaxValue)
+                        .ThenBy(r => r.RoomType != null ? r.RoomType.Name : string.Empty)
+                        .Select(r => new RateCardJsonExportRateDto
+                        {
+                            RoomTypeCode = r.RoomType?.Code ?? string.Empty,
+                            RoomTypeName = r.RoomType?.Name ?? string.Empty,
+                            WeekdayRate = r.WeekdayRate,
+                            WeekendRate = r.WeekendRate,
+                            IsIncluded = r.IsIncluded
+                        })
+                        .ToList()
+                })
+                .ToList()
+        };
+    }
+
+    private List<RateCardJsonExportCardDto> DeserializeImportCards(string jsonContent)
+    {
+        try
+        {
+            var single = JsonSerializer.Deserialize<RateCardJsonExportDto>(jsonContent, JsonOptions);
+            if (single?.RateCard is not null && !string.IsNullOrWhiteSpace(single.RateCard.Name))
+            {
+                return [single.RateCard];
+            }
+
+            var bundle = JsonSerializer.Deserialize<RateCardJsonExportBundleDto>(jsonContent, JsonOptions);
+            return bundle?.RateCards ?? [];
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException("The JSON file is invalid.", ex);
+        }
+    }
+
+    private async Task<saas.Modules.Inventory.Entities.InventoryItem> EnsureImportedInventoryAsync(RateCardJsonExportCardDto card)
+    {
+        var destination = await EnsureImportedDestinationAsync(card.DestinationName);
+        var destinationId = destination?.Id;
+
+        var existing = await _db.InventoryItems
+            .FirstOrDefaultAsync(x => x.Kind == saas.Modules.Inventory.Entities.InventoryItemKind.Hotel && x.Name == card.InventoryItemName && x.DestinationId == destinationId);
+
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        var inventory = new saas.Modules.Inventory.Entities.InventoryItem
+        {
+            Name = card.InventoryItemName.Trim(),
+            Kind = saas.Modules.Inventory.Entities.InventoryItemKind.Hotel,
+            DestinationId = destination?.Id,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.InventoryItems.Add(inventory);
+        await _db.SaveChangesAsync();
+        return inventory;
+    }
+
+    private async Task<saas.Modules.Settings.Entities.Destination?> EnsureImportedDestinationAsync(string? destinationName)
+    {
+        if (string.IsNullOrWhiteSpace(destinationName))
+        {
+            return null;
+        }
+
+        var existing = await _db.Destinations.FirstOrDefaultAsync(x => x.Name == destinationName.Trim());
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        var destination = new saas.Modules.Settings.Entities.Destination
+        {
+            Name = destinationName.Trim(),
+            IsActive = true,
+            SortOrder = (await _db.Destinations.Select(x => (int?)x.SortOrder).MaxAsync() ?? 0) + 10,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.Destinations.Add(destination);
+        await _db.SaveChangesAsync();
+        return destination;
+    }
+
+    private async Task<Guid?> EnsureImportedMealPlanAsync(string? mealPlanCode, string? mealPlanName)
+    {
+        if (string.IsNullOrWhiteSpace(mealPlanCode) && string.IsNullOrWhiteSpace(mealPlanName))
+        {
+            return null;
+        }
+
+        var normalizedCode = NormalizeCode(string.IsNullOrWhiteSpace(mealPlanCode) ? BuildCodeFromName(mealPlanName!) : mealPlanCode!);
+        var existing = await _db.MealPlans.FirstOrDefaultAsync(x => x.Code == normalizedCode);
+        if (existing is not null)
+        {
+            return existing.Id;
+        }
+
+        var mealPlan = new saas.Modules.Settings.Entities.MealPlan
+        {
+            Code = normalizedCode,
+            Name = string.IsNullOrWhiteSpace(mealPlanName) ? normalizedCode : mealPlanName.Trim(),
+            SortOrder = (await _db.MealPlans.Select(x => (int?)x.SortOrder).MaxAsync() ?? 0) + 10,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.MealPlans.Add(mealPlan);
+        await _db.SaveChangesAsync();
+        return mealPlan.Id;
+    }
+
+    private async Task<string> ResolveImportedCurrencyAsync(string currencyCode)
+    {
+        var normalized = NormalizeCode(currencyCode);
+        var existing = await _db.Currencies.FirstOrDefaultAsync(x => x.Code == normalized && x.IsActive);
+        return existing?.Code ?? await _db.Currencies.Where(x => x.IsBaseCurrency).Select(x => x.Code).FirstOrDefaultAsync() ?? "USD";
+    }
+
+    private async Task ImportCardSeasonsAsync(Guid rateCardId, List<RateCardJsonExportSeasonDto> seasons)
+    {
+        var roomTypes = await _db.RoomTypes.ToListAsync();
+        foreach (var seasonDto in seasons.OrderBy(x => x.SortOrder))
+        {
+            var season = new RateSeason
+            {
+                RateCardId = rateCardId,
+                Name = seasonDto.Name.Trim(),
+                StartDate = seasonDto.StartDate,
+                EndDate = seasonDto.EndDate,
+                SortOrder = seasonDto.SortOrder,
+                IsBlackout = seasonDto.IsBlackout,
+                Notes = Normalize(seasonDto.Notes)
+            };
+
+            foreach (var roomType in roomTypes.Where(x => x.IsActive).OrderBy(x => x.SortOrder).ThenBy(x => x.Name))
+            {
+                season.Rates.Add(new RoomRate
+                {
+                    RoomTypeId = roomType.Id,
+                    WeekdayRate = 0m,
+                    WeekendRate = null,
+                    IsIncluded = true
+                });
+            }
+
+            foreach (var rateDto in seasonDto.Rates)
+            {
+                var roomType = roomTypes.FirstOrDefault(x =>
+                    (!string.IsNullOrWhiteSpace(rateDto.RoomTypeCode) && x.Code == NormalizeCode(rateDto.RoomTypeCode)) ||
+                    (!string.IsNullOrWhiteSpace(rateDto.RoomTypeName) && x.Name == rateDto.RoomTypeName.Trim()));
+
+                if (roomType is null)
+                {
+                    roomType = new saas.Modules.Settings.Entities.RoomType
+                    {
+                        Code = NormalizeCode(string.IsNullOrWhiteSpace(rateDto.RoomTypeCode) ? BuildCodeFromName(rateDto.RoomTypeName) : rateDto.RoomTypeCode),
+                        Name = string.IsNullOrWhiteSpace(rateDto.RoomTypeName) ? (rateDto.RoomTypeCode ?? "Imported Room") : rateDto.RoomTypeName.Trim(),
+                        SortOrder = (roomTypes.Select(x => (int?)x.SortOrder).Max() ?? 0) + 10,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _db.RoomTypes.Add(roomType);
+                    await _db.SaveChangesAsync();
+                    roomTypes.Add(roomType);
+
+                    season.Rates.Add(new RoomRate
+                    {
+                        RoomTypeId = roomType.Id,
+                        WeekdayRate = 0m,
+                        WeekendRate = null,
+                        IsIncluded = true
+                    });
+                }
+
+                var roomRate = season.Rates.First(x => x.RoomTypeId == roomType.Id);
+                roomRate.WeekdayRate = rateDto.WeekdayRate;
+                roomRate.WeekendRate = rateDto.WeekendRate;
+                roomRate.IsIncluded = rateDto.IsIncluded;
+            }
+
+            _db.RateSeasons.Add(season);
+            await _db.SaveChangesAsync();
+        }
+    }
+
+    private async Task<string> BuildImportedCopyNameAsync(string baseName)
+    {
+        var candidate = $"{baseName.Trim()} (Imported)";
+        var suffix = 2;
+        while (await _db.RateCards.AnyAsync(x => x.Name == candidate))
+        {
+            candidate = $"{baseName.Trim()} (Imported {suffix})";
+            suffix++;
+        }
+
+        return candidate;
     }
 
     private static RateCardCsvImportPreviewRowDto BuildPreviewRow(
@@ -428,6 +814,25 @@ public class RateCardImportExportService : IRateCardImportExportService
     }
 
     private static string CacheKey(string token) => $"ratecards:csv-import:{token}";
+
+    private static string JsonCacheKey(string token) => $"ratecards:json-import:{token}";
+
+    private static string? Normalize(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string NormalizeCode(string value)
+        => value.Trim().ToUpperInvariant();
+
+    private static string BuildCodeFromName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "IMPORTED";
+        }
+
+        var cleaned = new string(value.Trim().ToUpperInvariant().Where(ch => char.IsLetterOrDigit(ch)).ToArray());
+        return string.IsNullOrWhiteSpace(cleaned) ? "IMPORTED" : cleaned[..Math.Min(cleaned.Length, 20)];
+    }
 }
 
 public class RateCardCsvImportSession
@@ -447,4 +852,9 @@ public class RateCardCsvImportSessionRow
     public decimal WeekdayRate { get; set; }
     public decimal? WeekendRate { get; set; }
     public bool IsIncluded { get; set; }
+}
+
+public class RateCardJsonImportSession
+{
+    public List<RateCardJsonExportCardDto> RateCards { get; set; } = [];
 }

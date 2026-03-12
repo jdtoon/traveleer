@@ -1,0 +1,117 @@
+@model saas.Modules.RateCards.DTOs.RateCardJsonImportPreviewDto
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="alert alert-error text-sm">
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+else
+{
+    <div class="space-y-4">
+        <div class="grid gap-3 md:grid-cols-3">
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="text-xs uppercase tracking-wide opacity-60">Cards in file</div>
+                    <div class="text-xl font-semibold">@Model.Items.Count</div>
+                </div>
+            </div>
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="text-xs uppercase tracking-wide opacity-60">New drafts</div>
+                    <div class="text-xl font-semibold text-success">@Model.CreateCount</div>
+                </div>
+            </div>
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="text-xs uppercase tracking-wide opacity-60">Duplicates</div>
+                    <div class="text-xl font-semibold @(Model.DuplicateCount > 0 ? "text-warning" : string.Empty)">@Model.DuplicateCount</div>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.Warnings.Count > 0)
+        {
+            <div class="alert alert-warning text-sm">
+                <div>
+                    <div class="font-semibold">Warnings</div>
+                    <ul class="mt-2 list-disc pl-5">
+                        @foreach (var warning in Model.Warnings.Take(6))
+                        {
+                            <li>@warning</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+
+        <form hx-post="@Url.Action("ExecuteImportJson", "RateCard", new { slug = ViewContext.RouteData.Values["slug"] })" hx-target="#modal-container" class="space-y-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="ImportToken" value="@Model.ImportToken" />
+            <div class="overflow-x-auto rounded-box border border-base-300">
+                <table class="table table-zebra table-sm">
+                    <thead>
+                        <tr>
+                            <th>Rate Card</th>
+                            <th>Hotel</th>
+                            <th>Seasons</th>
+                            <th>Impact</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="font-medium">@item.Name</div>
+                                    @if (!string.IsNullOrWhiteSpace(item.DestinationName))
+                                    {
+                                        <div class="text-xs opacity-60">@item.DestinationName</div>
+                                    }
+                                </td>
+                                <td>@item.InventoryItemName</td>
+                                <td>@item.SeasonCount</td>
+                                <td>
+                                    <div class="flex flex-wrap gap-2">
+                                        @if (item.IsDuplicate)
+                                        {
+                                            <span class="badge badge-warning badge-sm">Duplicate</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-success badge-sm">New draft</span>
+                                        }
+                                        @if (item.CreatesDestination)
+                                        {
+                                            <span class="badge badge-outline badge-sm">Creates destination</span>
+                                        }
+                                        @if (item.CreatesInventoryItem)
+                                        {
+                                            <span class="badge badge-outline badge-sm">Creates hotel</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (item.IsDuplicate)
+                                    {
+                                        <select class="select select-bordered select-sm w-full" name="Actions[@item.Index]">
+                                            <option value="skip" selected>Skip</option>
+                                            <option value="copy">Import as copy</option>
+                                            <option value="replace">Replace existing</option>
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-sm opacity-60">Create draft</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Import @Model.Items.Count Rate Card@(Model.Items.Count == 1 ? string.Empty : "s")</button>
+        </form>
+    </div>
+}

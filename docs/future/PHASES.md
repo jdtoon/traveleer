@@ -66,6 +66,12 @@ Scope:
 - implement ACP import and export support
 - close any clearly verified non-hotel pricing gaps
 
+Current state:
+
+- templates complete
+- JSON and CSV import/export workflow complete for hotel rate cards
+- only verified non-hotel pricing gaps remain before Phase 4
+
 Exit criteria:
 
 - unit and integration coverage updated

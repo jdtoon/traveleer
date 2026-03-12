@@ -1,0 +1,39 @@
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-3xl">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-lg font-bold">Import Rate Cards</h3>
+                <p class="text-sm opacity-70">Upload a JSON export to preview duplicates, missing hotels, and draft contracts before importing them.</p>
+            </div>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+        </div>
+
+        <div class="alert alert-info mb-4 text-sm">
+            <span>Imports support both a single exported rate card and the new multi-card JSON bundle format.</span>
+        </div>
+
+        <form hx-post="@Url.Action("PreviewImportJson", "RateCard", new { slug = ViewContext.RouteData.Values["slug"] })"
+              hx-target="#json-import-preview"
+              hx-swap="innerHTML"
+              hx-encoding="multipart/form-data"
+              class="space-y-4">
+            @Html.AntiForgeryToken()
+            <div class="form-control w-full">
+                <label class="label" for="JsonImportFile"><span class="label-text">JSON file</span></label>
+                <input id="JsonImportFile" type="file" name="file" accept=".json,application/json" class="file-input file-input-bordered w-full" />
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <button type="submit" class="btn btn-primary btn-sm">Preview Import</button>
+            </div>
+        </form>
+
+        <div id="json-import-preview" class="mt-6">
+            <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-sm opacity-70">
+                Upload a JSON export to inspect duplicates and reference-data backfills before importing draft cards.
+            </div>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

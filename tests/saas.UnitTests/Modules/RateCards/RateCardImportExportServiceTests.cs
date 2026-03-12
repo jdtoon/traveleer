@@ -110,6 +110,16 @@ public class RateCardImportExportServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ExportAllJsonAsync_ReturnsBundleWithCards()
+    {
+        var export = await _service.ExportAllJsonAsync("qa@example.test");
+
+        Assert.Equal("qa@example.test", export.ExportedBy);
+        Assert.NotEmpty(export.RateCards);
+        Assert.Contains(export.RateCards, x => x.Name == "Export Contract");
+    }
+
+    [Fact]
     public async Task PreviewCsvImportAsync_ValidatesRowsAndCachesSession()
     {
         var csv = string.Join('\n',
@@ -143,6 +153,146 @@ public class RateCardImportExportServiceTests : IAsyncLifetime
         Assert.Equal(1999.50m, updated.WeekdayRate);
         Assert.Equal(2222.75m, updated.WeekendRate);
         Assert.False(updated.IsIncluded);
+    }
+
+    [Fact]
+    public async Task PreviewJsonImportAsync_DetectsDuplicateAndMissingReferences()
+    {
+        var payload = new RateCardJsonExportBundleDto
+        {
+            ExportedBy = "qa@example.test",
+            RateCards =
+            [
+                new RateCardJsonExportCardDto
+                {
+                    Name = "Export Contract",
+                    InventoryItemName = "Grand Haram Hotel",
+                    DestinationName = "Makkah",
+                    ContractCurrencyCode = "USD",
+                    Seasons =
+                    [
+                        new RateCardJsonExportSeasonDto
+                        {
+                            Name = "Existing Season",
+                            StartDate = new DateOnly(2026, 8, 1),
+                            EndDate = new DateOnly(2026, 8, 31),
+                            SortOrder = 10,
+                            Rates =
+                            [
+                                new RateCardJsonExportRateDto { RoomTypeCode = "DBL", RoomTypeName = "Double Room", WeekdayRate = 1234m, WeekendRate = 1500m, IsIncluded = true }
+                            ]
+                        }
+                    ]
+                },
+                new RateCardJsonExportCardDto
+                {
+                    Name = "Imported New Contract",
+                    InventoryItemName = "Imported Hotel",
+                    DestinationName = "Madinah",
+                    DefaultMealPlanCode = "HB",
+                    DefaultMealPlanName = "Half Board",
+                    ContractCurrencyCode = "USD",
+                    Seasons =
+                    [
+                        new RateCardJsonExportSeasonDto
+                        {
+                            Name = "Ramadan",
+                            StartDate = new DateOnly(2027, 2, 1),
+                            EndDate = new DateOnly(2027, 2, 28),
+                            SortOrder = 10,
+                            Rates =
+                            [
+                                new RateCardJsonExportRateDto { RoomTypeCode = "STE", RoomTypeName = "Suite", WeekdayRate = 3000m, WeekendRate = 3500m, IsIncluded = true }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var preview = await _service.PreviewJsonImportAsync(System.Text.Json.JsonSerializer.Serialize(payload));
+
+        Assert.True(preview.CanImport);
+        Assert.Equal(2, preview.Items.Count);
+        Assert.Contains(preview.Items, x => x.IsDuplicate && x.Name == "Export Contract");
+        Assert.Contains(preview.Items, x => !x.IsDuplicate && x.CreatesDestination && x.CreatesInventoryItem && x.Name == "Imported New Contract");
+    }
+
+    [Fact]
+    public async Task ExecuteJsonImportAsync_CreatesNewDraftAndCanReplaceDuplicate()
+    {
+        var payload = new RateCardJsonExportBundleDto
+        {
+            RateCards =
+            [
+                new RateCardJsonExportCardDto
+                {
+                    Name = "Export Contract",
+                    InventoryItemName = "Grand Haram Hotel",
+                    DestinationName = "Makkah",
+                    ContractCurrencyCode = "USD",
+                    Seasons =
+                    [
+                        new RateCardJsonExportSeasonDto
+                        {
+                            Name = "Replacement Season",
+                            StartDate = new DateOnly(2026, 9, 1),
+                            EndDate = new DateOnly(2026, 9, 30),
+                            SortOrder = 10,
+                            Rates =
+                            [
+                                new RateCardJsonExportRateDto { RoomTypeCode = "DBL", RoomTypeName = "Double Room", WeekdayRate = 4444m, WeekendRate = 4555m, IsIncluded = false }
+                            ]
+                        }
+                    ]
+                },
+                new RateCardJsonExportCardDto
+                {
+                    Name = "Imported New Contract",
+                    InventoryItemName = "Imported Hotel",
+                    DestinationName = "Madinah",
+                    DefaultMealPlanCode = "HB",
+                    DefaultMealPlanName = "Half Board",
+                    ContractCurrencyCode = "USD",
+                    Seasons =
+                    [
+                        new RateCardJsonExportSeasonDto
+                        {
+                            Name = "Fresh Season",
+                            StartDate = new DateOnly(2027, 1, 1),
+                            EndDate = new DateOnly(2027, 1, 31),
+                            SortOrder = 10,
+                            Rates =
+                            [
+                                new RateCardJsonExportRateDto { RoomTypeCode = "STE", RoomTypeName = "Suite", WeekdayRate = 3000m, WeekendRate = 3300m, IsIncluded = true }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var preview = await _service.PreviewJsonImportAsync(System.Text.Json.JsonSerializer.Serialize(payload));
+        var result = await _service.ExecuteJsonImportAsync(preview.ImportToken!, new Dictionary<int, string>
+        {
+            [0] = "replace"
+        });
+
+        Assert.Equal(2, result.ImportedCount);
+
+        var replaced = await _db.RateCards.Include(x => x.Seasons).ThenInclude(x => x.Rates).SingleAsync(x => x.Name == "Export Contract");
+        Assert.Equal(RateCardStatus.Draft, replaced.Status);
+        Assert.Single(replaced.Seasons);
+        Assert.Equal("Replacement Season", replaced.Seasons.Single().Name);
+        Assert.Contains(replaced.Seasons.Single().Rates, x => x.RoomTypeId == _doubleRoomId && x.WeekdayRate == 4444m && x.WeekendRate == 4555m && !x.IsIncluded);
+
+        var imported = await _db.RateCards.Include(x => x.InventoryItem).Include(x => x.Seasons).ThenInclude(x => x.Rates).SingleAsync(x => x.Name == "Imported New Contract");
+        Assert.Equal(RateCardStatus.Draft, imported.Status);
+        Assert.Equal("Imported Hotel", imported.InventoryItem!.Name);
+        Assert.Single(imported.Seasons);
+        Assert.True(await _db.Destinations.AnyAsync(x => x.Name == "Madinah"));
+        Assert.True(await _db.MealPlans.AnyAsync(x => x.Code == "HB"));
+        Assert.True(await _db.RoomTypes.AnyAsync(x => x.Code == "STE"));
     }
 
     private sealed class FakeCacheService : ICacheService

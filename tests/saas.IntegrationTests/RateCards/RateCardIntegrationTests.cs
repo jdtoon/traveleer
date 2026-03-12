@@ -30,6 +30,8 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
         await response.AssertElementExistsAsync("#main-content");
         await response.AssertElementExistsAsync("#modal-container");
         await response.AssertElementExistsAsync("#rate-card-list");
+        await response.AssertContainsAsync("Export All JSON");
+        await response.AssertContainsAsync("Import JSON");
     }
 
     [Fact]
@@ -263,6 +265,27 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
         await response.AssertPartialViewAsync();
         await response.AssertContainsAsync("Import Rates From CSV");
         await response.AssertContainsAsync("Download CSV Template");
+    }
+
+    [Fact]
+    public async Task RateCardsExportAllJson_ReturnsBundleFile()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}/rate-cards/export/json");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("\"rateCards\"");
+        await response.AssertContainsAsync("\"exportVersion\"");
+    }
+
+    [Fact]
+    public async Task RateCardsImportJsonModal_RendersUploadFlow()
+    {
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/rate-cards/import/json");
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertContainsAsync("Import Rate Cards");
+        await response.AssertContainsAsync("Preview Import");
     }
 
     [Fact]
