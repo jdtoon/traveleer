@@ -1,52 +1,55 @@
 @inject Microsoft.Extensions.Options.IOptions<saas.Shared.SiteSettings> SiteOptions
 @{
-    ViewData["Title"] = "Modern teams run here";
+    ViewData["Title"] = "Travel quotes without spreadsheet chaos";
     var site = SiteOptions.Value;
 }
 
 <section class="mx-auto max-w-6xl px-4 py-20">
     <div class="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] items-center">
         <div class="space-y-6">
-            <span class="badge badge-outline reveal-up">SaaS starter kit</span>
+            <div class="flex flex-wrap gap-3 reveal-up">
+                <span class="hero-chip text-sm font-medium">Built for travel agencies</span>
+                <span class="hero-chip text-sm font-medium">Quotes, rate cards, bookings</span>
+            </div>
             <h1 class="text-4xl md:text-6xl font-bold leading-tight reveal-up reveal-delay-1">
-                Launch @site.Name with clarity, not chaos.
+                Stop wrestling with hotel rates in spreadsheets.
             </h1>
             <p class="text-lg md:text-xl opacity-75 reveal-up reveal-delay-2">
-                Multi-tenant architecture, billing-ready workflows, and a clean admin surface so you can focus on your product.
+                @site.Name helps travel teams digitize supplier contracts, build polished quotes fast, and keep bookings moving from enquiry to voucher.
             </p>
             <div class="flex flex-col sm:flex-row gap-4 reveal-up reveal-delay-3">
-                <a href="/register" class="btn btn-primary btn-lg">Start free</a>
+                <a href="/register" class="btn btn-primary btn-lg">Start with your agency</a>
                 <a href="/pricing" class="btn btn-outline btn-lg">See pricing</a>
             </div>
             <div class="flex items-center gap-4 text-sm opacity-70">
-                <span>No credit card required</span>
+                <span>Multi-user workspace</span>
                 <span class="h-4 w-px bg-black/10"></span>
-                <span>Provision tenants in seconds</span>
+                <span>Rate cards to PDF quotes in one flow</span>
             </div>
         </div>
         <div class="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-xl reveal-up reveal-delay-2">
             <div class="flex items-center justify-between">
-                <span class="text-sm uppercase tracking-[0.2em] opacity-60">Live ops</span>
-                <span class="badge badge-success">Healthy</span>
+                <span class="text-sm uppercase tracking-[0.2em] opacity-60">Agency workflow</span>
+                <span class="badge badge-success">Live</span>
             </div>
             <div class="mt-6 space-y-4">
                 <div class="rounded-2xl bg-slate-900 text-white p-4">
-                    <div class="text-xs opacity-70">Active tenants</div>
-                    <div class="text-3xl font-bold">128</div>
+                    <div class="text-xs opacity-70">Today’s quote desk</div>
+                    <div class="text-3xl font-bold">QT-2026-0042</div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="rounded-2xl border border-black/10 p-4">
-                        <div class="text-xs uppercase opacity-60">New this week</div>
-                        <div class="text-2xl font-bold">19</div>
+                        <div class="text-xs uppercase opacity-60">Supplier rates</div>
+                        <div class="text-2xl font-bold">Seasonal</div>
                     </div>
                     <div class="rounded-2xl border border-black/10 p-4">
-                        <div class="text-xs uppercase opacity-60">Uptime</div>
-                        <div class="text-2xl font-bold">99.98%</div>
+                        <div class="text-xs uppercase opacity-60">Quote output</div>
+                        <div class="text-2xl font-bold">PDF Ready</div>
                     </div>
                 </div>
                 <div class="rounded-2xl bg-amber-100/80 p-4">
-                    <div class="text-xs uppercase opacity-60">Billing automation</div>
-                    <div class="text-lg font-semibold">Invoices + receipts on autopilot</div>
+                    <div class="text-xs uppercase opacity-60">Booking handoff</div>
+                    <div class="text-lg font-semibold">Supplier requests, confirmations, and vouchers stay in one thread.</div>
                 </div>
             </div>
         </div>
@@ -54,40 +57,166 @@
 </section>
 
 <section class="mx-auto max-w-6xl px-4 pb-20">
-    <div class="grid gap-6 md:grid-cols-3">
+    <div class="text-center max-w-3xl mx-auto mb-10 reveal-up">
+        <h2 class="text-3xl md:text-5xl font-bold">The spreadsheet nightmare is still costing agencies time.</h2>
+        <p class="mt-4 text-lg opacity-75">Every season update, markup tweak, and client revision creates more room for errors when rates, quotes, and confirmations live in separate tools.</p>
+    </div>
+    <div class="grid gap-6 md:grid-cols-4">
         <div class="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-sm reveal-up">
-            <h3 class="text-xl font-semibold">Tenant-ready by default</h3>
-            <p class="mt-3 text-sm opacity-70">Tenant resolution, isolation, and provisioning baked into the runtime so you can scale safely.</p>
+            <h3 class="text-xl font-semibold">Hours lost to formatting</h3>
+            <p class="mt-3 text-sm opacity-70">Your team should be selling travel, not rebuilding quote layouts and chasing the latest spreadsheet version.</p>
         </div>
         <div class="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-sm reveal-up reveal-delay-1">
-            <h3 class="text-xl font-semibold">Feature flags that ship</h3>
-            <p class="mt-3 text-sm opacity-70">Control access per plan or tenant and roll out features without fear.</p>
+            <h3 class="text-xl font-semibold">Formula mistakes hit margin</h3>
+            <p class="mt-3 text-sm opacity-70">One stale rate sheet or bad conversion can turn a profitable itinerary into a loss-making quote.</p>
         </div>
         <div class="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-sm reveal-up reveal-delay-2">
-            <h3 class="text-xl font-semibold">Audit trails included</h3>
-            <p class="mt-3 text-sm opacity-70">Capture every edit with full context. Stay compliant without extra tooling.</p>
+            <h3 class="text-xl font-semibold">Version chaos slows replies</h3>
+            <p class="mt-3 text-sm opacity-70">Agencies lose momentum when every quote change means hunting for the correct file and asking who edited what.</p>
+        </div>
+        <div class="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-sm reveal-up reveal-delay-3">
+            <h3 class="text-xl font-semibold">Clients feel the friction</h3>
+            <p class="mt-3 text-sm opacity-70">Travelers notice when quotes arrive late, look inconsistent, or need corrections after they were already sent.</p>
         </div>
     </div>
 </section>
 
 <section class="mx-auto max-w-6xl px-4 pb-20">
-    <div class="rounded-3xl border border-black/5 bg-white/80 p-10 md:p-12 grid gap-8 md:grid-cols-[1.2fr_0.8fr] items-center">
-        <div>
-            <h2 class="text-3xl md:text-4xl font-bold">Everything you need to move from idea to revenue.</h2>
-            <p class="mt-4 text-lg opacity-75">Marketing site, onboarding, billing hooks, and admin dashboards are ready to customize.</p>
+    <div class="grid gap-8">
+        <div class="rounded-3xl border border-black/5 bg-white/80 p-10 md:p-12 grid gap-8 md:grid-cols-[1.1fr_0.9fr] items-center reveal-up">
+            <div>
+                <span class="badge badge-outline">Core workflow</span>
+                <h2 class="mt-4 text-3xl md:text-4xl font-bold">Rate cards built for seasonal supplier complexity.</h2>
+                <p class="mt-4 text-lg opacity-75">Hotels, flights, excursions, transfers, and visa pricing all belong in one contract system with templates, imports, and clear activation rules.</p>
+                <ul class="mt-6 space-y-2 text-sm opacity-80">
+                    <li>Season windows and draft-to-active workflow</li>
+                    <li>Templates plus JSON and CSV import-export</li>
+                    <li>Room-type or rate-category pricing depending on product</li>
+                </ul>
+            </div>
+            <div class="rounded-3xl bg-base-100 p-6 shadow-sm">
+                <div class="text-xs uppercase tracking-[0.2em] opacity-50">Sample contract grid</div>
+                <div class="mt-4 grid gap-3 text-sm">
+                    <div class="grid grid-cols-[1.3fr_1fr_1fr] gap-2 font-semibold">
+                        <span>Season</span>
+                        <span>STD</span>
+                        <span>DLX</span>
+                    </div>
+                    <div class="grid grid-cols-[1.3fr_1fr_1fr] gap-2 opacity-80">
+                        <span>Pilgrimage Peak</span>
+                        <span>18,500</span>
+                        <span>21,400</span>
+                    </div>
+                    <div class="grid grid-cols-[1.3fr_1fr_1fr] gap-2 opacity-80">
+                        <span>Shoulder</span>
+                        <span>13,900</span>
+                        <span>16,250</span>
+                    </div>
+                    <div class="grid grid-cols-[1.3fr_1fr_1fr] gap-2 opacity-80">
+                        <span>Late Year</span>
+                        <span>15,100</span>
+                        <span>18,000</span>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="grid gap-4">
-            <div class="flex items-center gap-3">
-                <span class="badge badge-outline">01</span>
-                <span>Super admin control center</span>
+
+        <div class="rounded-3xl border border-black/5 bg-white/80 p-10 md:p-12 grid gap-8 md:grid-cols-[0.9fr_1.1fr] items-center reveal-up reveal-delay-1">
+            <div class="rounded-3xl bg-slate-900 text-white p-6 shadow-sm">
+                <div class="text-xs uppercase tracking-[0.2em] text-white/55">Quote builder</div>
+                <div class="mt-4 space-y-3">
+                    <div class="rounded-2xl bg-white/10 p-4">Client brief and itinerary blocks stay in one builder.</div>
+                    <div class="rounded-2xl bg-white/10 p-4">Display settings, branding, and layout previews update live.</div>
+                    <div class="rounded-2xl bg-white/10 p-4">Version history protects the team when quotes change under pressure.</div>
+                </div>
             </div>
-            <div class="flex items-center gap-3">
-                <span class="badge badge-outline">02</span>
-                <span>Tenant admin for users, roles, billing</span>
+            <div>
+                <span class="badge badge-outline">Client-facing output</span>
+                <h2 class="mt-4 text-3xl md:text-4xl font-bold">Quotes look polished before they ever reach a client inbox.</h2>
+                <p class="mt-4 text-lg opacity-75">Build proposals faster, switch layouts in preview, email them from the same workspace, then convert accepted quotes into bookings without retyping the trip.</p>
+                <div class="mt-6 grid gap-3 md:grid-cols-2 text-sm opacity-80">
+                    <div class="rounded-2xl border border-black/5 bg-base-100 p-4">PDF-ready quote templates and branding</div>
+                    <div class="rounded-2xl border border-black/5 bg-base-100 p-4">Email history and downstream booking conversion</div>
+                    <div class="rounded-2xl border border-black/5 bg-base-100 p-4">Supplier requests, reminders, confirmations, and voucher sending</div>
+                    <div class="rounded-2xl border border-black/5 bg-base-100 p-4">Audit-friendly changes and status visibility for the whole team</div>
+                </div>
             </div>
-            <div class="flex items-center gap-3">
-                <span class="badge badge-outline">03</span>
-                <span>Notes module as a working feature slice</span>
+        </div>
+
+        <div class="grid gap-6 md:grid-cols-3 reveal-up reveal-delay-2">
+            <div class="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-sm">
+                <h3 class="text-xl font-semibold">Multi-currency ready</h3>
+                <p class="mt-3 text-sm opacity-70">Contract and selling currencies stay explicit, with exchange rates and markup rules available to the agency.</p>
+            </div>
+            <div class="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-sm">
+                <h3 class="text-xl font-semibold">Team-safe controls</h3>
+                <p class="mt-3 text-sm opacity-70">Permissions, audit trails, and notifications keep agency operations accountable without slowing people down.</p>
+            </div>
+            <div class="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-sm">
+                <h3 class="text-xl font-semibold">Tenant-aware from day one</h3>
+                <p class="mt-3 text-sm opacity-70">Traveleer keeps the SaaS architecture underneath the travel workflow, so the platform can serve multiple agencies cleanly.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mx-auto max-w-6xl px-4 pb-20">
+    <div class="rounded-3xl border border-black/5 bg-white/80 p-10 md:p-12 reveal-up">
+        <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+                <h2 class="text-3xl md:text-4xl font-bold">What agencies ask for next</h2>
+                <p class="mt-3 text-lg opacity-75">The core travel workflow is live now, and the roadmap stays focused on useful agency depth rather than generic software fluff.</p>
+            </div>
+            <a href="/pricing" class="btn btn-outline">View pricing</a>
+        </div>
+        <div class="mt-8 grid gap-4 md:grid-cols-2">
+            <div class="rounded-2xl border border-black/5 bg-base-100 p-5">
+                <div class="badge badge-success badge-sm">Shipped</div>
+                <h3 class="mt-3 text-xl font-semibold">Rate-card templates and JSON or CSV workflows</h3>
+                <p class="mt-2 text-sm opacity-70">Create, duplicate, export, and import supplier contracts without rebuilding every season from scratch.</p>
+            </div>
+            <div class="rounded-2xl border border-black/5 bg-base-100 p-5">
+                <div class="badge badge-success badge-sm">Shipped</div>
+                <h3 class="mt-3 text-xl font-semibold">Quote versions, previews, and email handoff</h3>
+                <p class="mt-2 text-sm opacity-70">Teams can see what changed, pick layouts, and send clean client-ready output from the same workspace.</p>
+            </div>
+            <div class="rounded-2xl border border-black/5 bg-base-100 p-5">
+                <div class="badge badge-warning badge-sm">In progress</div>
+                <h3 class="mt-3 text-xl font-semibold">Deeper travel-agency marketing and onboarding polish</h3>
+                <p class="mt-2 text-sm opacity-70">The focus stays on helping agencies understand the workflow quickly and adopt it with less setup friction.</p>
+            </div>
+            <div class="rounded-2xl border border-black/5 bg-base-100 p-5">
+                <div class="badge badge-outline badge-sm">Planned</div>
+                <h3 class="mt-3 text-xl font-semibold">More quote and booking polish from real-world usage</h3>
+                <p class="mt-2 text-sm opacity-70">The next layer is refinement driven by live agency feedback, not abstract feature bloat.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mx-auto max-w-6xl px-4 pb-24">
+    <div class="rounded-3xl border border-black/5 bg-white/80 p-10 md:p-12 reveal-up">
+        <h2 class="text-3xl font-bold">Frequently asked questions</h2>
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+            <div class="collapse collapse-arrow bg-white/70">
+                <input type="radio" name="faq" checked="checked" />
+                <div class="collapse-title font-semibold">Who is Traveleer for?</div>
+                <div class="collapse-content text-sm opacity-70">Travel agencies and tour teams managing supplier contracts, quotes, and bookings across multiple staff members.</div>
+            </div>
+            <div class="collapse collapse-arrow bg-white/70">
+                <input type="radio" name="faq" />
+                <div class="collapse-title font-semibold">Can we handle more than hotels?</div>
+                <div class="collapse-content text-sm opacity-70">Yes. Rate cards can be structured around hotel room types or non-hotel pricing categories such as flights, excursions, transfers, and visa services.</div>
+            </div>
+            <div class="collapse collapse-arrow bg-white/70">
+                <input type="radio" name="faq" />
+                <div class="collapse-title font-semibold">Will the whole team need separate subscriptions?</div>
+                <div class="collapse-content text-sm opacity-70">No. Workspace access is built around tenant users, permissions, and audit visibility so agencies can work as one team.</div>
+            </div>
+            <div class="collapse collapse-arrow bg-white/70">
+                <input type="radio" name="faq" />
+                <div class="collapse-title font-semibold">Can we import existing supplier contracts?</div>
+                <div class="collapse-content text-sm opacity-70">Yes. JSON and CSV workflows are available so teams can move rate cards in and out without retyping every line.</div>
             </div>
         </div>
     </div>
@@ -96,12 +225,12 @@
 <section class="mx-auto max-w-6xl px-4 pb-24">
     <div class="rounded-3xl bg-slate-900 text-white p-10 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
         <div>
-            <h2 class="text-3xl font-bold">Ready to ship your SaaS?</h2>
-            <p class="mt-2 text-sm text-white/70">Spin up your first tenant in minutes.</p>
+            <h2 class="text-3xl font-bold">Ready to replace the spreadsheet stack?</h2>
+            <p class="mt-2 text-sm text-white/70">Start with a workspace built around rate cards, quotes, bookings, and team visibility.</p>
         </div>
         <div class="flex gap-3">
             <a href="/register" class="btn btn-primary">Get started</a>
-            <a href="/pricing" class="btn btn-ghost text-white">Compare plans</a>
+            <a href="https://wa.me/27836616366?text=Hi!%20I%27m%20interested%20in%20Traveleer" class="btn btn-ghost text-white" target="_blank" rel="noopener">Chat on WhatsApp</a>
         </div>
     </div>
 </section>

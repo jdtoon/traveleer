@@ -24,19 +24,21 @@ This file lists only verified ACP implementation gaps that are still worth closi
 
 ### Still Open
 
-- any clearly missing non-hotel pricing support that ACP already implements and Traveleer still lacks
+- no Phase 3 rate-card gap is currently verified after template, import-export, and non-hotel pricing support
+- only small residual issues discovered during the final parity sweep should remain here
 
 ### Already Done
 
 - rate-card CRUD
 - reusable hotel rate-card templates
+- non-hotel rate-category pricing for flights, excursions, transfers, and visas
 - save current rate-card season structures as reusable templates
 - single-card JSON export
 - single-card CSV export
 - export-all JSON bundle from the rate-card index
 - JSON import preview with duplicate handling
-- JSON import execution that backfills destinations, hotels, meal plans, and room types where needed
-- CSV preview and re-import into an existing hotel rate card
+- JSON import execution that backfills destinations, hotels, meal plans, room types, and rate-category mappings where needed
+- CSV preview and re-import into an existing rate card
 - season editing
 - details and summary flow
 - activation workflow
@@ -45,13 +47,15 @@ This file lists only verified ACP implementation gaps that are still worth closi
 
 ### Still Open
 
-- ACP business-site content and structure parity review
-- terms and privacy alignment review
-- any remaining travel-specific positioning gaps in Traveleer marketing pages
+- no large marketing parity slice is currently open after the public-site refresh
+- only small residual messaging or layout issues discovered during the final parity sweep should remain here
 
 ### Already Done
 
-- Traveleer already has a functioning marketing module with landing, pricing, about, contact, terms, privacy, and login redirect pages
+- travel-agency landing-page positioning and CTA refresh
+- pricing-page travel workflow messaging and plan presentation refresh
+- about, contact, terms, and privacy parity refresh
+- responsive public marketing shell and contact flow QA
 
 ## Bookings
 

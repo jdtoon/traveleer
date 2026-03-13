@@ -9,54 +9,74 @@
 
 <section class="mx-auto max-w-4xl px-4 py-16">
     <div class="rounded-3xl border border-black/5 bg-white/80 p-10 md:p-12">
-        <h1 class="text-4xl md:text-5xl font-bold">Talk to our team.</h1>
-        <p class="mt-3 text-lg opacity-70">We respond within one business day.</p>
+        <div class="grid gap-8 lg:grid-cols-[1fr_0.8fr]">
+            <div>
+                <h1 class="text-4xl md:text-5xl font-bold">Talk to the team behind Traveleer.</h1>
+                <p class="mt-3 text-lg opacity-70">Tell us how your agency currently handles supplier contracts, quote creation, and booking follow-up. We respond within one business day.</p>
 
-        <form class="mt-8 grid gap-4"
-              method="post"
-              action="/contact"
-              hx-post="/contact"
-              hx-target="#contact-result"
-              hx-swap="innerHTML"
-              hx-disabled-elt="#contact-submit-btn"
-              hx-on::after-request="if(event.detail.successful) this.reset()">
-            @Html.AntiForgeryToken()
+                <form class="mt-8 grid gap-4"
+                      method="post"
+                      action="/contact"
+                      hx-post="/contact"
+                      hx-target="#contact-result"
+                      hx-swap="innerHTML"
+                      hx-disabled-elt="#contact-submit-btn"
+                      hx-on::after-request="if(event.detail.successful) this.reset()">
+                    @Html.AntiForgeryToken()
 
-            <div class="grid gap-4 md:grid-cols-2">
-                <label class="form-control">
-                    <span class="label-text">Name</span>
-                    <input class="input input-bordered" name="Name" value="@Model.Name" required maxlength="80" />
-                </label>
-                <label class="form-control">
-                    <span class="label-text">Email</span>
-                    <input class="input input-bordered" type="email" name="Email" value="@Model.Email" required maxlength="120" />
-                </label>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <label class="form-control">
+                            <span class="label-text">Name</span>
+                            <input class="input input-bordered" name="Name" value="@Model.Name" required maxlength="80" />
+                        </label>
+                        <label class="form-control">
+                            <span class="label-text">Email</span>
+                            <input class="input input-bordered" type="email" name="Email" value="@Model.Email" required maxlength="120" />
+                        </label>
+                    </div>
+
+                    <label class="form-control">
+                        <span class="label-text">Message</span>
+                        <textarea class="textarea textarea-bordered" name="Message" rows="6" required maxlength="2000">@Model.Message</textarea>
+                    </label>
+
+                    <input type="hidden" name="CaptchaToken" id="contact-captcha-token"
+                           value="@(useTurnstile ? string.Empty : "mock-captcha-token")" />
+
+                    @if (useTurnstile)
+                    {
+                        <div class="mt-2">
+                            <div class="cf-turnstile" data-sitekey="@turnstile.SiteKey"
+                                 data-callback="onContactTurnstile"
+                                 data-expired-callback="onContactTurnstileExpired"></div>
+                        </div>
+                    }
+
+                    <button id="contact-submit-btn" class="btn btn-primary w-full md:w-auto" type="submit">
+                        <span class="htmx-indicator loading loading-spinner loading-sm"></span>
+                        Send message
+                    </button>
+                </form>
+
+                <div id="contact-result" class="mt-6"></div>
             </div>
 
-            <label class="form-control">
-                <span class="label-text">Message</span>
-                <textarea class="textarea textarea-bordered" name="Message" rows="6" required maxlength="2000">@Model.Message</textarea>
-            </label>
-
-            <input type="hidden" name="CaptchaToken" id="contact-captcha-token"
-                   value="@(useTurnstile ? string.Empty : "mock-captcha-token")" />
-
-            @if (useTurnstile)
-            {
-                <div class="mt-2">
-                    <div class="cf-turnstile" data-sitekey="@turnstile.SiteKey"
-                         data-callback="onContactTurnstile"
-                         data-expired-callback="onContactTurnstileExpired"></div>
+            <div class="grid gap-4 content-start">
+                <div class="rounded-3xl bg-base-100 p-6 shadow-sm">
+                    <div class="text-xs uppercase tracking-[0.2em] opacity-50">Typical topics</div>
+                    <ul class="mt-4 space-y-3 text-sm opacity-80">
+                        <li>Moving off spreadsheet-based rate cards</li>
+                        <li>Quote builder and branding workflow</li>
+                        <li>Team permissions, audit visibility, and rollout planning</li>
+                    </ul>
                 </div>
-            }
-
-            <button id="contact-submit-btn" class="btn btn-primary w-full md:w-auto" type="submit">
-                <span class="htmx-indicator loading loading-spinner loading-sm"></span>
-                Send message
-            </button>
-        </form>
-
-        <div id="contact-result" class="mt-6"></div>
+                <div class="rounded-3xl bg-base-100 p-6 shadow-sm">
+                    <div class="text-xs uppercase tracking-[0.2em] opacity-50">Prefer WhatsApp?</div>
+                    <p class="mt-3 text-sm opacity-80">If a quick conversation is easier, message us directly and we’ll point you to the right next step.</p>
+                    <a class="btn btn-success mt-4" href="https://wa.me/27836616366?text=Hi!%20I%27m%20interested%20in%20Traveleer" target="_blank" rel="noopener">Chat on WhatsApp</a>
+                </div>
+            </div>
+        </div>
     </div>
 </section>
 

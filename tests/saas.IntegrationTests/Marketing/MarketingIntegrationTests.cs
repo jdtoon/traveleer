@@ -29,12 +29,12 @@ public class MarketingIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
-    public async Task HomePage_ContainsCallToAction()
+    public async Task HomePage_RendersTravelAgencyCallToAction()
     {
         var response = await _client.GetAsync("/");
-        await response
-            .AssertSuccess()
-            .AssertContainsAsync("Start free");
+        response.AssertSuccess();
+        await response.AssertContainsAsync("Stop wrestling with hotel rates in spreadsheets.");
+        await response.AssertContainsAsync("Travel agencies use Traveleer");
     }
 
     [Fact]
@@ -42,8 +42,32 @@ public class MarketingIntegrationTests : IClassFixture<AppFixture>
     {
         var response = await _client.GetAsync("/pricing");
         response.AssertSuccess();
-        await response.AssertContainsAsync("Free");
-        await response.AssertContainsAsync("Starter");
+        await response.AssertContainsAsync("Plans for agencies that want cleaner rate, quote, and booking operations.");
+        await response.AssertContainsAsync("Get started");
+    }
+
+    [Fact]
+    public async Task PricingContentPartial_RendersWithoutLayout()
+    {
+        var response = await _client.HtmxGetAsync("/pricing/content?mode=annual");
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertContainsAsync("Plans for agencies that want cleaner rate, quote, and booking operations.");
+        await response.AssertDoesNotContainAsync("<html");
+    }
+
+    [Fact]
+    public async Task ContactForm_OnInvalidSubmit_ReturnsErrorPartial()
+    {
+        var page = await _client.GetAsync("/contact");
+        page.AssertSuccess();
+
+        var response = await _client.SubmitFormAsync(page, "form[hx-post='/contact']", new Dictionary<string, string>());
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertContainsAsync("required");
     }
 
     [Fact]

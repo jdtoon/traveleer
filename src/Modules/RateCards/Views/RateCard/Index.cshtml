@@ -27,7 +27,7 @@
     <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
             <h1 class="text-2xl font-bold">Rate Cards</h1>
-            <p class="opacity-70">Manage hotel supplier contracts with seasonal room-type pricing that downstream quotes can rely on.</p>
+            <p class="opacity-70">Manage supplier contracts with seasonal room-type or rate-category pricing that downstream quotes can rely on.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <has-permission name="ratecards.read">
@@ -59,7 +59,7 @@
                     <label class="label" for="ratecard-search">
                         <span class="label-text">Search rate cards</span>
                     </label>
-                    <input id="ratecard-search" name="search" value="@search" class="input input-bordered w-full" placeholder="Search by card, hotel, destination, or currency" />
+                    <input id="ratecard-search" name="search" value="@search" class="input input-bordered w-full" placeholder="Search by card, product, destination, or currency" />
                 </div>
                 <button type="submit" class="btn btn-primary">Apply</button>
                 <a href="@TabUrl(status)" class="btn btn-ghost">Clear</a>

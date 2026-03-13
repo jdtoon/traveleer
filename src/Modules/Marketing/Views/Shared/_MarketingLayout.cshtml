@@ -3,7 +3,7 @@
     var site = SiteOptions.Value;
     var title = ViewData["Title"]?.ToString() ?? site.Name;
     var ogTitle = ViewData["OgTitle"]?.ToString() ?? title;
-    var ogDescription = ViewData["OgDescription"]?.ToString() ?? "Run a multi-tenant SaaS without the busywork.";
+    var ogDescription = ViewData["OgDescription"]?.ToString() ?? "Travel agencies use Traveleer to manage supplier rates, build polished quotes, and keep bookings moving.";
 }
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
@@ -18,28 +18,29 @@
 
     <link rel="stylesheet" href="/css/app.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/_content/Swap.Htmx/css/swap.css" asp-append-version="true" />
-
     <style>
         :root {
-            --brand-ink: #1f2937;
-            --brand-sand: #fff7ed;
-            --brand-mist: #f8fafc;
+            --brand-ink: #10212b;
+            --brand-sand: #fffaf1;
+            --brand-mist: #eef8f7;
             --brand-accent: #0f766e;
-            --brand-warm: #b45309;
+            --brand-warm: #d97706;
+            --brand-deep: #12354a;
+            --brand-rose: #f97316;
         }
         body {
-            font-family: "Segoe UI", "Trebuchet MS", "Verdana", sans-serif;
+            font-family: "Trebuchet MS", "Lucida Sans Unicode", "Segoe UI", sans-serif;
             background: var(--brand-sand);
             color: var(--brand-ink);
         }
         h1, h2, h3, .display-font {
-            font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
-            letter-spacing: -0.02em;
+            font-family: "Franklin Gothic Medium", "Arial Narrow", "Aptos Narrow", sans-serif;
+            letter-spacing: -0.03em;
         }
         .marketing-surface {
-            background: radial-gradient(circle at 20% 0%, rgba(14, 116, 144, 0.15), transparent 55%),
-                        radial-gradient(circle at 85% 15%, rgba(251, 191, 36, 0.22), transparent 50%),
-                        linear-gradient(135deg, #fff7ed 0%, #f8fafc 55%, #ecfeff 100%);
+            background: radial-gradient(circle at 18% 0%, rgba(15, 118, 110, 0.18), transparent 48%),
+                        radial-gradient(circle at 82% 10%, rgba(249, 115, 22, 0.16), transparent 45%),
+                        linear-gradient(135deg, #fffaf1 0%, #f2fbfb 55%, #fef3e2 100%);
         }
         .reveal-up {
             animation: rise 0.6s ease-out both;
@@ -57,13 +58,26 @@
         .nav-link:hover {
             color: var(--brand-ink);
         }
+        .hero-chip {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(16, 33, 43, 0.08);
+            border-radius: 999px;
+            padding: 0.45rem 0.85rem;
+        }
+        .floating-wa {
+            position: fixed;
+            right: 1rem;
+            bottom: 1rem;
+            z-index: 40;
+            box-shadow: 0 18px 40px rgba(16, 33, 43, 0.2);
+        }
     </style>
 </head>
 <body class="min-h-screen">
     <div class="relative min-h-screen overflow-hidden marketing-surface">
         <div class="absolute -top-28 right-10 h-72 w-72 rounded-full bg-amber-200/60 blur-3xl"></div>
         <div class="absolute top-56 -left-20 h-80 w-80 rounded-full bg-teal-200/60 blur-3xl"></div>
-        <div class="absolute bottom-10 right-1/3 h-64 w-64 rounded-full bg-sky-200/60 blur-3xl"></div>
+        <div class="absolute bottom-10 right-1/3 h-64 w-64 rounded-full bg-cyan-200/60 blur-3xl"></div>
 
         <header class="relative z-10 border-b border-black/5 bg-white/70 backdrop-blur">
             <div class="navbar mx-auto max-w-6xl px-4">
@@ -71,9 +85,11 @@
                     <swap-nav to="/" class="text-xl font-bold tracking-tight">@site.Name</swap-nav>
                 </div>
                 <div class="hidden lg:flex items-center gap-6">
+                    <swap-nav class="nav-link" to="/">Home</swap-nav>
                     <swap-nav class="nav-link" to="/pricing">Pricing</swap-nav>
                     <swap-nav class="nav-link" to="/about">About</swap-nav>
                     <swap-nav class="nav-link" to="/contact">Contact</swap-nav>
+                    <swap-nav class="nav-link" to="/legal/terms">Terms</swap-nav>
                     <swap-nav class="btn btn-sm btn-ghost" to="/register">Get Started</swap-nav>
                     <a class="btn btn-sm btn-outline"
                        href="/login-redirect"
@@ -90,10 +106,12 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </label>
-                        <ul tabindex="0" class="menu dropdown-content mt-3 z-[1] w-52 rounded-box bg-base-100 p-2 shadow">
+                        <ul tabindex="0" class="menu dropdown-content mt-3 z-1 w-52 rounded-box bg-base-100 p-2 shadow">
+                            <li><swap-nav to="/">Home</swap-nav></li>
                             <li><swap-nav to="/pricing">Pricing</swap-nav></li>
                             <li><swap-nav to="/about">About</swap-nav></li>
                             <li><swap-nav to="/contact">Contact</swap-nav></li>
+                            <li><swap-nav to="/legal/terms">Terms</swap-nav></li>
                             <li><swap-nav to="/register">Get Started</swap-nav></li>
                             <li>
                                 <a href="/login-redirect"
@@ -114,17 +132,25 @@
         </main>
 
         <footer class="relative z-10 border-t border-black/5 bg-white/70 backdrop-blur">
-            <div class="mx-auto max-w-6xl px-4 py-10 grid gap-6 md:grid-cols-3">
+            <div class="mx-auto max-w-6xl px-4 py-10 grid gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
                 <div>
                     <div class="text-lg font-bold">@site.Name</div>
-                    <p class="text-sm opacity-70 mt-2">Launch a multi-tenant SaaS with confidence.</p>
+                    <p class="text-sm opacity-70 mt-2">Travel agencies use Traveleer to manage supplier contracts, produce faster quotes, and keep bookings moving without spreadsheet chaos.</p>
                 </div>
                 <div class="grid gap-2 text-sm">
+                    <div class="text-xs font-semibold uppercase tracking-[0.2em] opacity-50">Product</div>
                     <swap-nav class="nav-link" to="/pricing">Pricing</swap-nav>
                     <swap-nav class="nav-link" to="/about">About</swap-nav>
                     <swap-nav class="nav-link" to="/contact">Contact</swap-nav>
                 </div>
                 <div class="grid gap-2 text-sm">
+                    <div class="text-xs font-semibold uppercase tracking-[0.2em] opacity-50">Workflows</div>
+                    <span class="opacity-70">Rate cards and seasons</span>
+                    <span class="opacity-70">Quote builder and PDFs</span>
+                    <span class="opacity-70">Bookings and supplier follow-up</span>
+                </div>
+                <div class="grid gap-2 text-sm">
+                    <div class="text-xs font-semibold uppercase tracking-[0.2em] opacity-50">Legal</div>
                     <swap-nav class="nav-link" to="/legal/terms">Terms</swap-nav>
                     <swap-nav class="nav-link" to="/legal/privacy">Privacy</swap-nav>
                     <span class="opacity-60">Copyright @DateTime.UtcNow.Year</span>
@@ -132,6 +158,8 @@
             </div>
         </footer>
     </div>
+
+    <a class="btn btn-success rounded-full floating-wa" href="https://wa.me/27836616366?text=Hi!%20I%27m%20interested%20in%20Traveleer" target="_blank" rel="noopener">WhatsApp</a>
 
     <div id="toast-container" class="toast toast-end"></div>
     <div id="modal-container"></div>

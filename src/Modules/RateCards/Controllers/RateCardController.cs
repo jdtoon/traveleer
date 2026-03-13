@@ -57,7 +57,7 @@ public class RateCardController : SwapController
     {
         if (!ModelState.IsValid)
         {
-            var empty = await _service.CreateEmptyAsync();
+            var empty = await _service.CreateEmptyAsync(dto.InventoryItemId);
             dto.InventoryOptions = empty.InventoryOptions;
             dto.TemplateOptions = empty.TemplateOptions;
             dto.MealPlanOptions = empty.MealPlanOptions;
@@ -79,7 +79,7 @@ public class RateCardController : SwapController
         }
         catch (InvalidOperationException ex)
         {
-            var empty = await _service.CreateEmptyAsync();
+            var empty = await _service.CreateEmptyAsync(dto.InventoryItemId);
             dto.InventoryOptions = empty.InventoryOptions;
             dto.TemplateOptions = empty.TemplateOptions;
             dto.MealPlanOptions = empty.MealPlanOptions;

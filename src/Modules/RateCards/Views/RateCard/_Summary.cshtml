@@ -1,6 +1,7 @@
 @model saas.Modules.RateCards.DTOs.RateCardDetailsDto
 @{
     var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var pricingDimensionLabel = Model.RoomTypes.Count == 1 ? Model.PricingDimensionSingular : Model.PricingDimensionPlural;
 }
 
 <div class="flex flex-col gap-6">
@@ -57,7 +58,7 @@
         <div class="grid gap-4 md:grid-cols-2">
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-2">
-                    <div class="text-sm uppercase tracking-wide opacity-60">Hotel</div>
+                    <div class="text-sm uppercase tracking-wide opacity-60">@Model.InventoryKindLabel</div>
                     <div class="font-medium">@Model.InventoryItemName</div>
                     <div class="text-sm opacity-70">@(string.IsNullOrWhiteSpace(Model.DestinationName) ? "Destination pending" : Model.DestinationName)</div>
                 </div>
@@ -66,7 +67,7 @@
                 <div class="card-body gap-2">
                     <div class="text-sm uppercase tracking-wide opacity-60">Contract</div>
                     <div class="font-medium">@Model.ContractCurrencyCode</div>
-                    <div class="text-sm opacity-70">Meal plan: @(string.IsNullOrWhiteSpace(Model.DefaultMealPlanName) ? "Not set" : Model.DefaultMealPlanName)</div>
+                    <div class="text-sm opacity-70">@if (Model.SupportsMealPlans) { <text>Meal plan: @(string.IsNullOrWhiteSpace(Model.DefaultMealPlanName) ? "Not set" : Model.DefaultMealPlanName)</text> } else { <text>Pricing is driven by @Model.PricingDimensionPlural.</text> }</div>
                 </div>
             </div>
             <div class="card border border-base-300 bg-base-100 shadow-sm">
@@ -79,7 +80,7 @@
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-2">
                     <div class="text-sm uppercase tracking-wide opacity-60">Coverage</div>
-                    <div class="font-medium">@Model.RoomTypes.Count active room type@(Model.RoomTypes.Count == 1 ? string.Empty : "s")</div>
+                    <div class="font-medium">@Model.RoomTypes.Count active @pricingDimensionLabel</div>
                     <div class="text-sm opacity-70">@Model.AvailableTemplateCount template@(Model.AvailableTemplateCount == 1 ? string.Empty : "s") available</div>
                 </div>
             </div>

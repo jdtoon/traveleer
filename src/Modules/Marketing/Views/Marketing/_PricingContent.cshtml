@@ -5,8 +5,8 @@
 
 <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
     <div>
-        <h1 class="text-4xl md:text-5xl font-bold">Choose a plan that scales with you.</h1>
-        <p class="mt-3 text-lg opacity-70">Simple pricing with clear limits and optional upgrades.</p>
+        <h1 class="text-4xl md:text-5xl font-bold">Plans for agencies that want cleaner rate, quote, and booking operations.</h1>
+        <p class="mt-3 text-lg opacity-70">Traveleer keeps pricing transparent while focusing the product on supplier contracts, polished quote output, and downstream booking flow.</p>
     </div>
     <div class="join">
         <button type="button"
@@ -55,10 +55,15 @@
                 </div>
                 <div class="text-sm opacity-70">@suffix</div>
             </div>
+            <div class="mt-5 space-y-2 text-sm opacity-75">
+                <div>Supplier rate-card workflows</div>
+                <div>Quote builder and branded output</div>
+                <div>Booking follow-up and team visibility</div>
+            </div>
             <div class="mt-6">
                 <a class="btn btn-primary w-full" href="/register?plan=@plan.Id">Get started</a>
             </div>
-            <div class="mt-4 text-xs opacity-60">@plan.MaxUsers users included</div>
+            <div class="mt-4 text-xs opacity-60">Up to @plan.MaxUsers users on this plan</div>
         </div>
     }
 </div>

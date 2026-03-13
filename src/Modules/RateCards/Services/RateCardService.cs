@@ -4,13 +4,14 @@ using saas.Data.Tenant;
 using saas.Modules.Inventory.Entities;
 using saas.Modules.RateCards.DTOs;
 using saas.Modules.RateCards.Entities;
+using saas.Modules.Settings.Entities;
 
 namespace saas.Modules.RateCards.Services;
 
 public interface IRateCardService
 {
     Task<PaginatedList<RateCardListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12);
-    Task<RateCardFormDto> CreateEmptyAsync();
+    Task<RateCardFormDto> CreateEmptyAsync(Guid? inventoryItemId = null);
     Task<Guid> CreateAsync(RateCardFormDto dto);
     Task<RateCardDetailsDto?> GetDetailsAsync(Guid id);
     Task<RateSeasonFormDto> CreateEmptySeasonAsync(Guid rateCardId);
@@ -70,7 +71,8 @@ public class RateCardService : IRateCardService
             {
                 Id = x.Id,
                 Name = x.Name,
-                InventoryItemName = x.InventoryItem != null ? x.InventoryItem.Name : "Unknown hotel",
+                InventoryItemName = x.InventoryItem != null ? x.InventoryItem.Name : "Unknown product",
+                InventoryKind = x.InventoryItem != null ? x.InventoryItem.Kind : InventoryItemKind.Hotel,
                 DestinationName = x.InventoryItem != null && x.InventoryItem.Destination != null ? x.InventoryItem.Destination.Name : null,
                 ContractCurrencyCode = x.ContractCurrencyCode,
                 Status = x.Status,
@@ -83,12 +85,15 @@ public class RateCardService : IRateCardService
         return await PaginatedList<RateCardListItemDto>.CreateAsync(projected, page, pageSize);
     }
 
-    public async Task<RateCardFormDto> CreateEmptyAsync()
+    public async Task<RateCardFormDto> CreateEmptyAsync(Guid? inventoryItemId = null)
     {
+        var selectedKind = await ResolveInventoryKindAsync(inventoryItemId);
+
         return new RateCardFormDto
         {
-            InventoryOptions = await GetHotelInventoryOptionsAsync(),
-            TemplateOptions = await _templateService.GetOptionsAsync(InventoryItemKind.Hotel),
+            InventoryItemId = inventoryItemId,
+            InventoryOptions = await GetInventoryOptionsAsync(),
+            TemplateOptions = await _templateService.GetOptionsAsync(selectedKind),
             MealPlanOptions = await GetMealPlanOptionsAsync(),
             CurrencyOptions = await GetCurrencyOptionsAsync()
         };
@@ -96,16 +101,29 @@ public class RateCardService : IRateCardService
 
     public async Task<Guid> CreateAsync(RateCardFormDto dto)
     {
-        var hotel = await _db.InventoryItems
+        var inventoryItem = await _db.InventoryItems
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == dto.InventoryItemId && x.Kind == InventoryItemKind.Hotel)
-            ?? throw new InvalidOperationException("Hotel inventory item was not found.");
+            .FirstOrDefaultAsync(x => x.Id == dto.InventoryItemId)
+            ?? throw new InvalidOperationException("Inventory item was not found.");
+
+        if (dto.TemplateId.HasValue)
+        {
+            var template = await _db.RateCardTemplates
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == dto.TemplateId.Value)
+                ?? throw new InvalidOperationException("Rate card template was not found.");
+
+            if (template.ForKind != inventoryItem.Kind)
+            {
+                throw new InvalidOperationException("Choose a template that matches the selected inventory type.");
+            }
+        }
 
         var card = new RateCard
         {
             Name = dto.Name.Trim(),
-            InventoryItemId = hotel.Id,
-            DefaultMealPlanId = dto.DefaultMealPlanId,
+            InventoryItemId = inventoryItem.Id,
+            DefaultMealPlanId = inventoryItem.Kind == InventoryItemKind.Hotel ? dto.DefaultMealPlanId : null,
             ContractCurrencyCode = await ResolveCurrencyAsync(dto.ContractCurrencyCode),
             ValidFrom = dto.ValidFrom,
             ValidTo = dto.ValidTo,
@@ -132,19 +150,6 @@ public class RateCardService : IRateCardService
 
     public async Task<RateCardDetailsDto?> GetDetailsAsync(Guid id)
     {
-        var roomTypes = await _db.RoomTypes
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.SortOrder)
-            .ThenBy(x => x.Name)
-            .Select(x => new RateCardRoomTypeDto
-            {
-                Id = x.Id,
-                Code = x.Code,
-                Name = x.Name
-            })
-            .ToListAsync();
-
         var card = await _db.RateCards
             .AsNoTracking()
             .Include(x => x.InventoryItem)
@@ -153,6 +158,9 @@ public class RateCardService : IRateCardService
             .Include(x => x.Seasons.OrderBy(s => s.SortOrder))
                 .ThenInclude(x => x.Rates)
                     .ThenInclude(x => x.RoomType)
+            .Include(x => x.Seasons)
+                .ThenInclude(x => x.Rates)
+                    .ThenInclude(x => x.RateCategory)
             .FirstOrDefaultAsync(x => x.Id == id);
 
         if (card is null)
@@ -160,13 +168,17 @@ public class RateCardService : IRateCardService
             return null;
         }
 
+        var inventoryKind = card.InventoryItem?.Kind ?? InventoryItemKind.Hotel;
+        var dimensions = await GetPricingDimensionsAsync(inventoryKind);
+
         return new RateCardDetailsDto
         {
             Id = card.Id,
             Name = card.Name,
             Status = card.Status,
             InventoryItemId = card.InventoryItemId,
-            InventoryItemName = card.InventoryItem != null ? card.InventoryItem.Name : "Unknown hotel",
+            InventoryItemName = card.InventoryItem != null ? card.InventoryItem.Name : "Unknown product",
+            InventoryKind = inventoryKind,
             DestinationName = card.InventoryItem != null && card.InventoryItem.Destination != null ? card.InventoryItem.Destination.Name : null,
             ContractCurrencyCode = card.ContractCurrencyCode,
             DefaultMealPlanName = card.DefaultMealPlan != null ? card.DefaultMealPlan.Name : null,
@@ -174,8 +186,8 @@ public class RateCardService : IRateCardService
             ValidTo = card.ValidTo,
             Notes = card.Notes,
             UpdatedAt = card.UpdatedAt ?? card.CreatedAt,
-            AvailableTemplateCount = await _db.RateCardTemplates.AsNoTracking().CountAsync(x => x.ForKind == InventoryItemKind.Hotel),
-            RoomTypes = roomTypes,
+            AvailableTemplateCount = await _db.RateCardTemplates.AsNoTracking().CountAsync(x => x.ForKind == inventoryKind),
+            RoomTypes = dimensions,
             Seasons = card.Seasons
                 .OrderBy(s => s.SortOrder)
                 .Select(s => new RateCardSeasonEditorDto
@@ -187,15 +199,19 @@ public class RateCardService : IRateCardService
                     SortOrder = s.SortOrder,
                     IsBlackout = s.IsBlackout,
                     Notes = s.Notes,
-                    Rates = roomTypes.Select(roomType =>
+                    Rates = dimensions.Select(dimension =>
                     {
-                        var rate = s.Rates.FirstOrDefault(r => r.RoomTypeId == roomType.Id);
+                        var rate = inventoryKind == InventoryItemKind.Hotel
+                            ? s.Rates.FirstOrDefault(r => r.RoomTypeId == dimension.Id)
+                            : s.Rates.FirstOrDefault(r => r.RateCategoryId == dimension.Id);
+
                         return new RateCardRateCellDto
                         {
                             RoomRateId = rate != null ? rate.Id : null,
-                            RoomTypeId = roomType.Id,
-                            RoomTypeCode = roomType.Code,
-                            RoomTypeName = roomType.Name,
+                            RoomTypeId = inventoryKind == InventoryItemKind.Hotel ? dimension.Id : null,
+                            RateCategoryId = inventoryKind == InventoryItemKind.Hotel ? null : dimension.Id,
+                            Code = dimension.Code,
+                            Name = dimension.Name,
                             WeekdayRate = rate != null ? rate.WeekdayRate : 0m,
                             WeekendRate = rate != null ? rate.WeekendRate : null,
                             IsIncluded = rate == null || rate.IsIncluded
@@ -238,6 +254,7 @@ public class RateCardService : IRateCardService
     {
         var card = await _db.RateCards
             .Include(x => x.Seasons)
+            .Include(x => x.InventoryItem)
             .FirstOrDefaultAsync(x => x.Id == rateCardId)
             ?? throw new InvalidOperationException("Rate card was not found.");
 
@@ -259,22 +276,10 @@ public class RateCardService : IRateCardService
         _db.RateSeasons.Add(season);
         await _db.SaveChangesAsync();
 
-        var roomTypes = await _db.RoomTypes
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.SortOrder)
-            .ToListAsync();
-
-        if (roomTypes.Count > 0)
+        var defaultRates = await BuildDefaultRatesAsync(season.Id, card.InventoryItem?.Kind ?? InventoryItemKind.Hotel);
+        if (defaultRates.Count > 0)
         {
-            _db.RoomRates.AddRange(roomTypes.Select(roomType => new RoomRate
-            {
-                RateSeasonId = season.Id,
-                RoomTypeId = roomType.Id,
-                WeekdayRate = 0m,
-                WeekendRate = null,
-                IsIncluded = true
-            }));
+            _db.RoomRates.AddRange(defaultRates);
             await _db.SaveChangesAsync();
         }
     }
@@ -308,27 +313,60 @@ public class RateCardService : IRateCardService
 
     public async Task UpdateRateAsync(RateCardRateUpdateDto dto)
     {
-        var seasonExists = await _db.RateSeasons
+        var season = await _db.RateSeasons
             .AsNoTracking()
-            .AnyAsync(x => x.Id == dto.RateSeasonId && x.RateCardId == dto.RateCardId);
-        if (!seasonExists)
+            .Include(x => x.RateCard)
+                .ThenInclude(x => x!.InventoryItem)
+            .FirstOrDefaultAsync(x => x.Id == dto.RateSeasonId && x.RateCardId == dto.RateCardId);
+        if (season is null)
         {
             throw new InvalidOperationException("Season was not found.");
         }
 
-        var roomTypeExists = await _db.RoomTypes.AsNoTracking().AnyAsync(x => x.Id == dto.RoomTypeId && x.IsActive);
-        if (!roomTypeExists)
+        var inventoryKind = season.RateCard?.InventoryItem?.Kind ?? InventoryItemKind.Hotel;
+        if (inventoryKind == InventoryItemKind.Hotel)
         {
-            throw new InvalidOperationException("Room type was not found.");
+            if (!dto.RoomTypeId.HasValue)
+            {
+                throw new InvalidOperationException("Room type was not found.");
+            }
+
+            var roomTypeExists = await _db.RoomTypes.AsNoTracking().AnyAsync(x => x.Id == dto.RoomTypeId.Value && x.IsActive);
+            if (!roomTypeExists)
+            {
+                throw new InvalidOperationException("Room type was not found.");
+            }
+        }
+        else
+        {
+            var categoryType = ToRateCategoryType(inventoryKind)
+                ?? throw new InvalidOperationException("This inventory type does not support categorized rates.");
+
+            if (!dto.RateCategoryId.HasValue)
+            {
+                throw new InvalidOperationException("Rate category was not found.");
+            }
+
+            var categoryExists = await _db.RateCategories
+                .AsNoTracking()
+                .AnyAsync(x => x.Id == dto.RateCategoryId.Value && x.IsActive && x.ForType == categoryType);
+            if (!categoryExists)
+            {
+                throw new InvalidOperationException("Rate category was not found.");
+            }
         }
 
-        var roomRate = await _db.RoomRates.FirstOrDefaultAsync(x => x.RateSeasonId == dto.RateSeasonId && x.RoomTypeId == dto.RoomTypeId);
+        var roomRate = inventoryKind == InventoryItemKind.Hotel
+            ? await _db.RoomRates.FirstOrDefaultAsync(x => x.RateSeasonId == dto.RateSeasonId && x.RoomTypeId == dto.RoomTypeId)
+            : await _db.RoomRates.FirstOrDefaultAsync(x => x.RateSeasonId == dto.RateSeasonId && x.RateCategoryId == dto.RateCategoryId);
+
         if (roomRate is null)
         {
             roomRate = new RoomRate
             {
                 RateSeasonId = dto.RateSeasonId,
-                RoomTypeId = dto.RoomTypeId
+                RoomTypeId = dto.RoomTypeId,
+                RateCategoryId = dto.RateCategoryId
             };
             _db.RoomRates.Add(roomRate);
         }
@@ -419,6 +457,7 @@ public class RateCardService : IRateCardService
                 clonedSeason.Rates.Add(new RoomRate
                 {
                     RoomTypeId = rate.RoomTypeId,
+                    RateCategoryId = rate.RateCategoryId,
                     WeekdayRate = rate.WeekdayRate,
                     WeekendRate = rate.WeekendRate,
                     IsIncluded = rate.IsIncluded
@@ -455,20 +494,135 @@ public class RateCardService : IRateCardService
         }
     }
 
-    private async Task<List<RateCardOptionDto>> GetHotelInventoryOptionsAsync()
+    private async Task<List<RateCardOptionDto>> GetInventoryOptionsAsync()
     {
         return await _db.InventoryItems
             .AsNoTracking()
             .Include(x => x.Destination)
-            .Where(x => x.Kind == InventoryItemKind.Hotel)
-            .OrderBy(x => x.Name)
+            .OrderBy(x => x.Kind)
+            .ThenBy(x => x.Name)
             .Select(x => new RateCardOptionDto
             {
                 Id = x.Id,
-                Label = x.Destination != null ? $"{x.Name} - {x.Destination.Name}" : x.Name
+                Label = x.Destination != null ? $"{KindLabel(x.Kind)} - {x.Name} - {x.Destination.Name}" : $"{KindLabel(x.Kind)} - {x.Name}"
             })
             .ToListAsync();
     }
+
+    private async Task<InventoryItemKind?> ResolveInventoryKindAsync(Guid? inventoryItemId)
+    {
+        if (!inventoryItemId.HasValue)
+        {
+            return null;
+        }
+
+        return await _db.InventoryItems
+            .AsNoTracking()
+            .Where(x => x.Id == inventoryItemId.Value)
+            .Select(x => (InventoryItemKind?)x.Kind)
+            .FirstOrDefaultAsync();
+    }
+
+    private async Task<List<RateCardRoomTypeDto>> GetPricingDimensionsAsync(InventoryItemKind kind)
+    {
+        if (kind == InventoryItemKind.Hotel)
+        {
+            return await _db.RoomTypes
+                .AsNoTracking()
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.SortOrder)
+                .ThenBy(x => x.Name)
+                .Select(x => new RateCardRoomTypeDto
+                {
+                    Id = x.Id,
+                    Code = x.Code,
+                    Name = x.Name
+                })
+                .ToListAsync();
+        }
+
+        var rateCategoryType = ToRateCategoryType(kind);
+        if (!rateCategoryType.HasValue)
+        {
+            return [];
+        }
+
+        return await _db.RateCategories
+            .AsNoTracking()
+            .Where(x => x.IsActive && x.ForType == rateCategoryType.Value)
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.Name)
+            .Select(x => new RateCardRoomTypeDto
+            {
+                Id = x.Id,
+                Code = x.Code,
+                Name = x.Name
+            })
+            .ToListAsync();
+    }
+
+    private async Task<List<RoomRate>> BuildDefaultRatesAsync(Guid rateSeasonId, InventoryItemKind kind)
+    {
+        if (kind == InventoryItemKind.Hotel)
+        {
+            var roomTypes = await _db.RoomTypes
+                .AsNoTracking()
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.SortOrder)
+                .ToListAsync();
+
+            return roomTypes.Select(roomType => new RoomRate
+            {
+                RateSeasonId = rateSeasonId,
+                RoomTypeId = roomType.Id,
+                WeekdayRate = 0m,
+                WeekendRate = null,
+                IsIncluded = true
+            }).ToList();
+        }
+
+        var rateCategoryType = ToRateCategoryType(kind);
+        if (!rateCategoryType.HasValue)
+        {
+            return [];
+        }
+
+        var categories = await _db.RateCategories
+            .AsNoTracking()
+            .Where(x => x.IsActive && x.ForType == rateCategoryType.Value)
+            .OrderBy(x => x.SortOrder)
+            .ToListAsync();
+
+        return categories.Select(category => new RoomRate
+        {
+            RateSeasonId = rateSeasonId,
+            RateCategoryId = category.Id,
+            WeekdayRate = 0m,
+            WeekendRate = null,
+            IsIncluded = true
+        }).ToList();
+    }
+
+    private static InventoryType? ToRateCategoryType(InventoryItemKind kind)
+        => kind switch
+        {
+            InventoryItemKind.Flight => InventoryType.Flight,
+            InventoryItemKind.Excursion => InventoryType.Excursion,
+            InventoryItemKind.Transfer => InventoryType.Transfer,
+            InventoryItemKind.Visa => InventoryType.Visa,
+            _ => null
+        };
+
+    private static string KindLabel(InventoryItemKind kind)
+        => kind switch
+        {
+            InventoryItemKind.Hotel => "Hotel",
+            InventoryItemKind.Flight => "Flight",
+            InventoryItemKind.Excursion => "Excursion",
+            InventoryItemKind.Transfer => "Transfer",
+            InventoryItemKind.Visa => "Visa",
+            _ => "Other"
+        };
 
     private async Task<List<RateCardOptionDto>> GetMealPlanOptionsAsync()
     {

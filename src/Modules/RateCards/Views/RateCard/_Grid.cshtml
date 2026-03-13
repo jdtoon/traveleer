@@ -8,7 +8,7 @@
         <div class="flex items-center justify-between gap-3">
             <div>
                 <h2 class="card-title">Seasonal Rate Grid</h2>
-                <p class="text-sm opacity-70">Maintain weekday and weekend contract rates by room type for each season.</p>
+                <p class="text-sm opacity-70">Maintain weekday and weekend contract rates by @Model.PricingDimensionSingular for each season.</p>
             </div>
             <div class="text-sm opacity-60">@Model.Seasons.Count season@(Model.Seasons.Count == 1 ? string.Empty : "s")</div>
         </div>
@@ -17,7 +17,7 @@
         {
             <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-8 text-center">
                 <h3 class="text-lg font-semibold">No seasons configured</h3>
-                <p class="mt-2 opacity-70">Add your first season to unlock the room-rate grid and activate this contract.</p>
+                <p class="mt-2 opacity-70">Add your first season to unlock the @Model.PricingDimensionSingular-rate grid and activate this contract.</p>
             </div>
         }
         else
@@ -62,7 +62,15 @@
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="RateCardId" value="@Model.Id" />
                                             <input type="hidden" name="RateSeasonId" value="@season.Id" />
-                                            <input type="hidden" name="RoomTypeId" value="@rate.RoomTypeId" />
+                                            @if (rate.RoomTypeId.HasValue)
+                                            {
+                                                <input type="hidden" name="RoomTypeId" value="@rate.RoomTypeId" />
+                                            }
+                                            @if (rate.RateCategoryId.HasValue)
+                                            {
+                                                <input type="hidden" name="RateCategoryId" value="@rate.RateCategoryId" />
+                                            }
+                                            <div class="text-xs font-medium opacity-60">@rate.Name</div>
                                             <label class="label py-0"><span class="label-text text-xs">Weekday</span></label>
                                             <input type="number" step="0.01" min="0" name="WeekdayRate" value="@rate.WeekdayRate.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" class="input input-bordered input-sm w-full" />
                                             <label class="label py-0"><span class="label-text text-xs">Weekend</span></label>

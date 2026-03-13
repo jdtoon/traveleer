@@ -17,8 +17,11 @@ public class RateCardServiceTests : IAsyncLifetime
     private RateCardService _service = null!;
     private RateCardTemplateService _templateService = null!;
     private InventoryItem _hotel = null!;
+    private InventoryItem _excursion = null!;
     private RoomType _doubleRoom = null!;
     private RoomType _familyRoom = null!;
+    private RateCategory _adultCategory = null!;
+    private RateCategory _childCategory = null!;
 
     public async Task InitializeAsync()
     {
@@ -37,6 +40,8 @@ public class RateCardServiceTests : IAsyncLifetime
         var mealPlan = new MealPlan { Code = "BB", Name = "Bed & Breakfast", SortOrder = 10, IsActive = true, CreatedAt = DateTime.UtcNow };
         _doubleRoom = new RoomType { Code = "DBL", Name = "Double Room", SortOrder = 10, IsActive = true, CreatedAt = DateTime.UtcNow };
         _familyRoom = new RoomType { Code = "FAM", Name = "Family Room", SortOrder = 20, IsActive = true, CreatedAt = DateTime.UtcNow };
+        _adultCategory = new RateCategory { ForType = InventoryType.Excursion, Code = "ADT", Name = "Adult", SortOrder = 10, IsActive = true, CreatedAt = DateTime.UtcNow };
+        _childCategory = new RateCategory { ForType = InventoryType.Excursion, Code = "CHD", Name = "Child", SortOrder = 20, IsActive = true, CreatedAt = DateTime.UtcNow };
         _hotel = new InventoryItem
         {
             Name = "Grand Haram Hotel",
@@ -46,9 +51,19 @@ public class RateCardServiceTests : IAsyncLifetime
             Supplier = supplier,
             CreatedAt = DateTime.UtcNow
         };
+        _excursion = new InventoryItem
+        {
+            Name = "Makkah Heritage Tour",
+            Kind = InventoryItemKind.Excursion,
+            BaseCost = 300m,
+            Destination = destination,
+            Supplier = supplier,
+            CreatedAt = DateTime.UtcNow
+        };
 
-        _db.InventoryItems.Add(_hotel);
+        _db.InventoryItems.AddRange(_hotel, _excursion);
         _db.RoomTypes.AddRange(_doubleRoom, _familyRoom);
+        _db.RateCategories.AddRange(_adultCategory, _childCategory);
         _db.MealPlans.Add(mealPlan);
         _db.Currencies.AddRange(
             new Currency { Code = "USD", Name = "US Dollar", Symbol = "$", ExchangeRate = 1m, IsBaseCurrency = true, IsActive = true, CreatedAt = DateTime.UtcNow },
@@ -66,11 +81,12 @@ public class RateCardServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task CreateEmptyAsync_LoadsHotelInventoryAndMasterData()
+    public async Task CreateEmptyAsync_LoadsInventoryAndMasterData()
     {
         var dto = await _service.CreateEmptyAsync();
 
         Assert.Contains(dto.InventoryOptions, x => x.Label.Contains(_hotel.Name, StringComparison.Ordinal));
+        Assert.Contains(dto.InventoryOptions, x => x.Label.Contains(_excursion.Name, StringComparison.Ordinal));
         Assert.NotEmpty(dto.TemplateOptions);
         Assert.Contains(dto.MealPlanOptions, x => x.Label.Contains("BB", StringComparison.Ordinal));
         Assert.Contains("USD", dto.CurrencyOptions);
@@ -126,6 +142,25 @@ public class RateCardServiceTests : IAsyncLifetime
         var season = await _db.RateSeasons.Include(x => x.Rates).SingleAsync(x => x.RateCardId == rateCardId);
         Assert.Equal(2, season.Rates.Count);
         Assert.All(season.Rates, x => Assert.True(x.IsIncluded));
+    }
+
+    [Fact]
+    public async Task CreateSeasonAsync_ForExcursion_CreatesDefaultRateRowsForCategories()
+    {
+        var rateCardId = await CreateRateCardAsync("Excursion Contract", _excursion.Id);
+
+        await _service.CreateSeasonAsync(rateCardId, new RateSeasonFormDto
+        {
+            RateCardId = rateCardId,
+            Name = "Daily Departures",
+            StartDate = new DateOnly(2026, 12, 1),
+            EndDate = new DateOnly(2026, 12, 31)
+        });
+
+        var season = await _db.RateSeasons.Include(x => x.Rates).SingleAsync(x => x.RateCardId == rateCardId);
+        Assert.Equal(2, season.Rates.Count);
+        Assert.Contains(season.Rates, x => x.RateCategoryId == _adultCategory.Id);
+        Assert.Contains(season.Rates, x => x.RateCategoryId == _childCategory.Id);
     }
 
     [Fact]
@@ -215,6 +250,36 @@ public class RateCardServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task UpdateRateAsync_ForExcursion_UpdatesRateCategoryRow()
+    {
+        var rateCardId = await CreateRateCardAsync("Excursion Contract", _excursion.Id);
+        await _service.CreateSeasonAsync(rateCardId, new RateSeasonFormDto
+        {
+            RateCardId = rateCardId,
+            Name = "Weekend Tours",
+            StartDate = new DateOnly(2026, 6, 1),
+            EndDate = new DateOnly(2026, 6, 30)
+        });
+
+        var season = await _db.RateSeasons.Include(x => x.Rates).SingleAsync(x => x.RateCardId == rateCardId);
+
+        await _service.UpdateRateAsync(new RateCardRateUpdateDto
+        {
+            RateCardId = rateCardId,
+            RateSeasonId = season.Id,
+            RateCategoryId = _adultCategory.Id,
+            WeekdayRate = 450m,
+            WeekendRate = 525m,
+            IsIncluded = false
+        });
+
+        var updated = await _db.RoomRates.SingleAsync(x => x.RateSeasonId == season.Id && x.RateCategoryId == _adultCategory.Id);
+        Assert.Equal(450m, updated.WeekdayRate);
+        Assert.Equal(525m, updated.WeekendRate);
+        Assert.False(updated.IsIncluded);
+    }
+
+    [Fact]
     public async Task CreateFromRateCardAsync_CapturesSeasonStructureAsTemplate()
     {
         var rateCardId = await CreateRateCardAsync("Template Source");
@@ -241,12 +306,12 @@ public class RateCardServiceTests : IAsyncLifetime
         Assert.Equal("Limited allotment", season.Notes);
     }
 
-    private async Task<Guid> CreateRateCardAsync(string name = "Main Contract")
+    private async Task<Guid> CreateRateCardAsync(string name = "Main Contract", Guid? inventoryItemId = null)
     {
         return await _service.CreateAsync(new RateCardFormDto
         {
             Name = name,
-            InventoryItemId = _hotel.Id,
+            InventoryItemId = inventoryItemId ?? _hotel.Id,
             ContractCurrencyCode = "USD"
         });
     }

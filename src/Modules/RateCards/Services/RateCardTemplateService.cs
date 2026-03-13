@@ -10,7 +10,7 @@ namespace saas.Modules.RateCards.Services;
 public interface IRateCardTemplateService
 {
     Task EnsureSystemTemplatesAsync();
-    Task<List<RateCardTemplateOptionDto>> GetOptionsAsync(InventoryItemKind kind);
+    Task<List<RateCardTemplateOptionDto>> GetOptionsAsync(InventoryItemKind? kind = null);
     Task<List<TemplateSeasonDefinition>> GetSeasonDefinitionsAsync(Guid templateId);
     Task CreateFromRateCardAsync(Guid rateCardId, string name, string? description);
 }
@@ -47,14 +47,21 @@ public class RateCardTemplateService : IRateCardTemplateService
         await _db.SaveChangesAsync();
     }
 
-    public async Task<List<RateCardTemplateOptionDto>> GetOptionsAsync(InventoryItemKind kind)
+    public async Task<List<RateCardTemplateOptionDto>> GetOptionsAsync(InventoryItemKind? kind = null)
     {
         await EnsureSystemTemplatesAsync();
 
-        var templates = await _db.RateCardTemplates
-            .AsNoTracking()
-            .Where(x => x.ForKind == kind)
+        var query = _db.RateCardTemplates
+            .AsNoTracking();
+
+        if (kind.HasValue)
+        {
+            query = query.Where(x => x.ForKind == kind.Value);
+        }
+
+        var templates = await query
             .OrderByDescending(x => x.IsSystemTemplate)
+            .ThenBy(x => x.ForKind)
             .ThenBy(x => x.Name)
             .ToListAsync();
 
@@ -64,6 +71,7 @@ public class RateCardTemplateService : IRateCardTemplateService
                 Id = x.Id,
                 Name = x.Name,
                 Description = x.Description,
+                ForKind = x.ForKind,
                 IsSystemTemplate = x.IsSystemTemplate,
                 SeasonCount = JsonSerializer.Deserialize<List<TemplateSeasonDefinition>>(x.SeasonsJson, JsonOptions)?.Count ?? 0
             })
@@ -90,18 +98,19 @@ public class RateCardTemplateService : IRateCardTemplateService
             throw new InvalidOperationException("Template name is required.");
         }
 
-        var exists = await _db.RateCardTemplates.AnyAsync(x => x.Name == trimmedName && x.ForKind == InventoryItemKind.Hotel);
-        if (exists)
-        {
-            throw new InvalidOperationException("A template with this name already exists.");
-        }
-
         var rateCard = await _db.RateCards
             .AsNoTracking()
             .Include(x => x.InventoryItem)
             .Include(x => x.Seasons)
             .FirstOrDefaultAsync(x => x.Id == rateCardId)
             ?? throw new InvalidOperationException("Rate card was not found.");
+
+        var inventoryKind = rateCard.InventoryItem?.Kind ?? InventoryItemKind.Hotel;
+        var exists = await _db.RateCardTemplates.AnyAsync(x => x.Name == trimmedName && x.ForKind == inventoryKind);
+        if (exists)
+        {
+            throw new InvalidOperationException("A template with this name already exists.");
+        }
 
         if (rateCard.Seasons.Count == 0)
         {
@@ -126,7 +135,7 @@ public class RateCardTemplateService : IRateCardTemplateService
         _db.RateCardTemplates.Add(new RateCardTemplate
         {
             Name = trimmedName,
-            ForKind = rateCard.InventoryItem?.Kind ?? InventoryItemKind.Hotel,
+            ForKind = inventoryKind,
             Description = Normalize(description),
             SeasonsJson = JsonSerializer.Serialize(definitions, JsonOptions),
             IsSystemTemplate = false
@@ -172,9 +181,12 @@ public class RateCardTemplateService : IRateCardTemplateService
     }
 
     private static List<RateCardTemplate> GetSystemTemplates()
-        =>
-        [
-            new()
+    {
+        var templates = new List<RateCardTemplate>();
+
+        templates.AddRange(new[]
+        {
+            new RateCardTemplate
             {
                 Name = "Year-Round Fixed",
                 ForKind = InventoryItemKind.Hotel,
@@ -185,7 +197,7 @@ public class RateCardTemplateService : IRateCardTemplateService
                 }, JsonOptions),
                 IsSystemTemplate = true
             },
-            new()
+            new RateCardTemplate
             {
                 Name = "Three-Season Standard",
                 ForKind = InventoryItemKind.Hotel,
@@ -198,7 +210,7 @@ public class RateCardTemplateService : IRateCardTemplateService
                 }, JsonOptions),
                 IsSystemTemplate = true
             },
-            new()
+            new RateCardTemplate
             {
                 Name = "Pilgrimage High Season",
                 ForKind = InventoryItemKind.Hotel,
@@ -212,7 +224,39 @@ public class RateCardTemplateService : IRateCardTemplateService
                 }, JsonOptions),
                 IsSystemTemplate = true
             }
-        ];
+        });
+
+        foreach (var kind in new[] { InventoryItemKind.Flight, InventoryItemKind.Excursion, InventoryItemKind.Transfer, InventoryItemKind.Visa, InventoryItemKind.Other })
+        {
+            templates.Add(new RateCardTemplate
+            {
+                Name = "Year-Round Fixed",
+                ForKind = kind,
+                Description = "One full-year season for fixed supplier pricing.",
+                SeasonsJson = JsonSerializer.Serialize(new List<TemplateSeasonDefinition>
+                {
+                    new() { Name = "Standard Window", MonthStart = 1, DayStart = 1, MonthEnd = 12, DayEnd = 31, SortOrder = 10 }
+                }, JsonOptions),
+                IsSystemTemplate = true
+            });
+
+            templates.Add(new RateCardTemplate
+            {
+                Name = "Peak And Shoulder",
+                ForKind = kind,
+                Description = "Shoulder and peak windows for demand-led travel products.",
+                SeasonsJson = JsonSerializer.Serialize(new List<TemplateSeasonDefinition>
+                {
+                    new() { Name = "Shoulder Window", MonthStart = 1, DayStart = 1, MonthEnd = 5, DayEnd = 31, SortOrder = 10 },
+                    new() { Name = "Peak Window", MonthStart = 6, DayStart = 1, MonthEnd = 9, DayEnd = 30, SortOrder = 20 },
+                    new() { Name = "Late Window", MonthStart = 10, DayStart = 1, MonthEnd = 12, DayEnd = 31, SortOrder = 30 }
+                }, JsonOptions),
+                IsSystemTemplate = true
+            });
+        }
+
+        return templates;
+    }
 
     private static string? Normalize(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

@@ -20,6 +20,8 @@ public class RateCardImportExportServiceTests : IAsyncLifetime
     private Guid _rateCardId;
     private Guid _seasonId;
     private Guid _doubleRoomId;
+    private Guid _excursionRateCardId;
+    private Guid _adultCategoryId;
 
     public async Task InitializeAsync()
     {
@@ -37,12 +39,23 @@ public class RateCardImportExportServiceTests : IAsyncLifetime
         var supplier = new Supplier { Name = "Al Haram Hotels", IsActive = true, CreatedAt = DateTime.UtcNow };
         var roomDouble = new RoomType { Code = "DBL", Name = "Double Room", SortOrder = 10, IsActive = true, CreatedAt = DateTime.UtcNow };
         var roomFamily = new RoomType { Code = "FAM", Name = "Family Room", SortOrder = 20, IsActive = true, CreatedAt = DateTime.UtcNow };
+        var adultCategory = new RateCategory { ForType = InventoryType.Excursion, Code = "ADT", Name = "Adult", SortOrder = 10, IsActive = true, CreatedAt = DateTime.UtcNow };
+        var childCategory = new RateCategory { ForType = InventoryType.Excursion, Code = "CHD", Name = "Child", SortOrder = 20, IsActive = true, CreatedAt = DateTime.UtcNow };
         _doubleRoomId = roomDouble.Id;
+        _adultCategoryId = adultCategory.Id;
 
         var hotel = new InventoryItem
         {
             Name = "Grand Haram Hotel",
             Kind = InventoryItemKind.Hotel,
+            Destination = destination,
+            Supplier = supplier,
+            CreatedAt = DateTime.UtcNow
+        };
+        var excursion = new InventoryItem
+        {
+            Name = "Makkah Heritage Tour",
+            Kind = InventoryItemKind.Excursion,
             Destination = destination,
             Supplier = supplier,
             CreatedAt = DateTime.UtcNow
@@ -72,11 +85,36 @@ public class RateCardImportExportServiceTests : IAsyncLifetime
 
         rateCard.Seasons.Add(season);
 
-        _db.RateCards.Add(rateCard);
+        var excursionRateCard = new RateCard
+        {
+            Name = "Excursion Export Contract",
+            InventoryItem = excursion,
+            ContractCurrencyCode = "USD",
+            Status = RateCardStatus.Draft,
+            CreatedAt = DateTime.UtcNow,
+            Seasons =
+            [
+                new RateSeason
+                {
+                    Name = "Weekend Tours",
+                    StartDate = new DateOnly(2026, 9, 1),
+                    EndDate = new DateOnly(2026, 9, 30),
+                    SortOrder = 10,
+                    Rates =
+                    [
+                        new RoomRate { RateCategory = adultCategory, WeekdayRate = 450m, WeekendRate = 500m, IsIncluded = true },
+                        new RoomRate { RateCategory = childCategory, WeekdayRate = 250m, WeekendRate = 300m, IsIncluded = true }
+                    ]
+                }
+            ]
+        };
+
+        _db.RateCards.AddRange(rateCard, excursionRateCard);
         await _db.SaveChangesAsync();
 
         _rateCardId = rateCard.Id;
         _seasonId = season.Id;
+        _excursionRateCardId = excursionRateCard.Id;
         _cache = new FakeCacheService();
         _service = new RateCardImportExportService(_db, _cache);
     }
@@ -104,9 +142,27 @@ public class RateCardImportExportServiceTests : IAsyncLifetime
     {
         var csv = await _service.ExportCsvAsync(_rateCardId);
 
-        Assert.Contains("SeasonName,RoomTypeCode,RoomTypeName,WeekdayRate,WeekendRate,IsIncluded", csv, StringComparison.Ordinal);
-        Assert.Contains("Existing Season,DBL,Double Room,1500.00,1800.00,true", csv, StringComparison.Ordinal);
-        Assert.Contains("Existing Season,FAM,Family Room,2200.00,2400.00,false", csv, StringComparison.Ordinal);
+        Assert.Contains("SeasonName,RoomTypeCode,RoomTypeName,RateCategoryCode,RateCategoryName,WeekdayRate,WeekendRate,IsIncluded", csv, StringComparison.Ordinal);
+        Assert.Contains("Existing Season,DBL,Double Room,,,1500.00,1800.00,true", csv, StringComparison.Ordinal);
+        Assert.Contains("Existing Season,FAM,Family Room,,,2200.00,2400.00,false", csv, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ExportJsonAsync_ForExcursion_UsesRateCategories()
+    {
+        var export = await _service.ExportJsonAsync(_excursionRateCardId);
+
+        Assert.Equal(InventoryItemKind.Excursion, export.RateCard.InventoryKind);
+        Assert.Contains(export.RateCard.Seasons.Single().Rates, x => x.RateCategoryCode == "ADT" && x.WeekdayRate == 450m);
+    }
+
+    [Fact]
+    public async Task ExportCsvAsync_ForExcursion_WritesRateCategoryColumns()
+    {
+        var csv = await _service.ExportCsvAsync(_excursionRateCardId);
+
+        Assert.Contains("Weekend Tours,,,ADT,Adult,450.00,500.00,true", csv, StringComparison.Ordinal);
+        Assert.Contains("Weekend Tours,,,CHD,Child,250.00,300.00,true", csv, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -153,6 +209,70 @@ public class RateCardImportExportServiceTests : IAsyncLifetime
         Assert.Equal(1999.50m, updated.WeekdayRate);
         Assert.Equal(2222.75m, updated.WeekendRate);
         Assert.False(updated.IsIncluded);
+    }
+
+    [Fact]
+    public async Task PreviewCsvImportAsync_ForExcursion_UsesRateCategoryColumns()
+    {
+        var seasonId = await _db.RateSeasons.Where(x => x.RateCardId == _excursionRateCardId).Select(x => x.Id).SingleAsync();
+        var csv = string.Join('\n',
+            "SeasonName,RateCategoryCode,WeekdayRate,WeekendRate,IsIncluded",
+            "Weekend Tours,ADT,555.00,650.00,true");
+
+        var preview = await _service.PreviewCsvImportAsync(_excursionRateCardId, csv);
+
+        Assert.True(preview.CanImport);
+        Assert.Single(preview.Rows);
+        Assert.Equal(_adultCategoryId, preview.Rows.Single().RateCategoryId);
+
+        var result = await _service.ExecuteCsvImportAsync(_excursionRateCardId, preview.ImportToken!);
+        Assert.Equal(1, result.ImportedRowCount);
+
+        var updated = await _db.RoomRates.SingleAsync(x => x.RateSeasonId == seasonId && x.RateCategoryId == _adultCategoryId);
+        Assert.Equal(555m, updated.WeekdayRate);
+        Assert.Equal(650m, updated.WeekendRate);
+    }
+
+    [Fact]
+    public async Task ExecuteJsonImportAsync_ForExcursion_CreatesCategoryBasedDraft()
+    {
+        var payload = new RateCardJsonExportBundleDto
+        {
+            RateCards =
+            [
+                new RateCardJsonExportCardDto
+                {
+                    Name = "Imported Excursion Contract",
+                    InventoryKind = InventoryItemKind.Excursion,
+                    InventoryItemName = "Imported Excursion",
+                    DestinationName = "Makkah",
+                    ContractCurrencyCode = "USD",
+                    Seasons =
+                    [
+                        new RateCardJsonExportSeasonDto
+                        {
+                            Name = "Peak Excursions",
+                            StartDate = new DateOnly(2027, 3, 1),
+                            EndDate = new DateOnly(2027, 3, 31),
+                            SortOrder = 10,
+                            Rates =
+                            [
+                                new RateCardJsonExportRateDto { RateCategoryCode = "ADT", RateCategoryName = "Adult", WeekdayRate = 700m, WeekendRate = 800m, IsIncluded = true }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var preview = await _service.PreviewJsonImportAsync(System.Text.Json.JsonSerializer.Serialize(payload));
+        var result = await _service.ExecuteJsonImportAsync(preview.ImportToken!);
+
+        Assert.Equal(1, result.ImportedCount);
+
+        var imported = await _db.RateCards.Include(x => x.InventoryItem).Include(x => x.Seasons).ThenInclude(x => x.Rates).SingleAsync(x => x.Name == "Imported Excursion Contract");
+        Assert.Equal(InventoryItemKind.Excursion, imported.InventoryItem!.Kind);
+        Assert.Contains(imported.Seasons.Single().Rates, x => x.RateCategoryId == _adultCategoryId && x.WeekdayRate == 700m);
     }
 
     [Fact]

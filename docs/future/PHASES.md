@@ -58,7 +58,7 @@ Exit criteria:
 
 ## Phase 3 - RateCards Depth Parity
 
-Status: In Progress
+Status: Complete
 
 Scope:
 
@@ -69,8 +69,8 @@ Scope:
 Current state:
 
 - templates complete
-- JSON and CSV import/export workflow complete for hotel rate cards
-- only verified non-hotel pricing gaps remain before Phase 4
+- JSON and CSV import/export workflow complete
+- hotel and non-hotel rate-card pricing flows are live
 
 Exit criteria:
 
@@ -82,13 +82,18 @@ Exit criteria:
 
 ## Phase 4 - Marketing Parity
 
-Status: Pending
+Status: Complete
 
 Scope:
 
 - compare ACP business-site content against Traveleer marketing views
 - port remaining meaningful copy and structure into Traveleer
 - review terms and privacy alignment
+
+Current state:
+
+- landing, pricing, about, contact, terms, and privacy pages now use travel-agency positioning
+- contact flow, pricing partial, and responsive marketing shell verified in browser QA
 
 Exit criteria:
 

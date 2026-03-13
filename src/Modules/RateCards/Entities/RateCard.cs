@@ -49,10 +49,12 @@ public class RoomRate
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid RateSeasonId { get; set; }
-    public Guid RoomTypeId { get; set; }
+    public Guid? RoomTypeId { get; set; }
+    public Guid? RateCategoryId { get; set; }
     public decimal WeekdayRate { get; set; }
     public decimal? WeekendRate { get; set; }
     public bool IsIncluded { get; set; } = true;
     public RateSeason? RateSeason { get; set; }
     public RoomType? RoomType { get; set; }
+    public RateCategory? RateCategory { get; set; }
 }

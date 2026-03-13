@@ -75,6 +75,24 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task RateCardsPage_UserCanCreateExcursionRateCard()
+    {
+        var excursionId = await GetFirstExcursionIdAsync();
+        var formResponse = await _client.HtmxGetAsync($"/{TenantSlug}/rate-cards/new");
+        formResponse.AssertSuccess();
+
+        var response = await _client.SubmitFormAsync(formResponse, "form", new Dictionary<string, string>
+        {
+            ["Name"] = $"QA Excursion {Guid.NewGuid():N}"[..18],
+            ["InventoryItemId"] = excursionId.ToString(),
+            ["ContractCurrencyCode"] = "USD"
+        });
+
+        response.AssertSuccess();
+        response.AssertToast("Rate card created.");
+    }
+
+    [Fact]
     public async Task RateCardsPage_UserCanCreateRateCardFromTemplate()
     {
         var hotelId = await GetFirstHotelIdAsync();
@@ -156,7 +174,7 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
         {
             ["RateCardId"] = rateCardId.ToString(),
             ["RateSeasonId"] = seasonId.ToString(),
-            ["RoomTypeId"] = roomTypeId.ToString(),
+            ["RoomTypeId"] = roomTypeId!.Value.ToString(),
             ["WeekdayRate"] = "2200",
             ["WeekendRate"] = "2500",
             ["IsIncluded"] = "true"
@@ -168,6 +186,43 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
         var grid = await _client.HtmxGetAsync($"/{TenantSlug}/rate-cards/grid/{rateCardId}");
         grid.AssertSuccess();
         await grid.AssertContainsAsync("2200.00");
+    }
+
+    [Fact]
+    public async Task ExcursionRateCardDetails_UserCanUpdateRateCategory()
+    {
+        var rateCardId = await SeedExcursionRateCardAsync();
+        await SeedExcursionSeasonAsync(rateCardId);
+
+        var page = await _client.GetAsync($"/{TenantSlug}/rate-cards/details/{rateCardId}");
+        page.AssertSuccess();
+        await page.AssertContainsAsync("Excursion");
+
+        var details = await GetRateCardDetailsAsync(rateCardId);
+        Assert.NotNull(details);
+        var seasonId = details!.Seasons.Single().Id;
+        var categoryId = details.Seasons.Single().Rates.First().RateCategoryId;
+
+        var grid = await _client.HtmxGetAsync($"/{TenantSlug}/rate-cards/grid/{rateCardId}");
+        grid.AssertSuccess();
+        await grid.AssertContainsAsync("Adult");
+
+        var updateResponse = await _client.SubmitFormAsync(grid, "form", new Dictionary<string, string>
+        {
+            ["RateCardId"] = rateCardId.ToString(),
+            ["RateSeasonId"] = seasonId.ToString(),
+            ["RateCategoryId"] = categoryId!.Value.ToString(),
+            ["WeekdayRate"] = "480",
+            ["WeekendRate"] = "560",
+            ["IsIncluded"] = "true"
+        });
+
+        updateResponse.AssertSuccess();
+        updateResponse.AssertToast("Rate updated.");
+
+        var refreshed = await _client.HtmxGetAsync($"/{TenantSlug}/rate-cards/grid/{rateCardId}");
+        refreshed.AssertSuccess();
+        await refreshed.AssertContainsAsync("480.00");
     }
 
     [Fact]
@@ -250,7 +305,7 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
         var response = await _client.GetAsync($"/{TenantSlug}/rate-cards/export/csv/{rateCardId}");
 
         response.AssertSuccess();
-        await response.AssertContainsAsync("SeasonName,RoomTypeCode,RoomTypeName,WeekdayRate,WeekendRate,IsIncluded");
+        await response.AssertContainsAsync("SeasonName,RoomTypeCode,RoomTypeName,RateCategoryCode,RateCategoryName,WeekdayRate,WeekendRate,IsIncluded");
         await response.AssertContainsAsync("Existing Season");
     }
 
@@ -303,6 +358,12 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
         return await db.InventoryItems.Where(x => x.Kind == InventoryItemKind.Hotel).OrderBy(x => x.Name).Select(x => x.Id).FirstAsync();
     }
 
+    private async Task<Guid> GetFirstExcursionIdAsync()
+    {
+        await using var db = OpenTenantDb();
+        return await db.InventoryItems.Where(x => x.Kind == InventoryItemKind.Excursion).OrderBy(x => x.Name).Select(x => x.Id).FirstAsync();
+    }
+
     private async Task<Guid> SeedRateCardAsync()
     {
         await using var db = OpenTenantDb();
@@ -311,6 +372,23 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
         {
             Name = $"Contract {Guid.NewGuid():N}"[..18],
             InventoryItemId = hotelId,
+            ContractCurrencyCode = "USD",
+            Status = RateCardStatus.Draft,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.RateCards.Add(rateCard);
+        await db.SaveChangesAsync();
+        return rateCard.Id;
+    }
+
+    private async Task<Guid> SeedExcursionRateCardAsync()
+    {
+        await using var db = OpenTenantDb();
+        var excursionId = await db.InventoryItems.Where(x => x.Kind == InventoryItemKind.Excursion).OrderBy(x => x.Name).Select(x => x.Id).FirstAsync();
+        var rateCard = new RateCard
+        {
+            Name = $"Excursion {Guid.NewGuid():N}"[..18],
+            InventoryItemId = excursionId,
             ContractCurrencyCode = "USD",
             Status = RateCardStatus.Draft,
             CreatedAt = DateTime.UtcNow
@@ -339,6 +417,32 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
                 RoomTypeId = roomTypeId,
                 WeekdayRate = 1500m,
                 WeekendRate = 1800m,
+                IsIncluded = true
+            });
+        }
+        db.RateSeasons.Add(season);
+        await db.SaveChangesAsync();
+    }
+
+    private async Task SeedExcursionSeasonAsync(Guid rateCardId)
+    {
+        await using var db = OpenTenantDb();
+        var categoryIds = await db.RateCategories.Where(x => x.ForType == Modules.Settings.Entities.InventoryType.Excursion).OrderBy(x => x.SortOrder).Select(x => x.Id).ToListAsync();
+        var season = new RateSeason
+        {
+            RateCardId = rateCardId,
+            Name = "Excursion Season",
+            StartDate = new DateOnly(2026, 8, 1),
+            EndDate = new DateOnly(2026, 8, 31),
+            SortOrder = 10
+        };
+        foreach (var categoryId in categoryIds)
+        {
+            season.Rates.Add(new RoomRate
+            {
+                RateCategoryId = categoryId,
+                WeekdayRate = 200m,
+                WeekendRate = 250m,
                 IsIncluded = true
             });
         }
