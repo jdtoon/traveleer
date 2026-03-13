@@ -66,9 +66,9 @@ When role-specific behavior matters, add fixture helpers or explicit authenticat
 
 ---
 
-## Three Mandatory Integration Test Layers
+## Four Mandatory Integration Test Layers
 
-Every new page + partial combination requires all three layers.
+Every new page + partial combination requires all four layers.
 
 ### Layer 1 - Full Page
 
@@ -124,6 +124,73 @@ public async Task BookingsPage_UserCanOpenCreateForm()
         .AssertElementExistsAsync("dialog.modal");
 }
 ```
+
+### Layer 4 - Database Verification
+
+Every operation that writes to the database must verify the persisted state. HTTP response assertions alone are not sufficient — the test must open the tenant database and confirm that entities were created, updated, or deleted with the correct field values.
+
+Add a private `OpenTenantDb()` helper to every integration test class that performs write operations:
+
+```csharp
+private TenantDbContext OpenTenantDb()
+{
+    var options = new DbContextOptionsBuilder<TenantDbContext>()
+        .UseSqlite($"Data Source={_fixture.GetTenantDbPath(TenantSlug)}")
+        .Options;
+    return new TenantDbContext(options);
+}
+```
+
+#### Create verification
+
+```csharp
+[Fact]
+public async Task CreateClient_OnValidSubmit_PersistsToDatabase()
+{
+    var uniqueName = $"DB-Test-{Guid.NewGuid():N}"[..20];
+    var formResponse = await _client.HtmxGetAsync($"/{TenantSlug}/clients/new");
+    var response = await _client.SubmitFormAsync(formResponse, "form", new Dictionary<string, string>
+    {
+        ["Name"] = uniqueName,
+        ["Email"] = $"{uniqueName}@test.local"
+    });
+
+    response.AssertSuccess();
+
+    await using var db = OpenTenantDb();
+    var client = await db.Clients.SingleAsync(c => c.Name == uniqueName);
+    Assert.NotEqual(Guid.Empty, client.Id);
+    Assert.Equal($"{uniqueName}@test.local", client.Email);
+    Assert.NotNull(client.CreatedAt);
+}
+```
+
+#### Update verification
+
+```csharp
+await using var db = OpenTenantDb();
+var entity = await db.Entities.SingleAsync(e => e.Id == id);
+Assert.Equal("updated value", entity.Name);
+Assert.NotNull(entity.UpdatedAt);
+```
+
+#### Delete verification
+
+```csharp
+await using var db = OpenTenantDb();
+Assert.False(await db.Entities.AnyAsync(e => e.Id == id));
+```
+
+#### Status transition verification
+
+```csharp
+await using var db = OpenTenantDb();
+var entity = await db.Entities.SingleAsync(e => e.Id == id);
+Assert.Equal(ExpectedStatus.Active, entity.Status);
+Assert.NotNull(entity.ActivatedAt);
+```
+
+This layer closes the gap between "the HTTP response looked right" and "the data was actually saved correctly." It replaces the need for manual database inspection during QA.
 
 ---
 
@@ -229,6 +296,7 @@ A migrated or new feature is not done until all of the following are true:
 - full-page integration coverage exists
 - partial isolation coverage exists
 - user-flow coverage exists
+- database verification exists for every write operation (create, update, delete, status change)
 - valid and invalid form submissions are tested where forms exist
 - access control is tested for protected routes
 - manual Playwright QA has been completed
@@ -244,3 +312,4 @@ A migrated or new feature is not done until all of the following are true:
 - Do not manually type internal tenant URLs during browser QA after entry unless the scenario specifically starts there.
 - Do not copy AgencyCardPro tests blindly if the feature has been redesigned in Traveleer.
 - Do not end a feature turn with failing tests.
+- Do not assert only HTTP responses when the operation writes to the database. Open `TenantDbContext` and verify persisted state.

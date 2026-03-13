@@ -30,7 +30,7 @@ Every product feature and migrated workflow must pass this pipeline:
 
 1. **UX Design First** - Define the user flow before coding. Plan full-page layout, HTMX interactions, empty states, loading states, error states, responsive behavior, and DaisyUI component usage.
 2. **Unit Tests** - Add service-level tests for calculations, validation, numbering, filtering, imports, and domain state transitions.
-3. **Integration Tests** - Cover the page shell, HTMX partials, and end-to-end user flow for every user-facing feature.
+3. **Integration Tests** - Cover the page shell, HTMX partials, end-to-end user flow, and database state verification for every user-facing feature. Every write operation must assert persisted state by opening the tenant SQLite database directly.
 4. **Manual Browser QA** - Use Playwright browser automation to verify UX quality, not just server correctness.
 5. **Regression Verification** - Recheck adjacent flows after the feature works.
 
