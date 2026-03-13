@@ -144,6 +144,34 @@ public class BookingDetailsDto
     public DateTime CreatedAt { get; set; }
     public DateTime? ConfirmedAt { get; set; }
     public List<BookingItemListItemDto> Items { get; set; } = [];
+
+    public string TravelWindowSummary
+    {
+        get
+        {
+            if (TravelStartDate.HasValue && TravelEndDate.HasValue)
+            {
+                return $"{TravelStartDate.Value:dd MMM yyyy} - {TravelEndDate.Value:dd MMM yyyy}";
+            }
+
+            if (TravelStartDate.HasValue)
+            {
+                return $"Starting {TravelStartDate.Value:dd MMM yyyy}";
+            }
+
+            if (TravelEndDate.HasValue)
+            {
+                return $"Ending {TravelEndDate.Value:dd MMM yyyy}";
+            }
+
+            return "Travel dates not set yet";
+        }
+    }
+
+    public string TravelWindowCompact
+        => TravelStartDate.HasValue
+            ? TravelWindowSummary
+            : "To be confirmed";
 }
 
 public class BookingConversionResult

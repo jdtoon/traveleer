@@ -10,7 +10,7 @@
                 <h1 class="text-2xl font-bold">@Model.BookingRef</h1>
                 <span class="badge badge-outline">@Model.Status</span>
             </div>
-            <p class="mt-2 opacity-70">@Model.ClientName · @(Model.TravelStartDate?.ToString("dd MMM yyyy") ?? "Travel dates pending")@if (Model.TravelEndDate.HasValue) { <text> - @Model.TravelEndDate.Value.ToString("dd MMM yyyy")</text> }</p>
+            <p class="mt-2 opacity-70">@Model.ClientName · @Model.TravelWindowSummary</p>
         </div>
         <div class="flex gap-2">
             <a class="btn btn-ghost btn-sm" href="@Url.Action("Index", "Booking", new { slug })">Back to Bookings</a>
@@ -29,7 +29,7 @@
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-2">
                     <div class="text-sm uppercase tracking-wide opacity-60">Travel</div>
-                    <div class="font-medium">@(Model.TravelStartDate?.ToString("dd MMM yyyy") ?? "TBC")@if (Model.TravelEndDate.HasValue) { <text> - @Model.TravelEndDate.Value.ToString("dd MMM yyyy")</text> }</div>
+                    <div class="font-medium">@Model.TravelWindowCompact</div>
                     <div class="text-sm opacity-70">@Model.Pax pax</div>
                 </div>
             </div>

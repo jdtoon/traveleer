@@ -44,6 +44,19 @@ public class QuoteEmailIntegrationTests : IClassFixture<AppFixture>
         await response.AssertPartialViewAsync();
         await response.AssertElementExistsAsync("dialog.modal");
         await response.AssertContainsAsync("Send Quote Email");
+        await response.AssertContainsAsync("We prefilled the saved quote email, but you can override it before sending.");
+    }
+
+    [Fact]
+    public async Task QuoteEmailComposePartial_WhenQuoteHasNoClientEmail_ShowsManualAddressGuidance()
+    {
+        var quoteId = await SeedQuoteWithoutClientEmailAsync();
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/quote-email/compose/{quoteId}");
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertContainsAsync("No client email is saved on this quote yet, so enter the delivery address manually.");
     }
 
     [Fact]
@@ -138,6 +151,40 @@ public class QuoteEmailIntegrationTests : IClassFixture<AppFixture>
             ClientId = client.Id,
             ClientName = client.Name,
             ClientEmail = client.Email,
+            ClientPhone = client.Phone,
+            OutputCurrencyCode = "USD",
+            MarkupPercentage = 10m,
+            Status = QuoteStatus.Draft,
+            ValidUntil = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(14)),
+            CreatedAt = DateTime.UtcNow,
+            QuoteRateCards =
+            {
+                new QuoteRateCard
+                {
+                    RateCardId = rateCardId,
+                    SortOrder = 1
+                }
+            }
+        };
+
+        db.Quotes.Add(quote);
+        await db.SaveChangesAsync();
+        return quote.Id;
+    }
+
+    private async Task<Guid> SeedQuoteWithoutClientEmailAsync()
+    {
+        await using var db = OpenTenantDb();
+        var reference = $"QT-EMAIL-{Guid.NewGuid():N}"[..13];
+        var client = await db.Clients.OrderBy(x => x.Name).FirstAsync();
+        var rateCardId = await db.RateCards.OrderBy(x => x.CreatedAt).Select(x => x.Id).FirstAsync();
+
+        var quote = new Quote
+        {
+            ReferenceNumber = reference,
+            ClientId = client.Id,
+            ClientName = client.Name,
+            ClientEmail = null,
             ClientPhone = client.Phone,
             OutputCurrencyCode = "USD",
             MarkupPercentage = 10m,

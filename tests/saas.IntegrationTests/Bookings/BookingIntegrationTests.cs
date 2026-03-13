@@ -69,6 +69,19 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task BookingSummaryPartial_WhenTravelDatesMissing_UsesIntentionalCopy()
+    {
+        var bookingId = await SeedBookingWithoutTravelDatesAsync();
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/summary/{bookingId}");
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertContainsAsync("Travel dates not set yet");
+        await response.AssertContainsAsync("To be confirmed");
+    }
+
+    [Fact]
     public async Task BookingsPage_UserCanCreateBooking()
     {
         var clientId = await GetFirstClientIdAsync();
@@ -272,6 +285,24 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
             Pax = 2,
             TravelStartDate = new DateOnly(2026, 5, 1),
             TravelEndDate = new DateOnly(2026, 5, 5),
+            CostCurrencyCode = "USD",
+            SellingCurrencyCode = "USD",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Bookings.Add(booking);
+        await db.SaveChangesAsync();
+        return booking.Id;
+    }
+
+    private async Task<Guid> SeedBookingWithoutTravelDatesAsync()
+    {
+        await using var db = OpenTenantDb();
+        var clientId = await db.Clients.OrderBy(x => x.Name).Select(x => x.Id).FirstAsync();
+        var booking = new Booking
+        {
+            BookingRef = $"BK-ND-{Guid.NewGuid():N}"[..13],
+            ClientId = clientId,
+            Pax = 2,
             CostCurrencyCode = "USD",
             SellingCurrencyCode = "USD",
             CreatedAt = DateTime.UtcNow
