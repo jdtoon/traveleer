@@ -42,6 +42,7 @@ public class OnboardingIntegrationTests : IClassFixture<AppFixture>
         response.AssertSuccess();
         await response.AssertPartialViewAsync();
         await response.AssertContainsAsync("Shape the public identity clients will see.");
+        await response.AssertContainsAsync("Use a publicly reachable SVG or PNG");
     }
 
     [Fact]
@@ -69,6 +70,7 @@ public class OnboardingIntegrationTests : IClassFixture<AppFixture>
         identityResponse.AssertSuccess();
         identityResponse.AssertToast("Identity saved.");
         await identityResponse.AssertContainsAsync("Choose the defaults your team should start from.");
+        await identityResponse.AssertContainsAsync("Leave blank to use the base-currency default markup");
 
         var defaultsResponse = await _client.SubmitFormAsync(identityResponse, $"form[action='/{TenantSlug}/onboarding/step/defaults']", new Dictionary<string, string>
         {

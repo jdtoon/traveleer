@@ -35,6 +35,7 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
         await response.AssertElementExistsAsync("#main-content");
         await response.AssertElementExistsAsync("#quote-list");
         await response.AssertElementExistsAsync("#modal-container");
+        await response.AssertContainsAsync("Search by reference, client, email, or product");
     }
 
     [Fact]

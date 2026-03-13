@@ -37,6 +37,7 @@
                 <div class="form-control w-full">
                     <label class="label" for="LogoUrl"><span class="label-text">Logo URL</span></label>
                     <input id="LogoUrl" name="LogoUrl" value="@Model.LogoUrl" class="input input-bordered w-full" placeholder="https://example.com/logo.svg" />
+                    <div class="mt-2 text-sm opacity-60">Optional. Use a publicly reachable SVG or PNG so quotes and the tenant shell can render it reliably.</div>
                     <span asp-validation-for="LogoUrl" class="text-error text-sm mt-1"></span>
                 </div>
                 <div class="form-control w-full">

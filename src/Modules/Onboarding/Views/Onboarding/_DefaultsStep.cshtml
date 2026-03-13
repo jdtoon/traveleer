@@ -27,7 +27,7 @@
                 </div>
                 <div class="form-control w-full">
                     <label class="label" for="DefaultQuoteMarkupPercentage"><span class="label-text">Default markup %</span></label>
-                    <input id="DefaultQuoteMarkupPercentage" type="number" step="0.01" min="0" name="DefaultQuoteMarkupPercentage" value="@(Model.DefaultQuoteMarkupPercentage?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))" class="input input-bordered w-full" placeholder="Leave blank to follow the base currency" />
+                    <input id="DefaultQuoteMarkupPercentage" type="number" step="0.01" min="0" name="DefaultQuoteMarkupPercentage" value="@(Model.DefaultQuoteMarkupPercentage?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))" class="input input-bordered w-full" placeholder="Leave blank to use the base-currency default markup" />
                     <span asp-validation-for="DefaultQuoteMarkupPercentage" class="text-error text-sm mt-1"></span>
                 </div>
                 <div class="form-control w-full justify-end">

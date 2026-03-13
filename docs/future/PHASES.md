@@ -105,7 +105,7 @@ Exit criteria:
 
 ## Phase 5 - Final Parity Sweep
 
-Status: Pending
+Status: In Progress
 
 Scope:
 

@@ -52,4 +52,4 @@ The remaining work is now concentrated in three areas:
 - `Phase 2` complete: quote display settings, template layouts, and live preview parity
 - `Phase 3` complete: reusable rate-card templates plus JSON/CSV import-export workflows are live, including non-hotel rate-category pricing support
 - `Phase 4` complete: marketing pages now reflect ACP-aligned travel-agency positioning, pricing, contact, and legal-page parity
-- `Phase 5` pending: final residual parity sweep
+- `Phase 5` in progress: final residual parity sweep across quotes, bookings, email, onboarding, and remaining UX polish
