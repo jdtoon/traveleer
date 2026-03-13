@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using saas.Data.Tenant;
 using saas.IntegrationTests.Fixtures;
 using Swap.Testing;
 using Xunit;
@@ -103,23 +105,32 @@ public class ClientIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
-    public async Task CreateClientForm_OnValidSubmit_ClosesModalAndRefreshes()
+    public async Task CreateClientForm_OnValidSubmit_PersistsToDatabase()
     {
-        // GET the form to obtain antiforgery token
+        var uniqueName = $"DB-Client-{Guid.NewGuid():N}"[..20];
+        var email = $"{uniqueName.ToLowerInvariant()}@example.test";
+
         var formResponse = await _client.HtmxGetAsync($"/{TenantSlug}/clients/new");
         formResponse.AssertSuccess();
 
-        // Submit via SubmitFormAsync which extracts antiforgery token automatically
         var response = await _client.SubmitFormAsync(formResponse, "form", new Dictionary<string, string>
         {
-            ["Name"] = "Integration Test Client",
-            ["Email"] = $"inttest-{Guid.NewGuid():N}@example.test",
+            ["Name"] = uniqueName,
+            ["Email"] = email,
             ["Company"] = "Test Co",
             ["Country"] = "United Kingdom"
         });
 
         response.AssertSuccess();
         response.AssertToast("Client created.");
+
+        await using var db = OpenTenantDb();
+        var client = await db.Clients.SingleAsync(c => c.Name == uniqueName);
+        Assert.NotEqual(Guid.Empty, client.Id);
+        Assert.Equal(email, client.Email);
+        Assert.Equal("Test Co", client.Company);
+        Assert.Equal("United Kingdom", client.Country);
+        Assert.NotNull(client.CreatedAt);
     }
 
     [Fact]
@@ -144,7 +155,6 @@ public class ClientIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task CreateClientForm_DuplicateEmail_ReturnsFormWithError()
     {
-        // First create a client
         var email = $"dup-{Guid.NewGuid():N}@example.test";
         var firstFormResponse = await _client.HtmxGetAsync($"/{TenantSlug}/clients/new");
         await _client.SubmitFormAsync(firstFormResponse, "form", new Dictionary<string, string>
@@ -153,7 +163,6 @@ public class ClientIntegrationTests : IClassFixture<AppFixture>
             ["Email"] = email
         });
 
-        // Try to create another with the same email
         var secondFormResponse = await _client.HtmxGetAsync($"/{TenantSlug}/clients/new");
         var response = await _client.SubmitFormAsync(secondFormResponse, "form", new Dictionary<string, string>
         {
@@ -163,6 +172,80 @@ public class ClientIntegrationTests : IClassFixture<AppFixture>
 
         response.AssertSuccess();
         await response.AssertContainsAsync("already exists");
+
+        await using var db = OpenTenantDb();
+        var count = await db.Clients.CountAsync(c => c.Email == email);
+        Assert.Equal(1, count);
+    }
+
+    // ── Layer 4: Database Verification ──
+
+    [Fact]
+    public async Task EditClient_OnValidSubmit_UpdatesDatabase()
+    {
+        var uniqueName = $"Edit-Cl-{Guid.NewGuid():N}"[..18];
+        var createForm = await _client.HtmxGetAsync($"/{TenantSlug}/clients/new");
+        await _client.SubmitFormAsync(createForm, "form", new Dictionary<string, string>
+        {
+            ["Name"] = uniqueName,
+            ["Company"] = "Original Co"
+        });
+
+        Guid clientId;
+        await using (var db = OpenTenantDb())
+        {
+            var created = await db.Clients.SingleAsync(c => c.Name == uniqueName);
+            clientId = created.Id;
+        }
+
+        var editForm = await _client.HtmxGetAsync($"/{TenantSlug}/clients/edit/{clientId}");
+        editForm.AssertSuccess();
+
+        var updatedName = $"Upd-Cl-{Guid.NewGuid():N}"[..18];
+        var response = await _client.SubmitFormAsync(editForm, "form", new Dictionary<string, string>
+        {
+            ["Name"] = updatedName,
+            ["Company"] = "Updated Co",
+            ["Country"] = "South Africa"
+        });
+
+        response.AssertSuccess();
+        response.AssertToast("Client updated.");
+
+        await using var verifyDb = OpenTenantDb();
+        var updated = await verifyDb.Clients.SingleAsync(c => c.Id == clientId);
+        Assert.Equal(updatedName, updated.Name);
+        Assert.Equal("Updated Co", updated.Company);
+        Assert.Equal("South Africa", updated.Country);
+    }
+
+    [Fact]
+    public async Task DeleteClient_RemovesFromDatabase()
+    {
+        var uniqueName = $"Del-Cl-{Guid.NewGuid():N}"[..18];
+        var createForm = await _client.HtmxGetAsync($"/{TenantSlug}/clients/new");
+        await _client.SubmitFormAsync(createForm, "form", new Dictionary<string, string>
+        {
+            ["Name"] = uniqueName
+        });
+
+        Guid clientId;
+        await using (var db = OpenTenantDb())
+        {
+            var created = await db.Clients.SingleAsync(c => c.Name == uniqueName);
+            clientId = created.Id;
+        }
+
+        var confirmResponse = await _client.HtmxGetAsync($"/{TenantSlug}/clients/delete-confirm/{clientId}");
+        confirmResponse.AssertSuccess();
+
+        var response = await _client.SubmitFormAsync(confirmResponse, "form", new Dictionary<string, string>());
+
+        response.AssertSuccess();
+        response.AssertToast("Client deleted.");
+
+        await using var verifyDb = OpenTenantDb();
+        Assert.False(await verifyDb.Clients.AnyAsync(c => c.Id == clientId));
     }
 
     // ── Access Control ──
@@ -215,5 +298,13 @@ public class ClientIntegrationTests : IClassFixture<AppFixture>
             response.StatusCode == System.Net.HttpStatusCode.Found ||
             response.StatusCode == System.Net.HttpStatusCode.Redirect,
             $"Unexpected status: {response.StatusCode}");
+    }
+
+    private TenantDbContext OpenTenantDb()
+    {
+        var options = new DbContextOptionsBuilder<TenantDbContext>()
+            .UseSqlite($"Data Source={_fixture.GetTenantDbPath(TenantSlug)}")
+            .Options;
+        return new TenantDbContext(options);
     }
 }

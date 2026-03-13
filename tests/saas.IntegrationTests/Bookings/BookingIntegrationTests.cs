@@ -88,10 +88,11 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
         var formResponse = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/new");
         formResponse.AssertSuccess();
 
+        var clientRef = $"OPS-{Guid.NewGuid():N}"[..12];
         var response = await _client.SubmitFormAsync(formResponse, "form", new Dictionary<string, string>
         {
             ["ClientId"] = clientId.ToString(),
-            ["ClientReference"] = $"OPS-{Guid.NewGuid():N}"[..12],
+            ["ClientReference"] = clientRef,
             ["TravelStartDate"] = "2026-05-01",
             ["TravelEndDate"] = "2026-05-05",
             ["Pax"] = "4",
@@ -100,6 +101,17 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
 
         response.AssertSuccess();
         response.AssertToast("Booking created.");
+
+        await using var db = OpenTenantDb();
+        var booking = await db.Bookings.SingleAsync(b => b.ClientReference == clientRef);
+        Assert.NotEqual(Guid.Empty, booking.Id);
+        Assert.Equal(clientId, booking.ClientId);
+        Assert.Equal(new DateOnly(2026, 5, 1), booking.TravelStartDate);
+        Assert.Equal(new DateOnly(2026, 5, 5), booking.TravelEndDate);
+        Assert.Equal(4, booking.Pax);
+        Assert.Equal("USD", booking.SellingCurrencyCode);
+        Assert.False(string.IsNullOrWhiteSpace(booking.BookingRef));
+        Assert.NotNull(booking.CreatedAt);
     }
 
     [Fact]
@@ -271,7 +283,12 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
     private async Task<(Guid Id, string Name)> GetFirstInventoryAsync()
     {
         await using var db = OpenTenantDb();
-        return await db.InventoryItems.OrderBy(x => x.Name).Select(x => new ValueTuple<Guid, string>(x.Id, x.Name)).FirstAsync();
+        // Use a seeded item with a known kind to avoid picking up transient test data
+        return await db.InventoryItems
+            .Where(x => x.Kind == InventoryItemKind.Hotel)
+            .OrderBy(x => x.Name)
+            .Select(x => new ValueTuple<Guid, string>(x.Id, x.Name))
+            .FirstAsync();
     }
 
     private async Task<Guid> SeedBookingAsync()
