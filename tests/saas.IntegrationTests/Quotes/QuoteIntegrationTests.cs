@@ -91,6 +91,18 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task QuotePreview_WhenTravelFilterEnabledWithoutDates_UsesIntentionalCopy()
+    {
+        var rateCardId = await SeedRateCardAsync();
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/quotes/preview?ClientName=Preview%20Client&OutputCurrencyCode=USD&SelectedRateCardIds={rateCardId}&MarkupPercentage=10&FilterByTravelDates=true");
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertContainsAsync("Travel filter is enabled for Travel dates not set yet.");
+    }
+
+    [Fact]
     public async Task CreateQuote_OnValidSubmit_PersistsQuoteAndRedirectsToDetails()
     {
         var rateCardId = await SeedRateCardAsync();
@@ -182,6 +194,7 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
 
         response.AssertSuccess();
         await response.AssertElementExistsAsync("#quote-versions");
+        await response.AssertContainsAsync("Travel dates not set yet");
     }
 
     [Fact]

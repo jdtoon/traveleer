@@ -24,7 +24,7 @@
         @if (Model.FilterByTravelDates)
         {
             <div class="alert alert-info text-sm">
-                Travel filter is enabled for @(Model.TravelStartDate?.ToString("dd MMM yyyy") ?? "open") to @(Model.TravelEndDate?.ToString("dd MMM yyyy") ?? "open").
+                Travel filter is enabled for @Model.TravelWindowSummary.
             </div>
         }
 

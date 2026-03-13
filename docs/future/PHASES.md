@@ -105,7 +105,7 @@ Exit criteria:
 
 ## Phase 5 - Final Parity Sweep
 
-Status: In Progress
+Status: Complete
 
 Scope:
 
@@ -119,3 +119,8 @@ Exit criteria:
 - browser QA completed for changed flows
 - final commit created
 - remaining docs reflect the final state
+
+Current state:
+
+- final residual quote, booking, email, onboarding, and marketing polish has been completed through browser-led verification
+- no verified migration-parity gaps remain open in the implemented modules

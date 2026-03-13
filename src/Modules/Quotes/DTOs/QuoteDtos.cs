@@ -110,6 +110,29 @@ public class QuoteDetailsDto
     public int RateCardCount { get; set; }
     public int VersionCount { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    public string TravelWindowSummary
+    {
+        get
+        {
+            if (TravelStartDate.HasValue && TravelEndDate.HasValue)
+            {
+                return $"{TravelStartDate.Value:dd MMM yyyy} - {TravelEndDate.Value:dd MMM yyyy}";
+            }
+
+            if (TravelStartDate.HasValue)
+            {
+                return $"From {TravelStartDate.Value:dd MMM yyyy}";
+            }
+
+            if (TravelEndDate.HasValue)
+            {
+                return $"Until {TravelEndDate.Value:dd MMM yyyy}";
+            }
+
+            return "Travel dates not set yet";
+        }
+    }
 }
 
 public class QuoteVersionSnapshotDto
@@ -179,6 +202,29 @@ public class QuotePreviewDto
     public DateOnly? TravelStartDate { get; set; }
     public DateOnly? TravelEndDate { get; set; }
     public List<QuotePreviewItemDto> Items { get; set; } = [];
+
+    public string TravelWindowSummary
+    {
+        get
+        {
+            if (TravelStartDate.HasValue && TravelEndDate.HasValue)
+            {
+                return $"{TravelStartDate.Value:dd MMM yyyy} - {TravelEndDate.Value:dd MMM yyyy}";
+            }
+
+            if (TravelStartDate.HasValue)
+            {
+                return $"From {TravelStartDate.Value:dd MMM yyyy}";
+            }
+
+            if (TravelEndDate.HasValue)
+            {
+                return $"Until {TravelEndDate.Value:dd MMM yyyy}";
+            }
+
+            return "Travel dates not set yet";
+        }
+    }
 }
 
 public class QuotePreviewItemDto

@@ -45,6 +45,7 @@ public class QuoteEmailIntegrationTests : IClassFixture<AppFixture>
         await response.AssertElementExistsAsync("dialog.modal");
         await response.AssertContainsAsync("Send Quote Email");
         await response.AssertContainsAsync("We prefilled the saved quote email, but you can override it before sending.");
+        await response.AssertContainsAsync("Travel dates not set yet");
     }
 
     [Fact]

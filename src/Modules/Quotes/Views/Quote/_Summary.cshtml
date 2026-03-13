@@ -87,7 +87,7 @@
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-2">
                     <div class="text-sm uppercase tracking-wide opacity-60">Travel Window</div>
-                    <div class="font-medium">@(Model.TravelStartDate?.ToString("dd MMM yyyy") ?? "Open") - @(Model.TravelEndDate?.ToString("dd MMM yyyy") ?? "Open")</div>
+                    <div class="font-medium">@Model.TravelWindowSummary</div>
                     <div class="text-sm opacity-70">@(Model.FilterByTravelDates ? "Season filtering enabled" : "All seasons included")</div>
                 </div>
             </div>
