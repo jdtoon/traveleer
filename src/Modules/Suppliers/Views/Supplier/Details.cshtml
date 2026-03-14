@@ -1,0 +1,132 @@
+@model saas.Modules.Suppliers.DTOs.SupplierDetailsDto
+@{
+    ViewData["Title"] = Model.Name;
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex items-center gap-3">
+        <a href="@Url.Action("Index", "Supplier", new { slug })" class="btn btn-ghost btn-sm">← Back</a>
+        <div class="flex-1">
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-bold">@Model.Name</h1>
+                <span class="badge @(Model.IsActive ? "badge-success" : "badge-ghost") badge-sm">
+                    @(Model.IsActive ? "Active" : "Inactive")
+                </span>
+                @if (Model.Rating.HasValue)
+                {
+                    <div class="flex gap-0.5">
+                        @for (var i = 1; i <= 5; i++)
+                        {
+                            <span class="text-sm @(i <= Model.Rating ? "text-warning" : "text-base-300")">&#9733;</span>
+                        }
+                    </div>
+                }
+            </div>
+            <p class="text-sm opacity-60">Supplier since @Model.CreatedAt.ToString("dd MMM yyyy") · @Model.BookingItemCount booking item(s)</p>
+        </div>
+        <has-permission name="suppliers.edit">
+            <button class="btn btn-primary btn-sm"
+                    hx-get="@Url.Action("Edit", "Supplier", new { slug, id = Model.Id })"
+                    hx-target="#modal-container">
+                Edit
+            </button>
+        </has-permission>
+    </div>
+
+    <div id="supplier-summary"
+         hx-get="@Url.Action("Details", "Supplier", new { slug, id = Model.Id })"
+         hx-trigger="@saas.Modules.Suppliers.Events.SupplierEvents.DetailsRefresh from:body"
+         hx-select="#supplier-summary-content"
+         hx-target="#supplier-summary"
+         hx-swap="innerHTML">
+        <div id="supplier-summary-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 flex flex-col gap-6">
+                    <!-- Contact & Business Info -->
+                    <div class="card bg-base-100 border border-base-300 shadow-sm">
+                        <div class="card-body gap-4">
+                            <h2 class="card-title text-base">Business Details</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="opacity-60">Primary Contact</span>
+                                    <p class="font-medium">@(Model.ContactName ?? "—")</p>
+                                </div>
+                                <div>
+                                    <span class="opacity-60">Email</span>
+                                    <p class="font-medium">@(Model.ContactEmail ?? "—")</p>
+                                </div>
+                                <div>
+                                    <span class="opacity-60">Phone</span>
+                                    <p class="font-medium">@(Model.ContactPhone ?? "—")</p>
+                                </div>
+                                <div>
+                                    <span class="opacity-60">Website</span>
+                                    <p class="font-medium">@(Model.Website ?? "—")</p>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <span class="opacity-60">Address</span>
+                                    <p class="font-medium">@(Model.Address ?? "—")</p>
+                                </div>
+                                <div>
+                                    <span class="opacity-60">Registration Number</span>
+                                    <p class="font-medium">@(Model.RegistrationNumber ?? "—")</p>
+                                </div>
+                                <div>
+                                    <span class="opacity-60">Payment Terms</span>
+                                    <p class="font-medium">@(Model.PaymentTerms ?? "—")</p>
+                                </div>
+                                <div>
+                                    <span class="opacity-60">Default Commission</span>
+                                    <p class="font-medium">@(Model.DefaultCommissionPercentage.HasValue ? $"{Model.DefaultCommissionPercentage:F1}%" : "—")</p>
+                                </div>
+                                <div>
+                                    <span class="opacity-60">Default Currency</span>
+                                    <p class="font-medium">@(Model.DefaultCurrencyCode ?? "—")</p>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(Model.BankDetails))
+                            {
+                                <div class="text-sm">
+                                    <span class="opacity-60">Bank Details</span>
+                                    <p class="font-medium whitespace-pre-line">@Model.BankDetails</p>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                            {
+                                <div class="text-sm">
+                                    <span class="opacity-60">Internal Notes</span>
+                                    <p class="font-medium whitespace-pre-line">@Model.Notes</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contacts Sidebar -->
+                <div class="flex flex-col gap-6">
+                    <div class="card bg-base-100 border border-base-300 shadow-sm">
+                        <div class="card-body gap-4">
+                            <div class="flex items-center justify-between">
+                                <h2 class="card-title text-base">Contacts</h2>
+                                <has-permission name="suppliers.edit">
+                                    <button class="btn btn-ghost btn-xs"
+                                            hx-get="@Url.Action("NewContact", "Supplier", new { slug, supplierId = Model.Id })"
+                                            hx-target="#modal-container">
+                                        + Add
+                                    </button>
+                                </has-permission>
+                            </div>
+                            <div id="supplier-contacts"
+                                 hx-get="@Url.Action("Contacts", "Supplier", new { slug, id = Model.Id })"
+                                 hx-trigger="load, @saas.Modules.Suppliers.Events.SupplierEvents.ContactsRefresh from:body"
+                                 hx-swap="innerHTML show:none">
+                                <span class="loading loading-spinner loading-sm"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

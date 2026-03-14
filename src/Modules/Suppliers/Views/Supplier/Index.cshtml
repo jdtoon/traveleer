@@ -1,0 +1,45 @@
+@{
+    ViewData["Title"] = "Suppliers";
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var search = ViewData["Search"]?.ToString();
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">Suppliers</h1>
+            <p class="opacity-60">Manage your hotels, airlines, ground handlers, and other travel partners.</p>
+        </div>
+        <has-permission name="suppliers.create">
+            <button class="btn btn-primary btn-sm"
+                    hx-get="@Url.Action("New", "Supplier", new { slug })"
+                    hx-target="#modal-container">
+                + New Supplier
+            </button>
+        </has-permission>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 shadow-sm">
+        <div class="card-body gap-4">
+            <div class="flex items-center gap-3">
+                <input type="text"
+                       id="supplier-search"
+                       name="search"
+                       placeholder="Search suppliers..."
+                       value="@search"
+                       class="input input-bordered input-sm w-full max-w-xs"
+                       hx-get="@Url.Action("List", "Supplier", new { slug })"
+                       hx-trigger="input changed delay:300ms, search"
+                       hx-target="#supplier-list"
+                       hx-include="this" />
+            </div>
+
+            <div id="supplier-list"
+                 hx-get="@Url.Action("List", "Supplier", new { slug, search })"
+                 hx-trigger="load, @saas.Modules.Suppliers.Events.SupplierEvents.Refresh from:body"
+                 hx-swap="innerHTML show:none">
+                <span class="loading loading-spinner loading-lg"></span>
+            </div>
+        </div>
+    </div>
+</div>

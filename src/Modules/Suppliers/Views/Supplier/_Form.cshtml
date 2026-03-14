@@ -1,0 +1,124 @@
+@model saas.Modules.Suppliers.DTOs.SupplierFormDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var isEdit = Model.Id != Guid.Empty;
+    var title = isEdit ? "Edit Supplier" : "New Supplier";
+    var action = isEdit
+        ? Url.Action("Update", "Supplier", new { slug, id = Model.Id })
+        : Url.Action("Create", "Supplier", new { slug });
+}
+
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-3xl">
+        <form hx-post="@action" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">@title</h3>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Name</span></label>
+                    <input asp-for="Name" class="input input-bordered w-full" />
+                    <span asp-validation-for="Name" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Contact name</span></label>
+                    <input asp-for="ContactName" class="input input-bordered w-full" />
+                    <span asp-validation-for="ContactName" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Contact phone</span></label>
+                    <input asp-for="ContactPhone" class="input input-bordered w-full" />
+                    <span asp-validation-for="ContactPhone" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Contact email</span></label>
+                    <input asp-for="ContactEmail" class="input input-bordered w-full" />
+                    <span asp-validation-for="ContactEmail" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Website</span></label>
+                    <input asp-for="Website" class="input input-bordered w-full" placeholder="https://" />
+                    <span asp-validation-for="Website" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Registration number</span></label>
+                    <input asp-for="RegistrationNumber" class="input input-bordered w-full" />
+                    <span asp-validation-for="RegistrationNumber" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Address</span></label>
+                    <input asp-for="Address" class="input input-bordered w-full" />
+                    <span asp-validation-for="Address" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Payment terms</span></label>
+                    <input asp-for="PaymentTerms" class="input input-bordered w-full" placeholder="Net 30, Prepay, etc." />
+                    <span asp-validation-for="PaymentTerms" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Default commission %</span></label>
+                    <input asp-for="DefaultCommissionPercentage" type="number" step="0.1" class="input input-bordered w-full" />
+                    <span asp-validation-for="DefaultCommissionPercentage" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Default currency</span></label>
+                    <select asp-for="DefaultCurrencyCode" class="select select-bordered w-full">
+                        <option value="">— None —</option>
+                        @foreach (var code in Model.CurrencyOptions)
+                        {
+                            <option value="@code">@code</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Rating</span></label>
+                    <select asp-for="Rating" class="select select-bordered w-full">
+                        <option value="">— Not rated —</option>
+                        @for (var i = 1; i <= 5; i++)
+                        {
+                            <option value="@i">@(new string('★', i))@(new string('☆', 5 - i))</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Bank details</span></label>
+                    <textarea asp-for="BankDetails" class="textarea textarea-bordered w-full" rows="3"></textarea>
+                    <span asp-validation-for="BankDetails" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <div class="form-control w-full md:col-span-2">
+                    <label class="label"><span class="label-text">Notes</span></label>
+                    <textarea asp-for="Notes" class="textarea textarea-bordered w-full" rows="3"></textarea>
+                    <span asp-validation-for="Notes" class="text-error text-sm mt-1"></span>
+                </div>
+
+                <label class="label cursor-pointer md:col-span-2 justify-start gap-3">
+                    <input asp-for="IsActive" class="toggle toggle-primary" />
+                    <span class="label-text">Active</span>
+                </label>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

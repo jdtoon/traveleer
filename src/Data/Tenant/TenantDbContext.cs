@@ -12,6 +12,7 @@ using saas.Modules.Onboarding.Entities;
 using saas.Modules.Quotes.Entities;
 using saas.Modules.RateCards.Entities;
 using saas.Modules.Settings.Entities;
+using saas.Modules.Suppliers.Entities;
 using saas.Modules.TenantAdmin.Entities;
 
 namespace saas.Data.Tenant;
@@ -53,6 +54,7 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<QuoteRateCard> QuoteRateCards => Set<QuoteRateCard>();
     public DbSet<QuoteVersion> QuoteVersions => Set<QuoteVersion>();
     public DbSet<TeamInvitation> TeamInvitations => Set<TeamInvitation>();
+    public DbSet<SupplierContact> SupplierContacts => Set<SupplierContact>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

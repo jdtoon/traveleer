@@ -11,6 +11,17 @@ public class Supplier : IAuditableEntity
     public string? ContactPhone { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
+
+    // Extended fields for Supplier Management module
+    public string? RegistrationNumber { get; set; }
+    public string? BankDetails { get; set; }
+    public string? PaymentTerms { get; set; }
+    public decimal? DefaultCommissionPercentage { get; set; }
+    public string? DefaultCurrencyCode { get; set; }
+    public int? Rating { get; set; }
+    public string? Website { get; set; }
+    public string? Address { get; set; }
+
     public string? CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? UpdatedBy { get; set; }

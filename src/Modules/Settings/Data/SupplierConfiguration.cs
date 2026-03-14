@@ -16,6 +16,13 @@ public class SupplierConfiguration : IEntityTypeConfiguration<Supplier>, ITenant
         builder.Property(x => x.ContactEmail).HasMaxLength(320);
         builder.Property(x => x.ContactPhone).HasMaxLength(50);
         builder.Property(x => x.Notes).HasMaxLength(2000);
+        builder.Property(x => x.RegistrationNumber).HasMaxLength(100);
+        builder.Property(x => x.BankDetails).HasMaxLength(500);
+        builder.Property(x => x.PaymentTerms).HasMaxLength(200);
+        builder.Property(x => x.DefaultCommissionPercentage).HasPrecision(6, 2);
+        builder.Property(x => x.DefaultCurrencyCode).HasMaxLength(10);
+        builder.Property(x => x.Website).HasMaxLength(500);
+        builder.Property(x => x.Address).HasMaxLength(500);
         builder.HasIndex(x => x.Name);
     }
 }
