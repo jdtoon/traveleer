@@ -1,0 +1,59 @@
+@model ReportDashboardDto
+@{
+    ViewData["Title"] = "Reports";
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var range = Model.DateRange;
+}
+
+<div class="flex flex-col gap-6 p-4 md:p-6">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <h1 class="text-2xl font-bold">Reports & Analytics</h1>
+        <div class="flex items-center gap-2">
+            <select id="date-range" class="select select-bordered select-sm"
+                    hx-get="@Url.Action("Index", "Report", new { slug })"
+                    hx-target="body"
+                    hx-push-url="true"
+                    name="range">
+                <option value="month" selected="@(range == "month")">This Month</option>
+                <option value="quarter" selected="@(range == "quarter")">This Quarter</option>
+                <option value="year" selected="@(range == "year")">This Year</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="widgets-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        @foreach (var widget in Model.Widgets.Where(w => w.IsVisible))
+        {
+            var widgetUrl = widget.Key switch
+            {
+                "revenue.monthly" => Url.Action("RevenueMonthly", "Report", new { slug, range }),
+                "revenue.ytd" => Url.Action("RevenueYtd", "Report", new { slug }),
+                "bookings.status" => Url.Action("BookingsStatus", "Report", new { slug, range }),
+                "bookings.recent" => Url.Action("BookingsRecent", "Report", new { slug }),
+                "quotes.conversion" => Url.Action("QuotesConversion", "Report", new { slug, range }),
+                "quotes.pipeline" => Url.Action("QuotesPipeline", "Report", new { slug, range }),
+                "clients.top" => Url.Action("ClientsTop", "Report", new { slug, range }),
+                "suppliers.top" => Url.Action("SuppliersTop", "Report", new { slug, range }),
+                "profitability.summary" => Url.Action("ProfitabilitySummary", "Report", new { slug, range }),
+                "profitability.by_booking" => Url.Action("ProfitByBooking", "Report", new { slug, range }),
+                _ => "#"
+            };
+
+            var span = widget.Key is "bookings.recent" or "profitability.by_booking" or "clients.top" or "suppliers.top"
+                ? "md:col-span-2 xl:col-span-3" : "";
+
+            <div class="card bg-base-100 shadow-sm @span">
+                <div class="card-body p-4">
+                    <h3 class="card-title text-sm font-semibold">@widget.Title</h3>
+                    <div hx-get="@widgetUrl"
+                         hx-trigger="load"
+                         hx-swap="innerHTML">
+                        <div class="flex justify-center py-8">
+                            <span class="loading loading-spinner loading-md"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

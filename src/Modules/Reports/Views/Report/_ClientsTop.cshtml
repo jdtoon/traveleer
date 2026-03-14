@@ -1,0 +1,33 @@
+@model List<TopClientDto>
+
+@if (!Model.Any())
+{
+    <p class="text-sm text-base-content/40 py-4 text-center">No client data for this period.</p>
+}
+else
+{
+    <div class="overflow-x-auto mt-2">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Client</th>
+                    <th class="text-right">Bookings</th>
+                    <th class="text-right">Total Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ var rank = 1; }
+                @foreach (var c in Model)
+                {
+                    <tr>
+                        <td class="text-base-content/40">@(rank++)</td>
+                        <td>@c.Name</td>
+                        <td class="text-right font-mono text-xs">@c.BookingCount</td>
+                        <td class="text-right font-mono text-xs">@c.TotalValue.ToString("N0")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

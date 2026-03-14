@@ -1,0 +1,16 @@
+@model QuoteConversionDto
+
+<div class="stats stats-vertical w-full mt-2">
+    <div class="stat px-0">
+        <div class="stat-title text-xs">Quotes Sent</div>
+        <div class="stat-value text-lg">@Model.TotalQuotes</div>
+    </div>
+    <div class="stat px-0">
+        <div class="stat-title text-xs">Accepted</div>
+        <div class="stat-value text-lg text-success">@Model.AcceptedQuotes</div>
+    </div>
+    <div class="stat px-0">
+        <div class="stat-title text-xs">Conversion Rate</div>
+        <div class="stat-value text-lg">@Model.ConversionRate%</div>
+    </div>
+</div>

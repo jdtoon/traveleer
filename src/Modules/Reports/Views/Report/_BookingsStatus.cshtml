@@ -1,0 +1,32 @@
+@model List<BookingStatusDto>
+
+@if (!Model.Any())
+{
+    <p class="text-sm text-base-content/40 py-4 text-center">No bookings for this period.</p>
+}
+else
+{
+    var total = Model.Sum(b => b.Count);
+    <div class="flex flex-col gap-2 mt-2">
+        @foreach (var item in Model)
+        {
+            var pct = total > 0 ? (int)((double)item.Count / total * 100) : 0;
+            var badgeClass = item.Status switch
+            {
+                "Confirmed" => "badge-success",
+                "Completed" => "badge-info",
+                "Cancelled" => "badge-error",
+                "InProgress" => "badge-warning",
+                _ => "badge-ghost"
+            };
+            <div class="flex items-center gap-2">
+                <span class="badge @badgeClass badge-sm w-24">@item.Status</span>
+                <div class="flex-1 bg-base-200 rounded-full h-3 overflow-hidden">
+                    <div class="bg-secondary h-full rounded-full" style="width: @(pct)%"></div>
+                </div>
+                <span class="text-xs font-mono w-8 text-right">@item.Count</span>
+            </div>
+        }
+        <div class="text-xs text-base-content/40 text-right mt-1">Total: @total</div>
+    </div>
+}

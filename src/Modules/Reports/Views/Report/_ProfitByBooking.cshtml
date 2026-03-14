@@ -1,0 +1,36 @@
+@model List<BookingProfitDto>
+
+@if (!Model.Any())
+{
+    <p class="text-sm text-base-content/40 py-4 text-center">No booking data for this period.</p>
+}
+else
+{
+    <div class="overflow-x-auto mt-2">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Ref</th>
+                    <th>Client</th>
+                    <th class="text-right">Selling</th>
+                    <th class="text-right">Cost</th>
+                    <th class="text-right">Profit</th>
+                    <th class="text-right">Margin</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in Model)
+                {
+                    <tr>
+                        <td class="font-mono text-xs">@b.BookingRef</td>
+                        <td>@(b.ClientName ?? "—")</td>
+                        <td class="text-right font-mono text-xs">@b.TotalSelling.ToString("N0")</td>
+                        <td class="text-right font-mono text-xs">@b.TotalCost.ToString("N0")</td>
+                        <td class="text-right font-mono text-xs @(b.Profit >= 0 ? "text-success" : "text-error")">@b.Profit.ToString("N0")</td>
+                        <td class="text-right font-mono text-xs">@b.MarginPercent%</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -1,0 +1,17 @@
+@model ProfitabilitySummaryDto
+
+<div class="stats stats-vertical w-full mt-2">
+    <div class="stat px-0">
+        <div class="stat-title text-xs">Revenue</div>
+        <div class="stat-value text-lg">@Model.TotalRevenue.ToString("N0")</div>
+    </div>
+    <div class="stat px-0">
+        <div class="stat-title text-xs">Cost</div>
+        <div class="stat-value text-lg text-error">@Model.TotalCost.ToString("N0")</div>
+    </div>
+    <div class="stat px-0">
+        <div class="stat-title text-xs">Profit</div>
+        <div class="stat-value text-lg text-success">@Model.TotalProfit.ToString("N0")</div>
+        <div class="stat-desc">Margin: @Model.MarginPercent%</div>
+    </div>
+</div>

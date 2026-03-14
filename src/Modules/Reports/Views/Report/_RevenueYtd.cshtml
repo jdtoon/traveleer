@@ -1,0 +1,18 @@
+@model RevenueYtdDto
+
+<div class="stats stats-vertical w-full mt-2">
+    <div class="stat px-0">
+        <div class="stat-title text-xs">Current Year</div>
+        <div class="stat-value text-lg">@Model.CurrentYear.ToString("N0")</div>
+    </div>
+    <div class="stat px-0">
+        <div class="stat-title text-xs">Prior Year (Same Period)</div>
+        <div class="stat-value text-lg">@Model.PriorYear.ToString("N0")</div>
+    </div>
+    <div class="stat px-0">
+        <div class="stat-title text-xs">Change</div>
+        <div class="stat-value text-lg @(Model.PercentChange >= 0 ? "text-success" : "text-error")">
+            @(Model.PercentChange >= 0 ? "+" : "")@Model.PercentChange%
+        </div>
+    </div>
+</div>
