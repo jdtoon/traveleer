@@ -17,6 +17,15 @@ public class InventoryItem : IAuditableEntity
     public Guid? SupplierId { get; set; }
     public Destination? Destination { get; set; }
     public Supplier? Supplier { get; set; }
+
+    // Transport-specific fields (only used when Kind == Transfer)
+    public string? PickupLocation { get; set; }
+    public string? DropoffLocation { get; set; }
+    public string? VehicleType { get; set; }
+    public int? MaxPassengers { get; set; }
+    public bool IncludesMeetAndGreet { get; set; }
+    public int? TransferDurationMinutes { get; set; }
+
     public string? CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? UpdatedBy { get; set; }

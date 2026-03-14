@@ -28,7 +28,8 @@
 
                 <div class="form-control w-full">
                     <label class="label"><span class="label-text">Type</span></label>
-                    <select asp-for="Kind" asp-items="Html.GetEnumSelectList<saas.Modules.Inventory.Entities.InventoryItemKind>()" class="select select-bordered w-full"></select>
+                    <select asp-for="Kind" asp-items="Html.GetEnumSelectList<saas.Modules.Inventory.Entities.InventoryItemKind>()" class="select select-bordered w-full"
+                            onchange="document.getElementById('transfer-fields').classList.toggle('hidden', this.value !== '@((int)saas.Modules.Inventory.Entities.InventoryItemKind.Transfer)')"></select>
                     <span asp-validation-for="Kind" class="text-error text-sm mt-1"></span>
                 </div>
 
@@ -91,6 +92,51 @@
                     <label class="label"><span class="label-text">Description</span></label>
                     <textarea asp-for="Description" class="textarea textarea-bordered w-full" rows="4"></textarea>
                     <span asp-validation-for="Description" class="text-error text-sm mt-1"></span>
+                </div>
+            </div>
+
+            <!-- Transport-specific fields (shown when Kind == Transfer) -->
+            <div id="transfer-fields" class="mt-4 rounded-box border border-base-300 bg-base-200/30 p-4 @(Model.Kind != saas.Modules.Inventory.Entities.InventoryItemKind.Transfer ? "hidden" : "")">
+                <h4 class="mb-3 text-sm font-semibold uppercase tracking-wide opacity-60">Transfer Details</h4>
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Pickup Location</span></label>
+                        <input asp-for="PickupLocation" class="input input-bordered w-full" placeholder="e.g. OR Tambo International Airport" />
+                        <span asp-validation-for="PickupLocation" class="text-error text-sm mt-1"></span>
+                    </div>
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Dropoff Location</span></label>
+                        <input asp-for="DropoffLocation" class="input input-bordered w-full" placeholder="e.g. Sandton City Hotel" />
+                        <span asp-validation-for="DropoffLocation" class="text-error text-sm mt-1"></span>
+                    </div>
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Vehicle Type</span></label>
+                        <select asp-for="VehicleType" class="select select-bordered w-full">
+                            <option value="">Not specified</option>
+                            <option value="Sedan" selected="@(Model.VehicleType == "Sedan")">Sedan</option>
+                            <option value="Minibus" selected="@(Model.VehicleType == "Minibus")">Minibus</option>
+                            <option value="Luxury SUV" selected="@(Model.VehicleType == "Luxury SUV")">Luxury SUV</option>
+                            <option value="Coach" selected="@(Model.VehicleType == "Coach")">Coach</option>
+                            <option value="Van" selected="@(Model.VehicleType == "Van")">Van</option>
+                        </select>
+                        <span asp-validation-for="VehicleType" class="text-error text-sm mt-1"></span>
+                    </div>
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Max Passengers</span></label>
+                        <input asp-for="MaxPassengers" type="number" min="1" max="100" class="input input-bordered w-full" />
+                        <span asp-validation-for="MaxPassengers" class="text-error text-sm mt-1"></span>
+                    </div>
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Est. Duration (minutes)</span></label>
+                        <input asp-for="TransferDurationMinutes" type="number" min="1" max="1440" class="input input-bordered w-full" />
+                        <span asp-validation-for="TransferDurationMinutes" class="text-error text-sm mt-1"></span>
+                    </div>
+                    <div class="form-control w-full">
+                        <label class="label cursor-pointer justify-start gap-3">
+                            <input asp-for="IncludesMeetAndGreet" type="checkbox" class="checkbox checkbox-primary" />
+                            <span class="label-text">Includes Meet & Greet</span>
+                        </label>
+                    </div>
                 </div>
             </div>
 

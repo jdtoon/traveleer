@@ -96,6 +96,31 @@ else
                                 <div>@item.Address</div>
                             </div>
                         }
+                        @if (item.Kind == InventoryItemKind.Transfer && (!string.IsNullOrWhiteSpace(item.PickupLocation) || !string.IsNullOrWhiteSpace(item.DropoffLocation)))
+                        {
+                            <div>
+                                <div class="text-xs uppercase tracking-wide opacity-60">Route</div>
+                                <div>@(item.PickupLocation ?? "—") → @(item.DropoffLocation ?? "—")</div>
+                            </div>
+                        }
+                        @if (item.Kind == InventoryItemKind.Transfer && !string.IsNullOrWhiteSpace(item.VehicleType))
+                        {
+                            <div>
+                                <div class="text-xs uppercase tracking-wide opacity-60">Vehicle</div>
+                                <div>
+                                    @item.VehicleType
+                                    @if (item.MaxPassengers.HasValue) { <text> · max @item.MaxPassengers pax</text> }
+                                    @if (item.IncludesMeetAndGreet) { <text> · Meet &amp; Greet</text> }
+                                </div>
+                            </div>
+                        }
+                        @if (item.Kind == InventoryItemKind.Transfer && item.TransferDurationMinutes.HasValue)
+                        {
+                            <div>
+                                <div class="text-xs uppercase tracking-wide opacity-60">Est. Duration</div>
+                                <div>@item.TransferDurationMinutes min</div>
+                            </div>
+                        }
                         @if (!string.IsNullOrWhiteSpace(item.Description))
                         {
                             <p class="line-clamp-3 opacity-70">@item.Description</p>

@@ -25,5 +25,10 @@ public class InventoryItemConfiguration : IEntityTypeConfiguration<InventoryItem
             .WithMany()
             .HasForeignKey(x => x.SupplierId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Transport-specific fields
+        builder.Property(x => x.PickupLocation).HasMaxLength(200);
+        builder.Property(x => x.DropoffLocation).HasMaxLength(200);
+        builder.Property(x => x.VehicleType).HasMaxLength(100);
     }
 }

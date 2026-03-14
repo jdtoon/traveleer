@@ -68,7 +68,13 @@ public class InventoryService : IInventoryService
                 DestinationId = x.DestinationId,
                 DestinationName = x.Destination != null ? x.Destination.Name : null,
                 SupplierId = x.SupplierId,
-                SupplierName = x.Supplier != null ? x.Supplier.Name : null
+                SupplierName = x.Supplier != null ? x.Supplier.Name : null,
+                PickupLocation = x.PickupLocation,
+                DropoffLocation = x.DropoffLocation,
+                VehicleType = x.VehicleType,
+                MaxPassengers = x.MaxPassengers,
+                IncludesMeetAndGreet = x.IncludesMeetAndGreet,
+                TransferDurationMinutes = x.TransferDurationMinutes
             });
 
         return await PaginatedList<InventoryListItemDto>.CreateAsync(projected, page, pageSize);
@@ -97,7 +103,13 @@ public class InventoryService : IInventoryService
                 Address = x.Address,
                 Rating = x.Rating,
                 DestinationId = x.DestinationId,
-                SupplierId = x.SupplierId
+                SupplierId = x.SupplierId,
+                PickupLocation = x.PickupLocation,
+                DropoffLocation = x.DropoffLocation,
+                VehicleType = x.VehicleType,
+                MaxPassengers = x.MaxPassengers,
+                IncludesMeetAndGreet = x.IncludesMeetAndGreet,
+                TransferDurationMinutes = x.TransferDurationMinutes
             })
             .FirstOrDefaultAsync();
 
@@ -124,7 +136,13 @@ public class InventoryService : IInventoryService
             Address = Normalize(dto.Address),
             Rating = NormalizeRating(dto.Kind, dto.Rating),
             DestinationId = dto.DestinationId,
-            SupplierId = dto.SupplierId
+            SupplierId = dto.SupplierId,
+            PickupLocation = NormalizeTransport(dto.Kind, dto.PickupLocation),
+            DropoffLocation = NormalizeTransport(dto.Kind, dto.DropoffLocation),
+            VehicleType = NormalizeTransport(dto.Kind, dto.VehicleType),
+            MaxPassengers = dto.Kind == InventoryItemKind.Transfer ? dto.MaxPassengers : null,
+            IncludesMeetAndGreet = dto.Kind == InventoryItemKind.Transfer && dto.IncludesMeetAndGreet,
+            TransferDurationMinutes = dto.Kind == InventoryItemKind.Transfer ? dto.TransferDurationMinutes : null
         };
 
         _db.InventoryItems.Add(entity);
@@ -145,6 +163,12 @@ public class InventoryService : IInventoryService
         entity.Rating = NormalizeRating(dto.Kind, dto.Rating);
         entity.DestinationId = dto.DestinationId;
         entity.SupplierId = dto.SupplierId;
+        entity.PickupLocation = NormalizeTransport(dto.Kind, dto.PickupLocation);
+        entity.DropoffLocation = NormalizeTransport(dto.Kind, dto.DropoffLocation);
+        entity.VehicleType = NormalizeTransport(dto.Kind, dto.VehicleType);
+        entity.MaxPassengers = dto.Kind == InventoryItemKind.Transfer ? dto.MaxPassengers : null;
+        entity.IncludesMeetAndGreet = dto.Kind == InventoryItemKind.Transfer && dto.IncludesMeetAndGreet;
+        entity.TransferDurationMinutes = dto.Kind == InventoryItemKind.Transfer ? dto.TransferDurationMinutes : null;
 
         await _db.SaveChangesAsync();
     }
@@ -183,4 +207,7 @@ public class InventoryService : IInventoryService
 
     private static string? Normalize(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string? NormalizeTransport(InventoryItemKind kind, string? value)
+        => kind == InventoryItemKind.Transfer ? Normalize(value) : null;
 }

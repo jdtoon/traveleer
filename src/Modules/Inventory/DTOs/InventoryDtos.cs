@@ -17,6 +17,14 @@ public class InventoryListItemDto
     public string? DestinationName { get; set; }
     public Guid? SupplierId { get; set; }
     public string? SupplierName { get; set; }
+
+    // Transport-specific
+    public string? PickupLocation { get; set; }
+    public string? DropoffLocation { get; set; }
+    public string? VehicleType { get; set; }
+    public int? MaxPassengers { get; set; }
+    public bool IncludesMeetAndGreet { get; set; }
+    public int? TransferDurationMinutes { get; set; }
 }
 
 public class InventoryDto
@@ -49,6 +57,24 @@ public class InventoryDto
     public Guid? SupplierId { get; set; }
     public List<InventoryOptionDto> DestinationOptions { get; set; } = [];
     public List<InventoryOptionDto> SupplierOptions { get; set; } = [];
+
+    // Transport-specific
+    [StringLength(200)]
+    public string? PickupLocation { get; set; }
+
+    [StringLength(200)]
+    public string? DropoffLocation { get; set; }
+
+    [StringLength(100)]
+    public string? VehicleType { get; set; }
+
+    [Range(1, 100, ErrorMessage = "Max passengers must be between 1 and 100.")]
+    public int? MaxPassengers { get; set; }
+
+    public bool IncludesMeetAndGreet { get; set; }
+
+    [Range(1, 1440, ErrorMessage = "Duration must be between 1 and 1440 minutes.")]
+    public int? TransferDurationMinutes { get; set; }
 }
 
 public class InventoryOptionDto

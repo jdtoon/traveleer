@@ -148,4 +148,144 @@ public class InventoryServiceTests : IAsyncLifetime
 
         Assert.False(await _db.InventoryItems.AnyAsync(x => x.Id == item.Id));
     }
+
+    [Fact]
+    public async Task CreateAsync_TransferItem_PersistsTransportFields()
+    {
+        await _service.CreateAsync(new InventoryDto
+        {
+            Name = "Airport Shuttle",
+            Kind = InventoryItemKind.Transfer,
+            BaseCost = 450m,
+            PickupLocation = "  OR Tambo International Airport  ",
+            DropoffLocation = "  Sandton City Hotel  ",
+            VehicleType = "Minibus",
+            MaxPassengers = 12,
+            IncludesMeetAndGreet = true,
+            TransferDurationMinutes = 45
+        });
+
+        var created = await _db.InventoryItems.SingleAsync(x => x.Name == "Airport Shuttle");
+        Assert.Equal("OR Tambo International Airport", created.PickupLocation);
+        Assert.Equal("Sandton City Hotel", created.DropoffLocation);
+        Assert.Equal("Minibus", created.VehicleType);
+        Assert.Equal(12, created.MaxPassengers);
+        Assert.True(created.IncludesMeetAndGreet);
+        Assert.Equal(45, created.TransferDurationMinutes);
+    }
+
+    [Fact]
+    public async Task CreateAsync_NonTransferItem_ClearsTransportFields()
+    {
+        await _service.CreateAsync(new InventoryDto
+        {
+            Name = "Hotel With Transport Data",
+            Kind = InventoryItemKind.Hotel,
+            BaseCost = 5000m,
+            PickupLocation = "Should be cleared",
+            DropoffLocation = "Should be cleared",
+            VehicleType = "Sedan",
+            MaxPassengers = 4,
+            IncludesMeetAndGreet = true,
+            TransferDurationMinutes = 30
+        });
+
+        var created = await _db.InventoryItems.SingleAsync(x => x.Name == "Hotel With Transport Data");
+        Assert.Null(created.PickupLocation);
+        Assert.Null(created.DropoffLocation);
+        Assert.Null(created.VehicleType);
+        Assert.Null(created.MaxPassengers);
+        Assert.False(created.IncludesMeetAndGreet);
+        Assert.Null(created.TransferDurationMinutes);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_TransferToHotel_ClearsTransportFields()
+    {
+        await _service.CreateAsync(new InventoryDto
+        {
+            Name = "Temp Transfer",
+            Kind = InventoryItemKind.Transfer,
+            BaseCost = 300m,
+            PickupLocation = "Airport",
+            DropoffLocation = "Hotel",
+            VehicleType = "Sedan",
+            MaxPassengers = 4,
+            IncludesMeetAndGreet = true,
+            TransferDurationMinutes = 30
+        });
+
+        var item = await _db.InventoryItems.SingleAsync(x => x.Name == "Temp Transfer");
+        await _service.UpdateAsync(item.Id, new InventoryDto
+        {
+            Id = item.Id,
+            Name = "Temp Transfer",
+            Kind = InventoryItemKind.Hotel,
+            BaseCost = 300m,
+            PickupLocation = "Airport",
+            DropoffLocation = "Hotel"
+        });
+
+        var updated = await _db.InventoryItems.SingleAsync(x => x.Id == item.Id);
+        Assert.Null(updated.PickupLocation);
+        Assert.Null(updated.DropoffLocation);
+        Assert.Null(updated.VehicleType);
+        Assert.Null(updated.MaxPassengers);
+        Assert.False(updated.IncludesMeetAndGreet);
+        Assert.Null(updated.TransferDurationMinutes);
+    }
+
+    [Fact]
+    public async Task GetListAsync_TransferItem_ProjectsTransportFields()
+    {
+        await _service.CreateAsync(new InventoryDto
+        {
+            Name = "City Transfer",
+            Kind = InventoryItemKind.Transfer,
+            BaseCost = 200m,
+            PickupLocation = "CBD Station",
+            DropoffLocation = "Beach Resort",
+            VehicleType = "Luxury SUV",
+            MaxPassengers = 6,
+            IncludesMeetAndGreet = false,
+            TransferDurationMinutes = 20
+        });
+
+        var result = await _service.GetListAsync(nameof(InventoryItemKind.Transfer));
+        var item = Assert.Single(result.Items);
+        Assert.Equal("CBD Station", item.PickupLocation);
+        Assert.Equal("Beach Resort", item.DropoffLocation);
+        Assert.Equal("Luxury SUV", item.VehicleType);
+        Assert.Equal(6, item.MaxPassengers);
+        Assert.False(item.IncludesMeetAndGreet);
+        Assert.Equal(20, item.TransferDurationMinutes);
+    }
+
+    [Fact]
+    public async Task GetAsync_TransferItem_IncludesTransportFields()
+    {
+        await _service.CreateAsync(new InventoryDto
+        {
+            Name = "Lodge Transfer",
+            Kind = InventoryItemKind.Transfer,
+            BaseCost = 350m,
+            PickupLocation = "Kruger Gate",
+            DropoffLocation = "Safari Lodge",
+            VehicleType = "Van",
+            MaxPassengers = 8,
+            IncludesMeetAndGreet = true,
+            TransferDurationMinutes = 90
+        });
+
+        var item = await _db.InventoryItems.SingleAsync(x => x.Name == "Lodge Transfer");
+        var dto = await _service.GetAsync(item.Id);
+
+        Assert.NotNull(dto);
+        Assert.Equal("Kruger Gate", dto!.PickupLocation);
+        Assert.Equal("Safari Lodge", dto.DropoffLocation);
+        Assert.Equal("Van", dto.VehicleType);
+        Assert.Equal(8, dto.MaxPassengers);
+        Assert.True(dto.IncludesMeetAndGreet);
+        Assert.Equal(90, dto.TransferDurationMinutes);
+    }
 }

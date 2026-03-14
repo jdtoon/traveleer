@@ -213,4 +213,162 @@ public class InventoryIntegrationTests : IClassFixture<AppFixture>
             .Options;
         return new TenantDbContext(options);
     }
+
+    // ── Transfer Management Tests ──
+
+    [Fact]
+    public async Task CreateTransferItem_PersistsTransportFields()
+    {
+        var uniqueName = $"Xfer-{Guid.NewGuid():N}"[..18];
+        var formResponse = await _client.HtmxGetAsync($"/{TenantSlug}/inventory/new");
+        formResponse.AssertSuccess();
+
+        var response = await _client.SubmitFormAsync(formResponse, "form", new Dictionary<string, string>
+        {
+            ["Name"] = uniqueName,
+            ["Kind"] = "Transfer",
+            ["BaseCost"] = "450",
+            ["PickupLocation"] = "OR Tambo Airport",
+            ["DropoffLocation"] = "Sandton Hotel",
+            ["VehicleType"] = "Minibus",
+            ["MaxPassengers"] = "12",
+            ["IncludesMeetAndGreet"] = "true",
+            ["TransferDurationMinutes"] = "45"
+        });
+
+        response.AssertSuccess();
+        response.AssertToast("Inventory item created.");
+
+        await using var db = OpenTenantDb();
+        var item = await db.InventoryItems.SingleAsync(i => i.Name == uniqueName);
+        Assert.Equal(InventoryItemKind.Transfer, item.Kind);
+        Assert.Equal("OR Tambo Airport", item.PickupLocation);
+        Assert.Equal("Sandton Hotel", item.DropoffLocation);
+        Assert.Equal("Minibus", item.VehicleType);
+        Assert.Equal(12, item.MaxPassengers);
+        Assert.True(item.IncludesMeetAndGreet);
+        Assert.Equal(45, item.TransferDurationMinutes);
+    }
+
+    [Fact]
+    public async Task CreateHotelItem_IgnoresTransportFields()
+    {
+        var uniqueName = $"Hotel-{Guid.NewGuid():N}"[..18];
+        var formResponse = await _client.HtmxGetAsync($"/{TenantSlug}/inventory/new");
+        formResponse.AssertSuccess();
+
+        var response = await _client.SubmitFormAsync(formResponse, "form", new Dictionary<string, string>
+        {
+            ["Name"] = uniqueName,
+            ["Kind"] = "Hotel",
+            ["BaseCost"] = "5000",
+            ["PickupLocation"] = "Should be ignored",
+            ["DropoffLocation"] = "Should be ignored",
+            ["VehicleType"] = "Sedan"
+        });
+
+        response.AssertSuccess();
+
+        await using var db = OpenTenantDb();
+        var item = await db.InventoryItems.SingleAsync(i => i.Name == uniqueName);
+        Assert.Null(item.PickupLocation);
+        Assert.Null(item.DropoffLocation);
+        Assert.Null(item.VehicleType);
+    }
+
+    [Fact]
+    public async Task TransferListPartial_ShowsTransportDetails()
+    {
+        var uniqueName = $"XferList-{Guid.NewGuid():N}"[..18];
+        var formResponse = await _client.HtmxGetAsync($"/{TenantSlug}/inventory/new");
+        await _client.SubmitFormAsync(formResponse, "form", new Dictionary<string, string>
+        {
+            ["Name"] = uniqueName,
+            ["Kind"] = "Transfer",
+            ["BaseCost"] = "200",
+            ["PickupLocation"] = "Airport Terminal",
+            ["DropoffLocation"] = "Beach Resort"
+        });
+
+        var listResponse = await _client.HtmxGetAsync($"/{TenantSlug}/inventory/list?type=Transfer&search={Uri.EscapeDataString(uniqueName)}");
+        listResponse.AssertSuccess();
+        await listResponse.AssertContainsAsync("Airport Terminal");
+        await listResponse.AssertContainsAsync("Beach Resort");
+    }
+
+    [Fact]
+    public async Task EditTransferItem_UpdatesTransportFields()
+    {
+        var uniqueName = $"XferEdit-{Guid.NewGuid():N}"[..18];
+        var createForm = await _client.HtmxGetAsync($"/{TenantSlug}/inventory/new");
+        await _client.SubmitFormAsync(createForm, "form", new Dictionary<string, string>
+        {
+            ["Name"] = uniqueName,
+            ["Kind"] = "Transfer",
+            ["BaseCost"] = "300",
+            ["PickupLocation"] = "Old Pickup",
+            ["DropoffLocation"] = "Old Dropoff"
+        });
+
+        Guid itemId;
+        await using (var db = OpenTenantDb())
+        {
+            var created = await db.InventoryItems.SingleAsync(i => i.Name == uniqueName);
+            itemId = created.Id;
+        }
+
+        var editForm = await _client.HtmxGetAsync($"/{TenantSlug}/inventory/edit/{itemId}");
+        editForm.AssertSuccess();
+        await editForm.AssertContainsAsync("Old Pickup");
+
+        var response = await _client.SubmitFormAsync(editForm, "form", new Dictionary<string, string>
+        {
+            ["Name"] = uniqueName,
+            ["Kind"] = "Transfer",
+            ["BaseCost"] = "350",
+            ["PickupLocation"] = "New Pickup",
+            ["DropoffLocation"] = "New Dropoff",
+            ["VehicleType"] = "Luxury SUV",
+            ["MaxPassengers"] = "6"
+        });
+
+        response.AssertSuccess();
+        response.AssertToast("Inventory item updated.");
+
+        await using var verifyDb = OpenTenantDb();
+        var updated = await verifyDb.InventoryItems.SingleAsync(i => i.Id == itemId);
+        Assert.Equal("New Pickup", updated.PickupLocation);
+        Assert.Equal("New Dropoff", updated.DropoffLocation);
+        Assert.Equal("Luxury SUV", updated.VehicleType);
+        Assert.Equal(6, updated.MaxPassengers);
+    }
+
+    [Fact]
+    public async Task EditForm_PrePopulatesTransportFields()
+    {
+        var uniqueName = $"XferPre-{Guid.NewGuid():N}"[..18];
+        var createForm = await _client.HtmxGetAsync($"/{TenantSlug}/inventory/new");
+        await _client.SubmitFormAsync(createForm, "form", new Dictionary<string, string>
+        {
+            ["Name"] = uniqueName,
+            ["Kind"] = "Transfer",
+            ["BaseCost"] = "500",
+            ["PickupLocation"] = "Check Airport",
+            ["DropoffLocation"] = "Check Hotel",
+            ["VehicleType"] = "Sedan"
+        });
+
+        Guid itemId;
+        await using (var db = OpenTenantDb())
+        {
+            var created = await db.InventoryItems.SingleAsync(i => i.Name == uniqueName);
+            itemId = created.Id;
+        }
+
+        var editForm = await _client.HtmxGetAsync($"/{TenantSlug}/inventory/edit/{itemId}");
+        editForm.AssertSuccess();
+        await editForm.AssertContainsAsync("Check Airport");
+        await editForm.AssertContainsAsync("Check Hotel");
+        await editForm.AssertContainsAsync("Sedan");
+    }
 }
