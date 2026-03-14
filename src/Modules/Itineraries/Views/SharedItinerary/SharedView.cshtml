@@ -1,0 +1,121 @@
+@model ItineraryDetailsDto
+@{
+    Layout = "_PublicLayout";
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="container mx-auto max-w-4xl px-4 py-8">
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold">@Model.Title</h1>
+        @if (!string.IsNullOrWhiteSpace(Model.ClientName))
+        {
+            <p class="text-base-content/60 mt-1">Prepared for @Model.ClientName</p>
+        }
+        @if (Model.TravelStartDate.HasValue || Model.TravelEndDate.HasValue)
+        {
+            <p class="text-base-content/60 mt-1">
+                @Model.TravelStartDate?.ToString("dd MMM yyyy")
+                @if (Model.TravelEndDate.HasValue)
+                {
+                    <span>— @Model.TravelEndDate?.ToString("dd MMM yyyy")</span>
+                }
+            </p>
+        }
+    </div>
+
+    <!-- Public Notes -->
+    @if (!string.IsNullOrWhiteSpace(Model.PublicNotes))
+    {
+        <div class="card bg-base-100 shadow-sm mb-8">
+            <div class="card-body">
+                <p class="whitespace-pre-line">@Model.PublicNotes</p>
+            </div>
+        </div>
+    }
+
+    <!-- Cover Image -->
+    @if (!string.IsNullOrWhiteSpace(Model.CoverImageUrl))
+    {
+        <div class="mb-8 rounded-lg overflow-hidden shadow-sm">
+            <img src="@Model.CoverImageUrl" alt="@Model.Title" class="w-full h-64 object-cover" />
+        </div>
+    }
+
+    <!-- Days -->
+    @if (Model.Days.Any())
+    {
+        <div class="flex flex-col gap-6">
+            @foreach (var day in Model.Days.OrderBy(d => d.SortOrder))
+            {
+                <div class="card bg-base-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="badge badge-primary badge-lg font-bold">Day @day.DayNumber</div>
+                            @if (day.Date.HasValue)
+                            {
+                                <span class="text-sm text-base-content/60">@day.Date?.ToString("ddd dd MMM yyyy")</span>
+                            }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(day.Title))
+                        {
+                            <h3 class="text-lg font-semibold">@day.Title</h3>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(day.Description))
+                        {
+                            <p class="text-base-content/70 text-sm mb-4">@day.Description</p>
+                        }
+
+                        @if (day.Items.Any())
+                        {
+                            <div class="flex flex-col gap-3 mt-2">
+                                @foreach (var item in day.Items.OrderBy(i => i.SortOrder))
+                                {
+                                    <div class="flex gap-4 items-start p-3 bg-base-200 rounded-lg">
+                                        @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                                        {
+                                            <img src="@item.ImageUrl" alt="@item.Title" class="w-20 h-20 object-cover rounded-lg flex-shrink-0" />
+                                        }
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                @if (item.ItemKind.HasValue)
+                                                {
+                                                    <span class="badge badge-outline badge-xs">@item.ItemKind</span>
+                                                }
+                                                <span class="font-medium">@item.Title</span>
+                                            </div>
+                                            @if (item.StartTime.HasValue || item.EndTime.HasValue)
+                                            {
+                                                <div class="text-xs text-base-content/60 mt-1">
+                                                    @item.StartTime?.ToString("HH:mm")
+                                                    @if (item.EndTime.HasValue)
+                                                    {
+                                                        <span>— @item.EndTime?.ToString("HH:mm")</span>
+                                                    }
+                                                </div>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(item.Description))
+                                            {
+                                                <p class="text-sm text-base-content/70 mt-1">@item.Description</p>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-sm text-base-content/40 italic">No activities planned for this day yet.</p>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-12">
+            <p class="text-base-content/40">This itinerary is being prepared. Check back soon!</p>
+        </div>
+    }
+</div>

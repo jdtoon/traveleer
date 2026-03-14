@@ -1,0 +1,58 @@
+@{
+    ViewData["Title"] = "Itineraries";
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var status = ViewData["Status"]?.ToString();
+    var search = ViewData["Search"]?.ToString();
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">Itineraries</h1>
+            <p class="opacity-60">Build day-by-day trip plans for your clients.</p>
+        </div>
+        <has-permission name="itineraries.create">
+            <button class="btn btn-primary btn-sm"
+                    hx-get="@Url.Action("New", "Itinerary", new { slug })"
+                    hx-target="#modal-container">
+                + New Itinerary
+            </button>
+        </has-permission>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 shadow-sm">
+        <div class="card-body gap-4">
+            <div class="flex items-center gap-3 flex-wrap">
+                <input type="text"
+                       id="itinerary-search"
+                       name="search"
+                       placeholder="Search itineraries..."
+                       value="@search"
+                       class="input input-bordered input-sm w-full max-w-xs"
+                       hx-get="@Url.Action("List", "Itinerary", new { slug })"
+                       hx-trigger="input changed delay:300ms, search"
+                       hx-target="#itinerary-list"
+                       hx-include="[name='search'],[name='status']" />
+
+                <select name="status"
+                        class="select select-bordered select-sm"
+                        hx-get="@Url.Action("List", "Itinerary", new { slug })"
+                        hx-trigger="change"
+                        hx-target="#itinerary-list"
+                        hx-include="[name='search'],[name='status']">
+                    <option value="">All Statuses</option>
+                    <option value="Draft" selected="@(status == "Draft")">Draft</option>
+                    <option value="Published" selected="@(status == "Published")">Published</option>
+                    <option value="Archived" selected="@(status == "Archived")">Archived</option>
+                </select>
+            </div>
+
+            <div id="itinerary-list"
+                 hx-get="@Url.Action("List", "Itinerary", new { slug, status, search })"
+                 hx-trigger="load, @saas.Modules.Itineraries.Events.ItineraryEvents.Refresh from:body"
+                 hx-swap="innerHTML show:none">
+                <span class="loading loading-spinner loading-lg"></span>
+            </div>
+        </div>
+    </div>
+</div>

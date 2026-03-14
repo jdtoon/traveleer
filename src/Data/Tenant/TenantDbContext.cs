@@ -13,6 +13,7 @@ using saas.Modules.Quotes.Entities;
 using saas.Modules.RateCards.Entities;
 using saas.Modules.Settings.Entities;
 using saas.Modules.Suppliers.Entities;
+using saas.Modules.Itineraries.Entities;
 using saas.Modules.TenantAdmin.Entities;
 
 namespace saas.Data.Tenant;
@@ -55,6 +56,9 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<QuoteVersion> QuoteVersions => Set<QuoteVersion>();
     public DbSet<TeamInvitation> TeamInvitations => Set<TeamInvitation>();
     public DbSet<SupplierContact> SupplierContacts => Set<SupplierContact>();
+    public DbSet<Itinerary> Itineraries => Set<Itinerary>();
+    public DbSet<ItineraryDay> ItineraryDays => Set<ItineraryDay>();
+    public DbSet<ItineraryItem> ItineraryItems => Set<ItineraryItem>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

@@ -1,0 +1,86 @@
+@model List<ItineraryListItemDto>
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+@if (Model.Count == 0)
+{
+    <div class="rounded-box border border-dashed border-base-300 p-8 text-center">
+        <p class="text-lg font-medium opacity-60">No itineraries yet</p>
+        <p class="opacity-40 mt-1">Create your first itinerary to build a day-by-day trip plan for your clients.</p>
+    </div>
+}
+else
+{
+    <div class="overflow-x-auto">
+        <table class="table table-zebra">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Client</th>
+                    <th>Travel Dates</th>
+                    <th>Days</th>
+                    <th>Status</th>
+                    <th class="w-16"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr class="hover cursor-pointer"
+                        hx-get="@Url.Action("Details", "Itinerary", new { slug, id = item.Id })"
+                        hx-target="#main-content"
+                        hx-push-url="true"
+                        hx-swap="innerHTML show:window:top">
+                        <td>
+                            <div class="font-medium">@item.Title</div>
+                            @if (!string.IsNullOrEmpty(item.BookingRef))
+                            {
+                                <div class="text-xs opacity-50">@item.BookingRef</div>
+                            }
+                        </td>
+                        <td>@(item.ClientName ?? "—")</td>
+                        <td>
+                            @if (item.TravelStartDate.HasValue && item.TravelEndDate.HasValue)
+                            {
+                                <span>@item.TravelStartDate.Value.ToString("d MMM") – @item.TravelEndDate.Value.ToString("d MMM yyyy")</span>
+                            }
+                            else
+                            {
+                                <span class="opacity-40">Not set</span>
+                            }
+                        </td>
+                        <td>@item.DayCount</td>
+                        <td>
+                            @{
+                                var badgeClass = item.Status switch
+                                {
+                                    ItineraryStatus.Draft => "badge-warning",
+                                    ItineraryStatus.Published => "badge-success",
+                                    ItineraryStatus.Archived => "badge-ghost",
+                                    _ => "badge-ghost"
+                                };
+                            }
+                            <span class="badge badge-sm @badgeClass">@item.Status</span>
+                        </td>
+                        <td hx-disable>
+                            <div class="dropdown dropdown-end" onclick="event.stopPropagation()">
+                                <label tabindex="0" class="btn btn-ghost btn-xs">⋮</label>
+                                <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40">
+                                    <li>
+                                        <a hx-get="@Url.Action("Edit", "Itinerary", new { slug, id = item.Id })"
+                                           hx-target="#modal-container">Edit</a>
+                                    </li>
+                                    <li>
+                                        <a hx-get="@Url.Action("DeleteConfirm", "Itinerary", new { slug, id = item.Id })"
+                                           hx-target="#modal-container">Delete</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

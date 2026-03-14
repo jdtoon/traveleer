@@ -1,0 +1,102 @@
+@model List<ItineraryDayDto>
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var itineraryId = ViewData["ItineraryId"]?.ToString();
+}
+
+@if (Model.Count == 0)
+{
+    <div class="rounded-box border border-dashed border-base-300 p-8 text-center">
+        <p class="text-lg font-medium opacity-60">No days added yet</p>
+        <p class="opacity-40 mt-1">Add your first day to start building the itinerary.</p>
+    </div>
+}
+else
+{
+    <div class="flex flex-col gap-4">
+        @foreach (var day in Model)
+        {
+            <div class="card bg-base-200/50 border border-base-300">
+                <div class="card-body p-4 gap-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-semibold">@day.Title</h3>
+                            @if (day.Date.HasValue)
+                            {
+                                <span class="text-xs opacity-50">@day.Date.Value.ToString("ddd, d MMM yyyy")</span>
+                            }
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <has-permission name="itineraries.edit">
+                                <button class="btn btn-ghost btn-xs"
+                                        hx-get="@Url.Action("NewItem", "Itinerary", new { slug, dayId = day.Id })"
+                                        hx-target="#modal-container">+ Item</button>
+                                <button class="btn btn-ghost btn-xs"
+                                        hx-get="@Url.Action("EditDay", "Itinerary", new { slug, dayId = day.Id })"
+                                        hx-target="#modal-container">Edit</button>
+                            </has-permission>
+                            <has-permission name="itineraries.delete">
+                                <button class="btn btn-ghost btn-xs text-error"
+                                        hx-get="@Url.Action("DeleteDayConfirm", "Itinerary", new { slug, dayId = day.Id })"
+                                        hx-target="#modal-container">×</button>
+                            </has-permission>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(day.Description))
+                    {
+                        <p class="text-sm whitespace-pre-wrap opacity-70">@day.Description</p>
+                    }
+
+                    @if (day.Items.Count > 0)
+                    {
+                        <div class="flex flex-col gap-2 mt-2">
+                            @foreach (var item in day.Items)
+                            {
+                                <div class="flex items-center gap-3 bg-base-100 rounded-lg p-3 border border-base-300">
+                                    @if (item.ItemKind.HasValue)
+                                    {
+                                        var kindBadge = item.ItemKind switch
+                                        {
+                                            InventoryItemKind.Hotel => "badge-primary",
+                                            InventoryItemKind.Flight => "badge-info",
+                                            InventoryItemKind.Excursion => "badge-accent",
+                                            InventoryItemKind.Transfer => "badge-secondary",
+                                            _ => "badge-ghost"
+                                        };
+                                        <span class="badge badge-xs @kindBadge">@item.ItemKind</span>
+                                    }
+                                    <div class="flex-1">
+                                        <div class="font-medium text-sm">@item.Title</div>
+                                        @if (item.StartTime.HasValue || item.EndTime.HasValue)
+                                        {
+                                            <div class="text-xs opacity-50">
+                                                @(item.StartTime?.ToString("HH:mm") ?? "")@(item.StartTime.HasValue && item.EndTime.HasValue ? " – " : "")@(item.EndTime?.ToString("HH:mm") ?? "")
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <has-permission name="itineraries.edit">
+                                            <button class="btn btn-ghost btn-xs"
+                                                    hx-get="@Url.Action("EditItem", "Itinerary", new { slug, itemId = item.Id })"
+                                                    hx-target="#modal-container">Edit</button>
+                                        </has-permission>
+                                        <has-permission name="itineraries.delete">
+                                            <button class="btn btn-ghost btn-xs text-error"
+                                                    hx-get="@Url.Action("DeleteItemConfirm", "Itinerary", new { slug, itemId = item.Id })"
+                                                    hx-target="#modal-container">×</button>
+                                        </has-permission>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-xs opacity-40 italic">No items for this day.</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

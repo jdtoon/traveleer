@@ -1,0 +1,57 @@
+@model ItineraryDayDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var isEdit = Model.Id != Guid.Empty;
+    var title = isEdit ? "Edit Day" : "Add Day";
+    var action = isEdit
+        ? Url.Action("UpdateDay", "Itinerary", new { slug, dayId = Model.Id })
+        : Url.Action("CreateDay", "Itinerary", new { slug, itineraryId = Model.ItineraryId });
+}
+
+<dialog class="modal modal-open">
+    <div class="modal-box max-w-lg">
+        <h3 class="text-lg font-bold mb-4">@title</h3>
+
+        <form hx-post="@action"
+              hx-target="#modal-container"
+              hx-swap="innerHTML">
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="ItineraryId" />
+            <input type="hidden" asp-for="SortOrder" />
+
+            <div class="flex flex-col gap-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Day Number</span></label>
+                        <input asp-for="DayNumber" type="number" min="1" class="input input-bordered input-sm" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Date</span></label>
+                        <input asp-for="Date" type="date" class="input input-bordered input-sm" />
+                    </div>
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Title</span></label>
+                    <input asp-for="Title" class="input input-bordered input-sm" placeholder="Day 1 — Arrival in Cape Town" />
+                    <span asp-validation-for="Title" class="text-error text-xs mt-1"></span>
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Description</span></label>
+                    <textarea asp-for="Description" class="textarea textarea-bordered textarea-sm" rows="3" placeholder="Overview of the day..."></textarea>
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost btn-sm"
+                        onclick="this.closest('dialog').close();"
+                        hx-on:click="document.getElementById('modal-container').innerHTML = ''">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm">@(isEdit ? "Update" : "Add Day")</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

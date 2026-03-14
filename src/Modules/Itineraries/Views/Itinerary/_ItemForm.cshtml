@@ -1,0 +1,84 @@
+@model ItineraryItemDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var isEdit = Model.Id != Guid.Empty;
+    var title = isEdit ? "Edit Item" : "Add Item";
+    var action = isEdit
+        ? Url.Action("UpdateItem", "Itinerary", new { slug, itemId = Model.Id })
+        : Url.Action("CreateItem", "Itinerary", new { slug, dayId = Model.ItineraryDayId });
+}
+
+<dialog class="modal modal-open">
+    <div class="modal-box max-w-lg">
+        <h3 class="text-lg font-bold mb-4">@title</h3>
+
+        <form hx-post="@action"
+              hx-target="#modal-container"
+              hx-swap="innerHTML">
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="ItineraryDayId" />
+            <input type="hidden" asp-for="SortOrder" />
+
+            <div class="flex flex-col gap-4">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Title</span></label>
+                    <input asp-for="Title" class="input input-bordered input-sm" placeholder="Activity or service name" />
+                    <span asp-validation-for="Title" class="text-error text-xs mt-1"></span>
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Inventory Item (optional)</span></label>
+                    <select asp-for="InventoryItemId" class="select select-bordered select-sm">
+                        <option value="">— Freeform entry —</option>
+                        @foreach (var inv in Model.InventoryOptions)
+                        {
+                            <option value="@inv.Id" selected="@(Model.InventoryItemId == inv.Id)">@inv.Name (@inv.Kind)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Type</span></label>
+                    <select asp-for="ItemKind" class="select select-bordered select-sm">
+                        <option value="">— None —</option>
+                        @foreach (var kind in Enum.GetValues<InventoryItemKind>())
+                        {
+                            <option value="@kind" selected="@(Model.ItemKind == kind)">@kind</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Start Time</span></label>
+                        <input asp-for="StartTime" type="time" class="input input-bordered input-sm" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">End Time</span></label>
+                        <input asp-for="EndTime" type="time" class="input input-bordered input-sm" />
+                    </div>
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Description</span></label>
+                    <textarea asp-for="Description" class="textarea textarea-bordered textarea-sm" rows="3" placeholder="Details visible to the client..."></textarea>
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Image URL</span></label>
+                    <input asp-for="ImageUrl" class="input input-bordered input-sm" placeholder="https://..." />
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost btn-sm"
+                        onclick="this.closest('dialog').close();"
+                        hx-on:click="document.getElementById('modal-container').innerHTML = ''">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm">@(isEdit ? "Update" : "Add Item")</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

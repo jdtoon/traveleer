@@ -1,0 +1,81 @@
+@model ItineraryFormDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var isEdit = Model.Id != Guid.Empty;
+    var title = isEdit ? "Edit Itinerary" : "New Itinerary";
+    var action = isEdit
+        ? Url.Action("Update", "Itinerary", new { slug, id = Model.Id })
+        : Url.Action("Create", "Itinerary", new { slug });
+}
+
+<dialog class="modal modal-open">
+    <div class="modal-box max-w-2xl">
+        <h3 class="text-lg font-bold mb-4">@title</h3>
+
+        <form hx-post="@action"
+              hx-target="#modal-container"
+              hx-swap="innerHTML">
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" asp-for="Id" />
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-control md:col-span-2">
+                    <label class="label"><span class="label-text">Title</span></label>
+                    <input asp-for="Title" class="input input-bordered input-sm" placeholder="Safari Adventure – Cape Town to Kruger" />
+                    <span asp-validation-for="Title" class="text-error text-xs mt-1"></span>
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Client</span></label>
+                    <select asp-for="ClientId" class="select select-bordered select-sm">
+                        <option value="">— None —</option>
+                        @foreach (var client in Model.ClientOptions)
+                        {
+                            <option value="@client.Id" selected="@(Model.ClientId == client.Id)">@client.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Booking</span></label>
+                    <select asp-for="BookingId" class="select select-bordered select-sm">
+                        <option value="">— None —</option>
+                        @foreach (var booking in Model.BookingOptions)
+                        {
+                            <option value="@booking.Id" selected="@(Model.BookingId == booking.Id)">@booking.BookingRef @(booking.ClientName != null ? $"({booking.ClientName})" : "")</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Travel Start</span></label>
+                    <input asp-for="TravelStartDate" type="date" class="input input-bordered input-sm" />
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Travel End</span></label>
+                    <input asp-for="TravelEndDate" type="date" class="input input-bordered input-sm" />
+                </div>
+
+                <div class="form-control md:col-span-2">
+                    <label class="label"><span class="label-text">Internal Notes</span></label>
+                    <textarea asp-for="Notes" class="textarea textarea-bordered textarea-sm" rows="2"></textarea>
+                </div>
+
+                <div class="form-control md:col-span-2">
+                    <label class="label"><span class="label-text">Client-Facing Notes</span></label>
+                    <textarea asp-for="PublicNotes" class="textarea textarea-bordered textarea-sm" rows="2"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost btn-sm"
+                        onclick="this.closest('dialog').close();"
+                        hx-on:click="document.getElementById('modal-container').innerHTML = ''">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm">@(isEdit ? "Update" : "Create")</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
