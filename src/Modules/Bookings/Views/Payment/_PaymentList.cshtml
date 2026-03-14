@@ -1,0 +1,86 @@
+@model saas.Modules.Bookings.DTOs.BookingPaymentListDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var statusClass = Model.ClientBalance <= 0 ? "text-success" : Model.TravelStartDate.HasValue && Model.TravelStartDate.Value < DateOnly.FromDateTime(DateTime.UtcNow) ? "text-error" : "text-warning";
+}
+<div class="flex flex-col gap-4">
+    <div class="grid gap-4 md:grid-cols-3">
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-1 p-4">
+                <div class="text-sm uppercase tracking-wide opacity-60">Total Selling</div>
+                <div class="font-semibold">@Model.SellingCurrencyCode @Model.TotalSelling.ToString("N2")</div>
+            </div>
+        </div>
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-1 p-4">
+                <div class="text-sm uppercase tracking-wide opacity-60">Total Received</div>
+                <div class="font-semibold text-success">@Model.SellingCurrencyCode @Model.TotalReceived.ToString("N2")</div>
+            </div>
+        </div>
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-1 p-4">
+                <div class="text-sm uppercase tracking-wide opacity-60">Outstanding</div>
+                <div class="font-semibold @statusClass">@Model.SellingCurrencyCode @Model.ClientBalance.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between">
+        <h3 class="font-semibold">Client Payments</h3>
+        <has-permission name="bookings.edit">
+            <button class="btn btn-primary btn-sm"
+                    hx-get="@Url.Action("NewPayment", "Payment", new { slug, bookingId = Model.BookingId })"
+                    hx-target="#modal-container">Record Payment</button>
+        </has-permission>
+    </div>
+
+    @if (Model.Payments.Count == 0)
+    {
+        <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center">
+            <p class="opacity-70">No payments recorded yet.</p>
+        </div>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Direction</th>
+                        <th>Amount</th>
+                        <th>Method</th>
+                        <th>Reference</th>
+                        <th>Notes</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Payments)
+                    {
+                        <tr>
+                            <td>@p.PaymentDate.ToString("dd MMM yyyy")</td>
+                            <td>
+                                <span class="badge badge-sm @(p.Direction == saas.Modules.Bookings.Entities.PaymentDirection.Received ? "badge-success" : "badge-error")">
+                                    @p.Direction
+                                </span>
+                            </td>
+                            <td>@p.CurrencyCode @p.Amount.ToString("N2")</td>
+                            <td>@p.PaymentMethod</td>
+                            <td>@(string.IsNullOrWhiteSpace(p.Reference) ? "—" : p.Reference)</td>
+                            <td class="max-w-[200px] truncate">@(string.IsNullOrWhiteSpace(p.Notes) ? "—" : p.Notes)</td>
+                            <td>
+                                <has-permission name="bookings.edit">
+                                    <form hx-post="@Url.Action("DeletePayment", "Payment", new { slug, paymentId = p.Id })" hx-confirm="Remove this payment?">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-ghost btn-xs text-error">Remove</button>
+                                    </form>
+                                </has-permission>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

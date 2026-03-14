@@ -148,6 +148,18 @@
                                 </has-permission>
                             </div>
                         </div>
+
+                        @if (item.SupplierId.HasValue)
+                        {
+                            <div class="border-t border-base-300 mt-3 pt-3">
+                                <div id="supplier-payments-@item.Id"
+                                     hx-get="@Url.Action("SupplierPayments", "Payment", new { slug, bookingItemId = item.Id })"
+                                     hx-trigger="load, @saas.Modules.Bookings.Events.BookingEvents.SupplierPaymentsRefresh from:body"
+                                     hx-swap="innerHTML show:none">
+                                    <span class="loading loading-spinner loading-sm"></span>
+                                </div>
+                            </div>
+                        }
                     </div>
                 }
             </div>

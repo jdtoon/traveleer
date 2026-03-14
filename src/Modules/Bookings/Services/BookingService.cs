@@ -278,6 +278,7 @@ public class BookingService : IBookingService
                         SellingCurrencyCode = item.SellingCurrencyCode,
                         Quantity = item.Quantity,
                         Pax = item.Pax,
+                        SupplierId = item.SupplierId,
                         SupplierStatus = item.SupplierStatus,
                         SupplierName = item.Supplier != null ? item.Supplier.Name : null,
                         SupplierEmail = item.Supplier != null ? item.Supplier.ContactEmail : null,

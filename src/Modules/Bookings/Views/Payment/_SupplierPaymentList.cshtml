@@ -1,0 +1,80 @@
+@model saas.Modules.Bookings.DTOs.SupplierPaymentListDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var statusClass = Model.SupplierBalance <= 0 ? "text-success" : "text-warning";
+}
+<div class="flex flex-col gap-4">
+    <div class="grid gap-4 md:grid-cols-3">
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-1 p-4">
+                <div class="text-sm uppercase tracking-wide opacity-60">Cost Price</div>
+                <div class="font-semibold">@Model.CostCurrencyCode @Model.CostPrice.ToString("N2")</div>
+            </div>
+        </div>
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-1 p-4">
+                <div class="text-sm uppercase tracking-wide opacity-60">Total Paid</div>
+                <div class="font-semibold text-success">@Model.CostCurrencyCode @Model.TotalPaid.ToString("N2")</div>
+            </div>
+        </div>
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-1 p-4">
+                <div class="text-sm uppercase tracking-wide opacity-60">Outstanding</div>
+                <div class="font-semibold @statusClass">@Model.CostCurrencyCode @Model.SupplierBalance.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between">
+        <h3 class="font-semibold">Supplier Payments — @(string.IsNullOrWhiteSpace(Model.SupplierName) ? "Unassigned" : Model.SupplierName)</h3>
+        @if (Model.SupplierId.HasValue)
+        {
+            <has-permission name="bookings.edit">
+                <button class="btn btn-primary btn-sm"
+                        hx-get="@Url.Action("NewSupplierPayment", "Payment", new { slug, bookingItemId = Model.BookingItemId })"
+                        hx-target="#modal-container">Record Payment</button>
+            </has-permission>
+        }
+    </div>
+
+    @if (Model.Payments.Count == 0)
+    {
+        <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center">
+            <p class="opacity-70">No supplier payments recorded yet.</p>
+        </div>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Direction</th>
+                        <th>Amount</th>
+                        <th>Method</th>
+                        <th>Reference</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Payments)
+                    {
+                        <tr>
+                            <td>@p.PaymentDate.ToString("dd MMM yyyy")</td>
+                            <td>
+                                <span class="badge badge-sm @(p.Direction == saas.Modules.Bookings.Entities.PaymentDirection.Paid ? "badge-info" : "badge-success")">
+                                    @p.Direction
+                                </span>
+                            </td>
+                            <td>@p.CurrencyCode @p.Amount.ToString("N2")</td>
+                            <td>@p.PaymentMethod</td>
+                            <td>@(string.IsNullOrWhiteSpace(p.Reference) ? "—" : p.Reference)</td>
+                            <td class="max-w-[200px] truncate">@(string.IsNullOrWhiteSpace(p.Notes) ? "—" : p.Notes)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

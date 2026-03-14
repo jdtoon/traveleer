@@ -61,6 +61,8 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<ItineraryDay> ItineraryDays => Set<ItineraryDay>();
     public DbSet<ItineraryItem> ItineraryItems => Set<ItineraryItem>();
     public DbSet<UserReportPreference> UserReportPreferences => Set<UserReportPreference>();
+    public DbSet<BookingPayment> BookingPayments => Set<BookingPayment>();
+    public DbSet<SupplierPayment> SupplierPayments => Set<SupplierPayment>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

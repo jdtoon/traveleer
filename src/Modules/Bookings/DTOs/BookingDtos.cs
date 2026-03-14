@@ -103,6 +103,7 @@ public class BookingItemListItemDto
     public string SellingCurrencyCode { get; set; } = "USD";
     public int Quantity { get; set; }
     public int Pax { get; set; }
+    public Guid? SupplierId { get; set; }
     public SupplierStatus SupplierStatus { get; set; }
     public string? SupplierName { get; set; }
     public string? SupplierEmail { get; set; }

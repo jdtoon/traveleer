@@ -17,4 +17,16 @@
          hx-swap="innerHTML show:none">
         <span class="loading loading-spinner loading-lg"></span>
     </div>
+
+    <div class="card border border-base-300 bg-base-100 shadow-sm">
+        <div class="card-body gap-4">
+            <h2 class="card-title">Payments</h2>
+            <div id="booking-payments"
+                 hx-get="@Url.Action("Payments", "Payment", new { slug, bookingId = Model.Id })"
+                 hx-trigger="load, @saas.Modules.Bookings.Events.BookingEvents.PaymentsRefresh from:body"
+                 hx-swap="innerHTML">
+                <span class="loading loading-spinner loading-lg"></span>
+            </div>
+        </div>
+    </div>
 </div>
