@@ -1,0 +1,55 @@
+@{
+    var payDto = ViewData.Model as saas.Modules.Bookings.DTOs.PaymentLinkPublicDto;
+}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - @(payDto?.AgencyName ?? "Payment")</title>
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="@(payDto?.PrimaryColor ?? "#2563EB")" />
+
+    <!-- DaisyUI + Tailwind CSS -->
+    <link rel="stylesheet" href="/css/app.css" asp-append-version="true" />
+
+    <!-- Swap.Htmx CSS -->
+    <link rel="stylesheet" href="~/_content/Swap.Htmx/css/swap.css" asp-append-version="true" />
+
+    <style>
+        :root {
+            --portal-primary: @(payDto?.PrimaryColor ?? "#2563EB");
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content">
+    <script src="/js/theme.js"></script>
+
+    <!-- Header -->
+    <header class="navbar bg-base-100 border-b border-base-300 shadow-sm">
+        <div class="flex-1 justify-center">
+            <div class="flex items-center gap-3 px-2">
+                @if (!string.IsNullOrWhiteSpace(payDto?.LogoUrl))
+                {
+                    <img src="@payDto.LogoUrl" alt="@payDto.AgencyName" class="h-8 w-auto" />
+                }
+                <span class="text-lg font-bold">@(payDto?.AgencyName ?? "Payment")</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="container mx-auto max-w-lg px-4 py-12">
+        @RenderBody()
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer footer-center p-4 text-base-content/60 text-sm">
+        <p>Secure payment powered by @(payDto?.AgencyName ?? "Travel Agency")</p>
+    </footer>
+
+    <!-- HTMX -->
+    <script src="~/_content/Swap.Htmx/js/swap.js" asp-append-version="true"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+@model saas.Modules.Bookings.DTOs.PaymentLinkPublicDto
+@{
+    ViewData["Title"] = "Payment Successful";
+}
+<div class="card border border-base-300 bg-base-100 shadow-lg">
+    <div class="card-body gap-6 text-center">
+        <div class="text-success text-6xl">&#10003;</div>
+        <h2 class="text-2xl font-bold text-success">Payment Successful</h2>
+
+        <div>
+            <p class="text-sm opacity-60">Booking @Model.BookingRef</p>
+            <p class="text-xl font-semibold mt-2">@Model.CurrencyCode @Model.Amount.ToString("N2")</p>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <div class="rounded-box bg-base-200 p-4 text-sm">
+                @Model.Description
+            </div>
+        }
+
+        <p class="text-sm opacity-60">
+            Thank you for your payment. A confirmation has been sent to your email.
+        </p>
+    </div>
+</div>

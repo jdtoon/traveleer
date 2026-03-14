@@ -74,6 +74,7 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<BookingAssignment> BookingAssignments => Set<BookingAssignment>();
     public DbSet<BookingComment> BookingComments => Set<BookingComment>();
     public DbSet<CommunicationEntry> CommunicationEntries => Set<CommunicationEntry>();
+    public DbSet<PaymentLink> PaymentLinks => Set<PaymentLink>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

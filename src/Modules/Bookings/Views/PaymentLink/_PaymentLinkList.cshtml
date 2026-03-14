@@ -1,0 +1,73 @@
+@model saas.Modules.Bookings.DTOs.PaymentLinkListDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+<div class="flex flex-col gap-4">
+    <div class="flex items-center justify-between">
+        <h3 class="font-semibold">Online Payment Links</h3>
+        <has-permission name="bookings.edit">
+            <button class="btn btn-primary btn-sm"
+                    hx-get="@Url.Action("New", "PaymentLink", new { slug, bookingId = Model.BookingId })"
+                    hx-target="#modal-container">Create Payment Link</button>
+        </has-permission>
+    </div>
+
+    @if (Model.Links.Count == 0)
+    {
+        <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center">
+            <p class="opacity-70">No payment links created yet.</p>
+        </div>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Created</th>
+                        <th>Amount</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Expires</th>
+                        <th>Paid</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var link in Model.Links)
+                    {
+                        var badgeClass = link.Status switch
+                        {
+                            saas.Modules.Bookings.Entities.PaymentLinkStatus.Pending => "badge-warning",
+                            saas.Modules.Bookings.Entities.PaymentLinkStatus.Paid => "badge-success",
+                            saas.Modules.Bookings.Entities.PaymentLinkStatus.Expired => "badge-ghost",
+                            saas.Modules.Bookings.Entities.PaymentLinkStatus.Cancelled => "badge-error",
+                            _ => "badge-ghost"
+                        };
+                        var payUrl = $"/pay/{slug}/{link.Token}";
+                        <tr>
+                            <td>@link.CreatedAt.ToString("dd MMM yyyy")</td>
+                            <td>@link.CurrencyCode @link.Amount.ToString("N2")</td>
+                            <td class="max-w-[200px] truncate">@(string.IsNullOrWhiteSpace(link.Description) ? "—" : link.Description)</td>
+                            <td><span class="badge badge-sm @badgeClass">@link.Status</span></td>
+                            <td>@link.ExpiresAt.ToString("dd MMM yyyy")</td>
+                            <td>@(link.PaidAt.HasValue ? link.PaidAt.Value.ToString("dd MMM yyyy HH:mm") : "—")</td>
+                            <td class="flex gap-1">
+                                @if (link.Status == saas.Modules.Bookings.Entities.PaymentLinkStatus.Pending)
+                                {
+                                    <a href="@payUrl" target="_blank" class="btn btn-ghost btn-xs">View Link</a>
+                                    <has-permission name="bookings.edit">
+                                        <form hx-post="@Url.Action("Cancel", "PaymentLink", new { slug, id = link.Id })" hx-confirm="Cancel this payment link?">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-ghost btn-xs text-error">Cancel</button>
+                                        </form>
+                                    </has-permission>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

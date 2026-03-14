@@ -1,0 +1,21 @@
+@model saas.Modules.Bookings.DTOs.PaymentLinkPublicDto
+@{
+    ViewData["Title"] = "Payment Cancelled";
+}
+<div class="card border border-base-300 bg-base-100 shadow-lg">
+    <div class="card-body gap-6 text-center">
+        <div class="text-warning text-6xl">&#10005;</div>
+        <h2 class="text-2xl font-bold">Payment Cancelled</h2>
+
+        <div>
+            <p class="text-sm opacity-60">Booking @Model.BookingRef</p>
+            <p class="text-xl font-semibold mt-2">@Model.CurrencyCode @Model.Amount.ToString("N2")</p>
+        </div>
+
+        <p class="text-sm opacity-60">
+            You have not been charged. You can return to this page later to complete the payment.
+        </p>
+
+        <a href="/pay/@Model.TenantSlug/@Model.Token" class="btn btn-primary w-full">Return to Payment</a>
+    </div>
+</div>
