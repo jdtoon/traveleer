@@ -1,0 +1,55 @@
+@model saas.Modules.Bookings.DTOs.BookingAssignmentsDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+<div class="flex flex-col gap-4">
+    @if (Model.Assignments.Count == 0)
+    {
+        <p class="text-sm opacity-70">No team members assigned yet.</p>
+    }
+    else
+    {
+        <div class="flex flex-wrap gap-2">
+            @foreach (var a in Model.Assignments)
+            {
+                <div class="badge badge-lg gap-2">
+                    <span>@a.UserName</span>
+                    <has-permission name="bookings.edit">
+                        <form class="inline"
+                              hx-post="@Url.Action("Unassign", "Collaboration", new { slug, bookingId = Model.BookingId, userId = a.UserId })"
+                              hx-target="#booking-assignments"
+                              hx-swap="innerHTML"
+                              hx-confirm="Remove @a.UserName from this booking?">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-ghost btn-xs px-0">✕</button>
+                        </form>
+                    </has-permission>
+                </div>
+            }
+        </div>
+    }
+
+    <has-permission name="bookings.edit">
+        @if (Model.AvailableMembers.Count > 0)
+        {
+            <form class="flex gap-2 items-end"
+                  hx-post="@Url.Action("Assign", "Collaboration", new { slug, bookingId = Model.BookingId })"
+                  hx-target="#booking-assignments"
+                  hx-swap="innerHTML">
+                @Html.AntiForgeryToken()
+                <select name="userId" class="select select-bordered select-sm flex-1">
+                    <option value="">Select team member...</option>
+                    @foreach (var m in Model.AvailableMembers)
+                    {
+                        <option value="@m.UserId">@m.DisplayName</option>
+                    }
+                </select>
+                <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+            </form>
+        }
+        else
+        {
+            <p class="text-sm opacity-60">All team members are already assigned.</p>
+        }
+    </has-permission>
+</div>

@@ -1,0 +1,37 @@
+@model saas.Modules.Bookings.DTOs.BookingCommentsDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+<div class="flex flex-col gap-4">
+    @if (Model.Comments.Count == 0)
+    {
+        <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center">
+            <p class="opacity-70">No comments yet. Start the conversation.</p>
+        </div>
+    }
+    else
+    {
+        <div class="flex flex-col gap-3">
+            @foreach (var comment in Model.Comments)
+            {
+                <div class="chat chat-start">
+                    <div class="chat-header">
+                        @comment.UserName
+                        <time class="text-xs opacity-50 ml-1">@comment.CreatedAt.ToString("dd MMM HH:mm")</time>
+                    </div>
+                    <div class="chat-bubble chat-bubble-ghost">@comment.Content</div>
+                </div>
+            }
+        </div>
+    }
+
+    <has-permission name="bookings.edit">
+        <form class="flex gap-2 items-end"
+              hx-post="@Url.Action("CreateComment", "Collaboration", new { slug, bookingId = Model.BookingId })"
+              hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <input type="text" name="Content" placeholder="Add a comment..." class="input input-bordered input-sm flex-1" required maxlength="2000" />
+            <button type="submit" class="btn btn-primary btn-sm">Post</button>
+        </form>
+    </has-permission>
+</div>

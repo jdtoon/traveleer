@@ -3,6 +3,7 @@
     var slug = ViewContext.RouteData.Values["slug"]?.ToString();
     var status = ViewData["Status"]?.ToString();
     var search = ViewData["Search"]?.ToString();
+    var assignedToMe = ViewData["AssignedToMe"] is true;
 
     string tabClass(string? current) => string.Equals(status, current, StringComparison.OrdinalIgnoreCase)
         ? "tab tab-active"
@@ -13,6 +14,7 @@
         var parts = new List<string>();
         if (!string.IsNullOrWhiteSpace(nextStatus)) parts.Add($"status={Uri.EscapeDataString(nextStatus)}");
         if (!string.IsNullOrWhiteSpace(search)) parts.Add($"search={Uri.EscapeDataString(search)}");
+        if (assignedToMe) parts.Add("assignedToMe=true");
         return parts.Count == 0 ? null : string.Join("&", parts);
     }
 
@@ -45,7 +47,7 @@
                 <a href="@TabUrl(nameof(BookingStatus.Cancelled))" class="@tabClass(nameof(BookingStatus.Cancelled))">Cancelled</a>
             </div>
 
-            <form class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end"
+            <form class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-end"
                   hx-get="@Url.Action("List", "Booking", new { slug })"
                   hx-target="#booking-list"
                   hx-swap="innerHTML">
@@ -57,6 +59,10 @@
                     </label>
                     <input id="booking-search" name="search" value="@search" class="input input-bordered w-full" placeholder="Search by booking ref, client, guest, or client ref" />
                 </div>
+                <label class="label cursor-pointer gap-2">
+                    <span class="label-text text-sm">Assigned to me</span>
+                    <input type="checkbox" name="assignedToMe" value="true" class="checkbox checkbox-sm" @(assignedToMe ? "checked" : "") />
+                </label>
                 <button type="submit" class="btn btn-primary">Apply</button>
                 <a href="@TabUrl(status)" class="btn btn-ghost">Clear</a>
             </form>

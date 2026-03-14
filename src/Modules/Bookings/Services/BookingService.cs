@@ -13,7 +13,7 @@ namespace saas.Modules.Bookings.Services;
 
 public interface IBookingService
 {
-    Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12);
+    Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12, string? assignedToUserId = null);
     Task<BookingFormDto> CreateEmptyAsync();
     Task<Guid> CreateAsync(BookingFormDto dto);
     Task<BookingConversionResult> ConvertFromQuoteAsync(Guid quoteId);
@@ -49,7 +49,7 @@ public class BookingService : IBookingService
         _voucherDocumentService = voucherDocumentService;
     }
 
-    public async Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12)
+    public async Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12, string? assignedToUserId = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 6, 48);
@@ -75,6 +75,14 @@ public class BookingService : IBookingService
                 (x.LeadGuestName != null && x.LeadGuestName.ToLower().Contains(term)));
         }
 
+        if (!string.IsNullOrWhiteSpace(assignedToUserId))
+        {
+            var assignedBookingIds = _db.BookingAssignments
+                .Where(a => a.UserId == assignedToUserId)
+                .Select(a => a.BookingId);
+            query = query.Where(x => assignedBookingIds.Contains(x.Id));
+        }
+
         var projected = query
             .OrderByDescending(x => x.CreatedAt)
             .Select(x => new BookingListItemDto
@@ -93,7 +101,37 @@ public class BookingService : IBookingService
                 CreatedAt = x.CreatedAt
             });
 
-        return await PaginatedList<BookingListItemDto>.CreateAsync(projected, page, pageSize);
+        var result = await PaginatedList<BookingListItemDto>.CreateAsync(projected, page, pageSize);
+
+        // Populate assigned user names
+        var bookingIds = result.Items.Select(x => x.Id).ToList();
+        if (bookingIds.Count > 0)
+        {
+            var assignments = await _db.BookingAssignments
+                .AsNoTracking()
+                .Where(a => bookingIds.Contains(a.BookingId))
+                .ToListAsync();
+
+            if (assignments.Count > 0)
+            {
+                var userIds = assignments.Select(a => a.UserId).Distinct().ToList();
+                var userNames = await _db.Users
+                    .AsNoTracking()
+                    .Where(u => userIds.Contains(u.Id))
+                    .ToDictionaryAsync(u => u.Id, u => u.DisplayName ?? u.Email ?? u.Id);
+
+                var grouped = assignments.GroupBy(a => a.BookingId)
+                    .ToDictionary(g => g.Key, g => g.Select(a => userNames.GetValueOrDefault(a.UserId, a.UserId)).ToList());
+
+                foreach (var item in result.Items)
+                {
+                    if (grouped.TryGetValue(item.Id, out var names))
+                        item.AssignedUserNames = names;
+                }
+            }
+        }
+
+        return result;
     }
 
     public async Task<BookingFormDto> CreateEmptyAsync()

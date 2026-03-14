@@ -5,6 +5,7 @@ using saas.Modules.Bookings.DTOs;
 using saas.Modules.Bookings.Entities;
 using saas.Modules.Bookings.Events;
 using saas.Modules.Bookings.Services;
+using saas.Shared;
 using Swap.Htmx;
 
 namespace saas.Modules.Bookings.Controllers;
@@ -15,28 +16,33 @@ namespace saas.Modules.Bookings.Controllers;
 public class BookingController : SwapController
 {
     private readonly IBookingService _service;
+    private readonly ICurrentUser _currentUser;
 
-    public BookingController(IBookingService service)
+    public BookingController(IBookingService service, ICurrentUser currentUser)
     {
         _service = service;
+        _currentUser = currentUser;
     }
 
     [HttpGet("")]
     [HasPermission(BookingPermissions.BookingsRead)]
-    public IActionResult Index([FromQuery] string? status = null, [FromQuery] string? search = null)
+    public IActionResult Index([FromQuery] string? status = null, [FromQuery] string? search = null, [FromQuery] bool assignedToMe = false)
     {
         ViewData["Status"] = status;
         ViewData["Search"] = search;
+        ViewData["AssignedToMe"] = assignedToMe;
         return SwapView();
     }
 
     [HttpGet("list")]
     [HasPermission(BookingPermissions.BookingsRead)]
-    public async Task<IActionResult> List([FromQuery] string? status = null, [FromQuery] string? search = null, [FromQuery] int page = 1)
+    public async Task<IActionResult> List([FromQuery] string? status = null, [FromQuery] string? search = null, [FromQuery] int page = 1, [FromQuery] bool assignedToMe = false)
     {
         ViewData["Status"] = status;
         ViewData["Search"] = search;
-        var model = await _service.GetListAsync(status, search, page);
+        ViewData["AssignedToMe"] = assignedToMe;
+        var assignedUserId = assignedToMe ? _currentUser.UserId : null;
+        var model = await _service.GetListAsync(status, search, page, assignedToUserId: assignedUserId);
         return PartialView("_List", model);
     }
 

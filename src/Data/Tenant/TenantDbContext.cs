@@ -69,6 +69,9 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<PortalLink> PortalLinks => Set<PortalLink>();
     public DbSet<PortalSession> PortalSessions => Set<PortalSession>();
     public DbSet<AgentTask> AgentTasks => Set<AgentTask>();
+    public DbSet<ActivityEntry> ActivityEntries => Set<ActivityEntry>();
+    public DbSet<BookingAssignment> BookingAssignments => Set<BookingAssignment>();
+    public DbSet<BookingComment> BookingComments => Set<BookingComment>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

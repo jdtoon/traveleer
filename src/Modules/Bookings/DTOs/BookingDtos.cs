@@ -24,6 +24,7 @@ public class BookingListItemDto
     public decimal TotalSelling { get; set; }
     public string SellingCurrencyCode { get; set; } = "USD";
     public DateTime CreatedAt { get; set; }
+    public List<string> AssignedUserNames { get; set; } = [];
 }
 
 public class BookingFormDto

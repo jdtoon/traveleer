@@ -42,6 +42,7 @@ else
                     <th>Client</th>
                     <th>Travel</th>
                     <th>Status</th>
+                    <th>Assigned</th>
                     <th class="text-right">Selling</th>
                     <th class="text-right">Action</th>
                 </tr>
@@ -67,6 +68,21 @@ else
                         </td>
                         <td>
                             <span class="badge badge-outline badge-sm">@item.Status</span>
+                        </td>
+                        <td>
+                            @if (item.AssignedUserNames.Count > 0)
+                            {
+                                <div class="flex flex-wrap gap-1">
+                                    @foreach (var name in item.AssignedUserNames)
+                                    {
+                                        <span class="badge badge-ghost badge-sm">@name</span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="opacity-40">—</span>
+                            }
                         </td>
                         <td class="text-right font-medium">@item.SellingCurrencyCode @item.TotalSelling.ToString("N2")</td>
                         <td class="text-right">

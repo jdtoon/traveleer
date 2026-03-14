@@ -24,10 +24,11 @@ public class BookingsModule : IModule
     {
         ["Booking"] = "Bookings",
         ["Payment"] = "Bookings",
-        ["Document"] = "Bookings"
+        ["Document"] = "Bookings",
+        ["Collaboration"] = "Bookings"
     };
 
-    public IReadOnlyList<string> PartialViewSearchPaths => ["Booking", "Payment", "Document"];
+    public IReadOnlyList<string> PartialViewSearchPaths => ["Booking", "Payment", "Document", "Collaboration"];
 
     public IReadOnlyList<ModuleFeature> Features =>
     [
@@ -53,5 +54,6 @@ public class BookingsModule : IModule
         services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IDocumentService, DocumentService>();
+        services.AddScoped<ICollaborationService, CollaborationService>();
     }
 }

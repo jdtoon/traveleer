@@ -1,0 +1,31 @@
+@model saas.Modules.Bookings.DTOs.ActivityFeedDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+@if (Model.Entries.Count == 0)
+{
+    <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center">
+        <p class="opacity-70">No activity recorded yet.</p>
+    </div>
+}
+else
+{
+    <ul class="timeline timeline-vertical timeline-compact">
+        @foreach (var entry in Model.Entries)
+        {
+            <li>
+                <div class="timeline-start text-xs opacity-60 whitespace-nowrap">
+                    @entry.CreatedAt.ToString("dd MMM HH:mm")
+                </div>
+                <div class="timeline-middle">
+                    <span class="text-sm">@entry.Icon</span>
+                </div>
+                <div class="timeline-end timeline-box py-2 px-3">
+                    <span class="font-medium text-sm">@entry.UserName</span>
+                    <span class="text-sm opacity-80 ml-1">@entry.Summary</span>
+                </div>
+                <hr />
+            </li>
+        }
+    </ul>
+}
