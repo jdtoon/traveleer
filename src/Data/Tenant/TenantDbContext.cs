@@ -16,6 +16,7 @@ using saas.Modules.Suppliers.Entities;
 using saas.Modules.Itineraries.Entities;
 using saas.Modules.Reports.Entities;
 using saas.Modules.TenantAdmin.Entities;
+using saas.Modules.Portal.Entities;
 
 namespace saas.Data.Tenant;
 
@@ -64,6 +65,8 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<BookingPayment> BookingPayments => Set<BookingPayment>();
     public DbSet<SupplierPayment> SupplierPayments => Set<SupplierPayment>();
     public DbSet<Document> Documents => Set<Document>();
+    public DbSet<PortalLink> PortalLinks => Set<PortalLink>();
+    public DbSet<PortalSession> PortalSessions => Set<PortalSession>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

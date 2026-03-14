@@ -1,0 +1,38 @@
+@model List<PortalQuoteListItemDto>
+@{
+    ViewData["Title"] = "Quotes";
+}
+
+<div class="mb-6">
+    <h1 class="text-2xl font-bold">Your Quotes</h1>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="card bg-base-100 shadow-sm">
+        <div class="card-body text-center text-base-content/60">
+            <p>No quotes yet.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="flex flex-col gap-4">
+        @foreach (var quote in Model)
+        {
+            <div class="card bg-base-100 shadow-sm">
+                <div class="card-body">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                            <h3 class="font-semibold text-lg">@quote.Reference</h3>
+                            <p class="text-sm text-base-content/60">Created @quote.CreatedAt.ToString("dd MMM yyyy")</p>
+                        </div>
+                        <span class="badge @(quote.Status == "Accepted" ? "badge-success" : quote.Status == "Expired" ? "badge-error" : "badge-info") badge-sm">
+                            @quote.Status
+                        </span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

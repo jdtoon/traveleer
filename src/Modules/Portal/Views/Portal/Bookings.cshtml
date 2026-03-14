@@ -1,0 +1,54 @@
+@model List<PortalBookingListItemDto>
+@{
+    ViewData["Title"] = "Bookings";
+}
+
+<div class="mb-6">
+    <h1 class="text-2xl font-bold">Your Bookings</h1>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="card bg-base-100 shadow-sm">
+        <div class="card-body text-center text-base-content/60">
+            <p>No bookings yet.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="flex flex-col gap-4">
+        @foreach (var booking in Model)
+        {
+            <a href="/portal/@ViewBag.TenantSlug/@ViewBag.Token/bookings/@booking.Id"
+               class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow">
+                <div class="card-body">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                            <h3 class="font-semibold text-lg">@booking.Reference</h3>
+                            @if (!string.IsNullOrEmpty(booking.Destination))
+                            {
+                                <p class="text-base-content/60">@booking.Destination</p>
+                            }
+                        </div>
+                        <div class="flex items-center gap-3">
+                            @if (booking.StartDate.HasValue)
+                            {
+                                <span class="text-sm text-base-content/60">
+                                    @booking.StartDate?.ToString("dd MMM yyyy")
+                                    @if (booking.EndDate.HasValue)
+                                    {
+                                        <span>— @booking.EndDate?.ToString("dd MMM yyyy")</span>
+                                    }
+                                </span>
+                            }
+                            <span class="badge @(booking.Status == "Confirmed" ? "badge-success" : booking.Status == "Cancelled" ? "badge-error" : "badge-info") badge-sm">
+                                @booking.Status
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        }
+    </div>
+}

@@ -1,0 +1,54 @@
+@model PortalDashboardDto
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="mb-8">
+    <h1 class="text-3xl font-bold">Welcome, @Model.ClientName</h1>
+    <p class="text-base-content/60 mt-1">Your travel dashboard with @Model.AgencyName</p>
+</div>
+
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    @if (ViewBag.Scope is not PortalLinkScope.QuoteOnly)
+    {
+        <a href="/portal/@ViewBag.TenantSlug/@ViewBag.Token/bookings" class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow">
+            <div class="card-body">
+                <div class="flex items-center gap-3">
+                    <div class="text-3xl">✈️</div>
+                    <div>
+                        <h2 class="card-title text-2xl">@Model.BookingCount</h2>
+                        <p class="text-base-content/60">Bookings</p>
+                    </div>
+                </div>
+            </div>
+        </a>
+    }
+
+    @if (ViewBag.Scope is not PortalLinkScope.BookingOnly)
+    {
+        <a href="/portal/@ViewBag.TenantSlug/@ViewBag.Token/quotes" class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow">
+            <div class="card-body">
+                <div class="flex items-center gap-3">
+                    <div class="text-3xl">📋</div>
+                    <div>
+                        <h2 class="card-title text-2xl">@Model.QuoteCount</h2>
+                        <p class="text-base-content/60">Quotes</p>
+                    </div>
+                </div>
+            </div>
+        </a>
+    }
+
+    <a href="/portal/@ViewBag.TenantSlug/@ViewBag.Token/documents" class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow">
+        <div class="card-body">
+            <div class="flex items-center gap-3">
+                <div class="text-3xl">📄</div>
+                <div>
+                    <h2 class="card-title text-2xl">@Model.DocumentCount</h2>
+                    <p class="text-base-content/60">Documents</p>
+                </div>
+            </div>
+        </div>
+    </a>
+</div>

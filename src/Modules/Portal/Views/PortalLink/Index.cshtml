@@ -1,0 +1,19 @@
+@model List<PortalLinkListItemDto>
+@{
+    ViewData["Title"] = "Portal Links";
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold">Portal Links</h1>
+            <p class="opacity-60">Manage shareable portal links for your clients.</p>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 shadow-sm">
+        <div class="card-body gap-4">
+            <partial name="_LinkList" model="Model" />
+        </div>
+    </div>
+</div>

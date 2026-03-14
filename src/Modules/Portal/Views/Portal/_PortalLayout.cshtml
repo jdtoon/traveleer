@@ -1,0 +1,73 @@
+@{
+    var branding = ViewBag.Branding as PortalBrandingDto;
+}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - @(branding?.AgencyName ?? "Travel Portal")</title>
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="@(branding?.PrimaryColor ?? "#2563EB")" />
+
+    <!-- DaisyUI + Tailwind CSS -->
+    <link rel="stylesheet" href="/css/app.css" asp-append-version="true" />
+
+    <!-- Swap.Htmx CSS -->
+    <link rel="stylesheet" href="~/_content/Swap.Htmx/css/swap.css" asp-append-version="true" />
+
+    <style>
+        :root {
+            --portal-primary: @(branding?.PrimaryColor ?? "#2563EB");
+            --portal-secondary: @(branding?.SecondaryColor ?? "#1E3A5F");
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content">
+    <script src="/js/theme.js"></script>
+
+    <!-- Portal Header -->
+    <header class="navbar bg-base-100 border-b border-base-300 shadow-sm sticky top-0 z-30">
+        <div class="flex-1">
+            <div class="flex items-center gap-3 px-2">
+                @if (!string.IsNullOrWhiteSpace(branding?.LogoUrl))
+                {
+                    <img src="@branding.LogoUrl" alt="@branding.AgencyName" class="h-8 w-auto" />
+                }
+                <span class="text-lg font-bold">@(branding?.AgencyName ?? "Travel Portal")</span>
+            </div>
+        </div>
+        @if (ViewBag.Token is string token && ViewBag.TenantSlug is string tenantSlug)
+        {
+            <nav class="flex-none">
+                <ul class="menu menu-horizontal gap-1 text-sm">
+                    <li><a href="/portal/@tenantSlug/@token/dashboard">Dashboard</a></li>
+                    @if (ViewBag.Scope is not PortalLinkScope.QuoteOnly)
+                    {
+                        <li><a href="/portal/@tenantSlug/@token/bookings">Bookings</a></li>
+                    }
+                    @if (ViewBag.Scope is not PortalLinkScope.BookingOnly)
+                    {
+                        <li><a href="/portal/@tenantSlug/@token/quotes">Quotes</a></li>
+                    }
+                    <li><a href="/portal/@tenantSlug/@token/documents">Documents</a></li>
+                </ul>
+            </nav>
+        }
+    </header>
+
+    <!-- Main content -->
+    <main id="main-content" class="container mx-auto max-w-5xl px-4 py-8">
+        @RenderBody()
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer footer-center p-4 text-base-content/60 text-sm">
+        <p>Powered by @(branding?.AgencyName ?? "Travel Portal")</p>
+    </footer>
+
+    <!-- HTMX -->
+    <script src="~/_content/Swap.Htmx/js/swap.js" asp-append-version="true"></script>
+</body>
+</html>

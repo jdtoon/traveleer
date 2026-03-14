@@ -1,0 +1,86 @@
+@model PortalBookingDetailDto
+@{
+    ViewData["Title"] = $"Booking {Model.Reference}";
+}
+
+<div class="mb-6">
+    <a href="/portal/@ViewBag.TenantSlug/@ViewBag.Token/bookings" class="btn btn-ghost btn-sm gap-1 mb-2">
+        ← Back to Bookings
+    </a>
+    <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-bold">@Model.Reference</h1>
+        <span class="badge @(Model.Status == "Confirmed" ? "badge-success" : Model.Status == "Cancelled" ? "badge-error" : "badge-info")">
+            @Model.Status
+        </span>
+    </div>
+</div>
+
+<!-- Booking info -->
+<div class="card bg-base-100 shadow-sm mb-6">
+    <div class="card-body">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            @if (!string.IsNullOrEmpty(Model.Destination))
+            {
+                <div>
+                    <span class="text-sm text-base-content/60">Destination</span>
+                    <p class="font-medium">@Model.Destination</p>
+                </div>
+            }
+            @if (Model.StartDate.HasValue)
+            {
+                <div>
+                    <span class="text-sm text-base-content/60">Travel Dates</span>
+                    <p class="font-medium">
+                        @Model.StartDate?.ToString("dd MMM yyyy")
+                        @if (Model.EndDate.HasValue)
+                        {
+                            <span>— @Model.EndDate?.ToString("dd MMM yyyy")</span>
+                        }
+                    </p>
+                </div>
+            }
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+        {
+            <div class="mt-4">
+                <span class="text-sm text-base-content/60">Special Requests</span>
+                <p class="mt-1 whitespace-pre-line">@Model.Notes</p>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Services -->
+@if (Model.Items.Count > 0)
+{
+    <h2 class="text-lg font-semibold mb-3">Services</h2>
+    <div class="overflow-x-auto">
+        <table class="table bg-base-100 shadow-sm">
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Provider</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td class="font-medium">@item.Description</td>
+                        <td>@item.ServiceType</td>
+                        <td>@item.Date?.ToString("dd MMM yyyy")</td>
+                        <td>@(item.SupplierName ?? "—")</td>
+                        <td>
+                            <span class="badge badge-sm @(item.Status == "Confirmed" ? "badge-success" : "badge-ghost")">
+                                @item.Status
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

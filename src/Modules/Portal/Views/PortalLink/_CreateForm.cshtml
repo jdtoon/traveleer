@@ -1,0 +1,37 @@
+@model CreatePortalLinkDto
+
+<div class="modal-box">
+    <h3 class="text-lg font-bold mb-4">Create Portal Link</h3>
+    <form method="post"
+          action="@Url.Action("Create", "PortalLink", new { slug = ViewContext.RouteData.Values["slug"] })"
+          hx-post="@Url.Action("Create", "PortalLink", new { slug = ViewContext.RouteData.Values["slug"] })"
+          hx-target="#portal-link-list"
+          hx-swap="innerHTML">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="ClientId" value="@Model.ClientId" />
+
+        <div class="form-control mb-4">
+            <label class="label"><span class="label-text">Access Scope</span></label>
+            <select name="Scope" class="select select-bordered w-full">
+                <option value="0">Full Access</option>
+                <option value="1">Booking Only</option>
+                <option value="2">Quote Only</option>
+            </select>
+        </div>
+
+        <div class="form-control mb-4">
+            <label class="label"><span class="label-text">Expires In</span></label>
+            <select name="ExpiryDays" class="select select-bordered w-full">
+                <option value="7">7 days</option>
+                <option value="14">14 days</option>
+                <option value="30" selected>30 days</option>
+                <option value="90">90 days</option>
+            </select>
+        </div>
+
+        <div class="modal-action">
+            <button type="button" class="btn btn-ghost" onclick="this.closest('dialog')?.close()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create Link</button>
+        </div>
+    </form>
+</div>
