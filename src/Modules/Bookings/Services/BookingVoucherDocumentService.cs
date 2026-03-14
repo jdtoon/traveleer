@@ -25,7 +25,7 @@ public class BookingVoucherDocumentService : IBookingVoucherDocumentService
         var leadGuest = string.IsNullOrWhiteSpace(booking.LeadGuestName) ? "Not set" : booking.LeadGuestName;
         var travelWindow = FormatTravelWindow(item.ServiceDate, item.EndDate);
 
-        var document = Document.Create(container =>
+        var document = QuestPDF.Fluent.Document.Create(container =>
         {
             container.Page(page =>
             {

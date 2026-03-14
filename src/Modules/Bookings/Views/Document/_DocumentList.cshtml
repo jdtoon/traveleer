@@ -1,0 +1,65 @@
+@model saas.Modules.Bookings.DTOs.DocumentListDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var isBooking = Model.BookingId.HasValue;
+    var parentId = isBooking ? Model.BookingId!.Value : Model.ClientId!.Value;
+    var newAction = isBooking
+        ? Url.Action("NewBookingDocument", "Document", new { slug, bookingId = parentId })
+        : Url.Action("NewClientDocument", "Document", new { slug, clientId = parentId });
+}
+<div class="flex flex-col gap-4">
+    <div class="flex items-center justify-between">
+        <h3 class="font-semibold">Documents (@Model.Documents.Count)</h3>
+        <has-permission name="bookings.edit">
+            <button class="btn btn-primary btn-sm"
+                    hx-get="@newAction"
+                    hx-target="#modal-container">Upload Document</button>
+        </has-permission>
+    </div>
+
+    @if (Model.Documents.Count == 0)
+    {
+        <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center">
+            <p class="opacity-70">No documents uploaded yet.</p>
+        </div>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Type</th>
+                        <th>Size</th>
+                        <th>Uploaded</th>
+                        <th>Description</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var doc in Model.Documents)
+                    {
+                        <tr>
+                            <td class="max-w-[200px] truncate font-medium">@doc.FileName</td>
+                            <td><span class="badge badge-sm @doc.TypeBadgeClass">@doc.DocumentType</span></td>
+                            <td class="whitespace-nowrap">@doc.FormattedSize</td>
+                            <td class="whitespace-nowrap">@doc.CreatedAt.ToString("dd MMM yyyy")</td>
+                            <td class="max-w-[200px] truncate">@(string.IsNullOrWhiteSpace(doc.Description) ? "—" : doc.Description)</td>
+                            <td class="flex gap-1">
+                                <a href="@Url.Action("Download", "Document", new { slug, id = doc.Id })"
+                                   class="btn btn-ghost btn-xs" target="_blank">Download</a>
+                                <has-permission name="bookings.edit">
+                                    <form hx-post="@Url.Action("Delete", "Document", new { slug, id = doc.Id })" hx-confirm="Remove this document?">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-ghost btn-xs text-error">Remove</button>
+                                    </form>
+                                </has-permission>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

@@ -23,10 +23,11 @@ public class BookingsModule : IModule
     public IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>
     {
         ["Booking"] = "Bookings",
-        ["Payment"] = "Bookings"
+        ["Payment"] = "Bookings",
+        ["Document"] = "Bookings"
     };
 
-    public IReadOnlyList<string> PartialViewSearchPaths => ["Booking", "Payment"];
+    public IReadOnlyList<string> PartialViewSearchPaths => ["Booking", "Payment", "Document"];
 
     public IReadOnlyList<ModuleFeature> Features =>
     [
@@ -51,5 +52,6 @@ public class BookingsModule : IModule
         services.AddSingleton<IBookingVoucherDocumentService, BookingVoucherDocumentService>();
         services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<IDocumentService, DocumentService>();
     }
 }

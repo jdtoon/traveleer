@@ -1,4 +1,7 @@
 @model saas.Modules.Clients.DTOs.ClientDetailsDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
 
 <dialog class="modal modal-open modal-middle">
     <div class="modal-box max-w-2xl">
@@ -47,6 +50,14 @@
                     <div class="whitespace-pre-line">@(Model.Notes ?? "No notes recorded.")</div>
                 </div>
             </div>
+        </div>
+
+        <div class="divider my-2"></div>
+        <div id="client-documents"
+             hx-get="@Url.Action("ClientDocuments", "Document", new { slug, clientId = Model.Id })"
+             hx-trigger="load, @saas.Modules.Bookings.Events.BookingEvents.ClientDocumentsRefresh from:body"
+             hx-swap="innerHTML">
+            <span class="loading loading-spinner loading-lg"></span>
         </div>
 
         <div class="modal-action">

@@ -63,6 +63,7 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<UserReportPreference> UserReportPreferences => Set<UserReportPreference>();
     public DbSet<BookingPayment> BookingPayments => Set<BookingPayment>();
     public DbSet<SupplierPayment> SupplierPayments => Set<SupplierPayment>();
+    public DbSet<Document> Documents => Set<Document>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
