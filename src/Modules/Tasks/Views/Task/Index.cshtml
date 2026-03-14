@@ -1,0 +1,69 @@
+@model List<TaskListItemDto>
+@{
+    ViewData["Title"] = "Tasks";
+    var slug = ViewContext.RouteData.Values["slug"];
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold">Tasks</h1>
+            <p class="opacity-60">Track follow-ups across bookings, quotes, and clients.</p>
+        </div>
+        <button class="btn btn-primary btn-sm"
+                hx-get="@Url.Action("New", "Task", new { slug })"
+                hx-target="#modal-container">
+            + New Task
+        </button>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+        <select class="select select-bordered select-sm"
+                hx-get="@Url.Action("List", "Task", new { slug })"
+                hx-target="#task-list"
+                hx-swap="innerHTML"
+                hx-include="[name='assignee'],[name='priority'],[name='entityType']"
+                name="status">
+            <option value="">All Statuses</option>
+            <option value="0" selected="@(ViewBag.StatusFilter?.ToString() == "Open" ? "selected" : null)">Open</option>
+            <option value="1" selected="@(ViewBag.StatusFilter?.ToString() == "InProgress" ? "selected" : null)">In Progress</option>
+            <option value="2" selected="@(ViewBag.StatusFilter?.ToString() == "Completed" ? "selected" : null)">Completed</option>
+            <option value="3" selected="@(ViewBag.StatusFilter?.ToString() == "Cancelled" ? "selected" : null)">Cancelled</option>
+        </select>
+        <select class="select select-bordered select-sm"
+                hx-get="@Url.Action("List", "Task", new { slug })"
+                hx-target="#task-list"
+                hx-swap="innerHTML"
+                hx-include="[name='status'],[name='assignee'],[name='entityType']"
+                name="priority">
+            <option value="">All Priorities</option>
+            <option value="0">Low</option>
+            <option value="1">Normal</option>
+            <option value="2">High</option>
+            <option value="3">Urgent</option>
+        </select>
+        <select class="select select-bordered select-sm"
+                hx-get="@Url.Action("List", "Task", new { slug })"
+                hx-target="#task-list"
+                hx-swap="innerHTML"
+                hx-include="[name='status'],[name='assignee'],[name='priority']"
+                name="entityType">
+            <option value="">All Types</option>
+            <option value="Booking">Booking</option>
+            <option value="Quote">Quote</option>
+            <option value="Client">Client</option>
+        </select>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 shadow-sm">
+        <div class="card-body gap-4">
+            <div id="task-list"
+                 hx-get="@Url.Action("List", "Task", new { slug })"
+                 hx-trigger="@saas.Modules.Tasks.Events.TaskEvents.Refresh from:body"
+                 hx-swap="innerHTML">
+                <partial name="_TaskList" model="Model" />
+            </div>
+        </div>
+    </div>
+</div>
+

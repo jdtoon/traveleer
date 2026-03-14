@@ -1,0 +1,70 @@
+@model EditTaskDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"];
+    var users = ViewBag.Users as List<UserListItem> ?? new();
+}
+
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-2xl">
+        <form hx-post="@Url.Action("Update", "Task", new { slug, id = Model.Id })" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">Edit Task</h3>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost"
+                        onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+            </div>
+            <div class="flex flex-col gap-3">
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Title</span></label>
+                    <input type="text" name="Title" class="input input-bordered w-full" required maxlength="200" value="@Model.Title" />
+                </div>
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Description</span></label>
+                    <textarea name="Description" class="textarea textarea-bordered w-full" maxlength="2000" rows="3">@Model.Description</textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Due Date</span></label>
+                        <input type="date" name="DueDate" class="input input-bordered w-full"
+                               value="@Model.DueDate?.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Priority</span></label>
+                        <select name="Priority" class="select select-bordered w-full">
+                            <option value="0" selected="@(Model.Priority == TaskPriority.Low ? "selected" : null)">Low</option>
+                            <option value="1" selected="@(Model.Priority == TaskPriority.Normal ? "selected" : null)">Normal</option>
+                            <option value="2" selected="@(Model.Priority == TaskPriority.High ? "selected" : null)">High</option>
+                            <option value="3" selected="@(Model.Priority == TaskPriority.Urgent ? "selected" : null)">Urgent</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Status</span></label>
+                    <select name="Status" class="select select-bordered w-full">
+                        <option value="0" selected="@(Model.Status == AgentTaskStatus.Open ? "selected" : null)">Open</option>
+                        <option value="1" selected="@(Model.Status == AgentTaskStatus.InProgress ? "selected" : null)">In Progress</option>
+                        <option value="2" selected="@(Model.Status == AgentTaskStatus.Completed ? "selected" : null)">Completed</option>
+                        <option value="3" selected="@(Model.Status == AgentTaskStatus.Cancelled ? "selected" : null)">Cancelled</option>
+                    </select>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Assignee</span></label>
+                    <select name="AssigneeUserId" class="select select-bordered w-full">
+                        <option value="">Unassigned</option>
+                        @foreach (var u in users.Where(u => u.IsActive))
+                        {
+                            <option value="@u.Id" selected="@(Model.AssigneeUserId == u.Id ? "selected" : null)">@(u.DisplayName ?? u.Email)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

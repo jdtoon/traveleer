@@ -97,6 +97,7 @@ var modules = new IModule[]
     new saas.Modules.Itineraries.ItinerariesModule(),
     new saas.Modules.Reports.ReportsModule(),
     new saas.Modules.Portal.PortalModule(),
+    new saas.Modules.Tasks.TasksModule(),
 };
 
 foreach (var module in modules)

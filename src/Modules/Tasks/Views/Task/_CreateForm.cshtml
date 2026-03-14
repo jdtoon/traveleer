@@ -1,0 +1,68 @@
+@model CreateTaskDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"];
+    var users = ViewBag.Users as List<UserListItem> ?? new();
+}
+
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-2xl">
+        <form hx-post="@Url.Action("Create", "Task", new { slug })" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">New Task</h3>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost"
+                        onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+            </div>
+            <div class="flex flex-col gap-3">
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Title</span></label>
+                    <input type="text" name="Title" class="input input-bordered w-full" required maxlength="200" />
+                </div>
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Description</span></label>
+                    <textarea name="Description" class="textarea textarea-bordered w-full" maxlength="2000" rows="3"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Due Date</span></label>
+                        <input type="date" name="DueDate" class="input input-bordered w-full" />
+                    </div>
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Priority</span></label>
+                        <select name="Priority" class="select select-bordered w-full">
+                            <option value="0">Low</option>
+                            <option value="1" selected>Normal</option>
+                            <option value="2">High</option>
+                            <option value="3">Urgent</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Assignee</span></label>
+                    <select name="AssigneeUserId" class="select select-bordered w-full">
+                        <option value="">Unassigned</option>
+                        @foreach (var u in users.Where(u => u.IsActive))
+                        {
+                            <option value="@u.Id">@(u.DisplayName ?? u.Email)</option>
+                        }
+                    </select>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.LinkedEntityType))
+                {
+                    <input type="hidden" name="LinkedEntityType" value="@Model.LinkedEntityType" />
+                    <input type="hidden" name="LinkedEntityId" value="@Model.LinkedEntityId" />
+                    <div class="text-sm opacity-60">
+                        Linked to: <span class="badge badge-ghost badge-sm">@Model.LinkedEntityType</span>
+                    </div>
+                }
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Task</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>
