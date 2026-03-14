@@ -71,8 +71,8 @@ public class CoreDataSeederTests
         var modules = new IModule[]
         {
             new saas.Modules.TenantAdmin.TenantAdminModule(), // custom_roles → starter
-            new saas.Modules.Audit.AuditModule(),         // audit_log → professional
-            new saas.Modules.Auth.AuthModule(),           // sso → enterprise
+            new saas.Modules.Audit.AuditModule(),         // audit_log → starter
+            new saas.Modules.Auth.AuthModule(),           // no features (SSO removed)
         };
 
         await CoreDataSeeder.SeedAsync(db, config, modules);
@@ -86,17 +86,17 @@ public class CoreDataSeederTests
         var freeFeatureCount = planFeatures.Count(pf => pf.PlanId == freePlan.Id);
         Assert.Equal(0, freeFeatureCount);
 
-        // Starter (SortOrder 1) — custom_roles = 1
+        // Starter (SortOrder 1) — custom_roles + audit_log = 2
         var starterPlan = plans.First(p => p.Slug == "starter");
         var starterFeatureCount = planFeatures.Count(pf => pf.PlanId == starterPlan.Id);
-        Assert.Equal(1, starterFeatureCount);
+        Assert.Equal(2, starterFeatureCount);
 
-        // Professional (SortOrder 2) — starter features + audit_log = 2
+        // Professional (SortOrder 2) — inherits starter features = 2
         var proPlan = plans.First(p => p.Slug == "professional");
         var proFeatureCount = planFeatures.Count(pf => pf.PlanId == proPlan.Id);
         Assert.Equal(2, proFeatureCount);
 
-        // Enterprise (SortOrder 3) — all features = 2
+        // Enterprise (SortOrder 3) — all features = 2 (no SSO feature registered)
         var entPlan = plans.First(p => p.Slug == "enterprise");
         var entFeatureCount = planFeatures.Count(pf => pf.PlanId == entPlan.Id);
         Assert.Equal(2, entFeatureCount);

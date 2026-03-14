@@ -29,6 +29,9 @@ public class AppFixture : IDisposable
     private readonly Lazy<WebApplicationFactory<Program>> _memberTenantFactory;
     private readonly Lazy<WebApplicationFactory<Program>> _superAdminFactory;
 
+    /// <summary>Exposes the admin tenant factory for direct DI access in tests.</summary>
+    public WebApplicationFactory<Program> AdminTenantFactory => _adminTenantFactory.Value;
+
     public AppFixture()
     {
         Factory = new WebApplicationFactory<Program>()

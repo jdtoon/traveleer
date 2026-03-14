@@ -1,0 +1,68 @@
+@model AuditDashboardViewModel
+
+<div class="overflow-x-auto">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Action</th>
+                <th>Entity Type</th>
+                <th>Entity ID</th>
+                <th>User</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Entries.Items.Count == 0)
+            {
+                <tr>
+                    <td colspan="6" class="text-center py-8 opacity-60">No audit entries found</td>
+                </tr>
+            }
+            @foreach (var entry in Model.Entries.Items)
+            {
+                <tr class="hover">
+                    <td class="text-xs whitespace-nowrap">@entry.Timestamp.ToString("dd MMM yyyy HH:mm:ss")</td>
+                    <td>
+                        <span class="badge badge-sm @entry.ActionBadgeClass">@entry.Action</span>
+                    </td>
+                    <td class="font-mono text-sm">@entry.EntityType</td>
+                    <td class="font-mono text-xs max-w-[120px] truncate">@entry.EntityId</td>
+                    <td class="text-sm">@entry.UserEmail</td>
+                    <td>
+                        @if (entry.HasChanges)
+                        {
+                            <a hx-get="@Url.Action("Details", "AuditDashboard", new { slug = ViewContext.RouteData.Values["slug"], id = entry.Id })"
+                               hx-target="#modal-container"
+                               class="btn btn-ghost btn-xs">Detail</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (Model.Entries.TotalPages > 1)
+{
+    var slug = ViewContext.RouteData.Values["slug"];
+    <div class="flex justify-center mt-4">
+        <div class="join">
+            @for (var i = 1; i <= Model.Entries.TotalPages; i++)
+            {
+                var pageNum = i;
+                <a hx-get="@Url.Action("List", "AuditDashboard", new {
+                       slug,
+                       page = pageNum,
+                       entity = Model.FilterEntity,
+                       action = Model.FilterAction,
+                       user = Model.FilterUser,
+                       from = Model.FilterFrom,
+                       to = Model.FilterTo
+                   })"
+                   hx-target="#audit-list"
+                   class="join-item btn btn-sm @(pageNum == Model.Entries.PageIndex ? "btn-active" : "")">@pageNum</a>
+            }
+        </div>
+    </div>
+}

@@ -1,0 +1,71 @@
+@model AuditDetailDto
+
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-2xl">
+        <h3 class="font-bold text-lg mb-4">
+            Audit Detail — <span class="badge @Model.ActionBadgeClass">@Model.Action</span> @Model.EntityType
+        </h3>
+
+        <div class="grid grid-cols-2 gap-2 text-sm mb-4">
+            <div><span class="font-semibold">Entity Type:</span> @Model.EntityType</div>
+            <div><span class="font-semibold">Entity ID:</span> @Model.EntityId</div>
+            <div><span class="font-semibold">Action:</span> @Model.Action</div>
+            <div><span class="font-semibold">User:</span> @Model.UserEmail</div>
+            <div><span class="font-semibold">Timestamp:</span> @Model.Timestamp.ToString("dd MMM yyyy HH:mm:ss")</div>
+            <div><span class="font-semibold">IP Address:</span> @(Model.IpAddress ?? "—")</div>
+        </div>
+
+        @if (Model.AffectedColumns.Count > 0)
+        {
+            <div class="mb-3">
+                <span class="font-semibold text-sm">Affected Columns:</span>
+                <div class="flex flex-wrap gap-1 mt-1">
+                    @foreach (var col in Model.AffectedColumns)
+                    {
+                        <span class="badge badge-sm badge-outline">@col</span>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (Model.Changes.Count > 0)
+        {
+            <div class="overflow-x-auto">
+                <table class="table table-sm table-zebra">
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Old Value</th>
+                            <th>New Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var change in Model.Changes)
+                        {
+                            <tr class="@(change.IsChanged ? "" : "opacity-40")">
+                                <td class="font-mono text-xs font-semibold">@change.Field</td>
+                                <td class="text-xs max-w-[200px] break-words @(change.IsChanged && change.OldValue != null ? "bg-error/10" : "")">
+                                    @(change.OldValue ?? "—")
+                                </td>
+                                <td class="text-xs max-w-[200px] break-words @(change.IsChanged && change.NewValue != null ? "bg-success/10" : "")">
+                                    @(change.NewValue ?? "—")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-sm opacity-60 py-4 text-center">No field-level change data available</div>
+        }
+
+        <div class="modal-action">
+            <button class="btn" onclick="htmx.remove(this.closest('dialog').parentElement)">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="htmx.remove(this.closest('dialog').parentElement)">close</button>
+    </form>
+</dialog>

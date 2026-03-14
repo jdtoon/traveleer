@@ -1,0 +1,70 @@
+@model AuditDashboardViewModel
+@{
+    ViewData["Title"] = "Audit Log";
+    ViewData["Breadcrumb"] = "Audit Log";
+}
+
+<div class="space-y-4">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold">Audit Log</h2>
+    </div>
+
+    <!-- Filters -->
+    <div class="card bg-base-200">
+        <div class="card-body p-4">
+            <form hx-get="@Url.Action("List", "AuditDashboard", new { slug = ViewContext.RouteData.Values["slug"] })"
+                  hx-target="#audit-list"
+                  hx-push-url="false"
+                  class="flex flex-wrap gap-3 items-end">
+                <div class="form-control">
+                    <label class="label label-text text-xs">Entity Type</label>
+                    <select name="entity" class="select select-bordered select-sm w-44">
+                        <option value="">All</option>
+                        @foreach (var et in Model.DistinctEntityTypes)
+                        {
+                            <option value="@et" selected="@(Model.FilterEntity == et)">@et</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label label-text text-xs">Action</label>
+                    <select name="action" class="select select-bordered select-sm w-36">
+                        <option value="">All</option>
+                        @foreach (var a in Model.DistinctActions)
+                        {
+                            <option value="@a" selected="@(Model.FilterAction == a)">@a</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label label-text text-xs">User</label>
+                    <select name="user" class="select select-bordered select-sm w-48">
+                        <option value="">All</option>
+                        @foreach (var u in Model.DistinctUsers)
+                        {
+                            <option value="@u" selected="@(Model.FilterUser == u)">@u</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label label-text text-xs">From</label>
+                    <input type="date" name="from" value="@Model.FilterFrom"
+                           class="input input-bordered input-sm w-40" />
+                </div>
+                <div class="form-control">
+                    <label class="label label-text text-xs">To</label>
+                    <input type="date" name="to" value="@Model.FilterTo"
+                           class="input input-bordered input-sm w-40" />
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                <a hx-get="@Url.Action("List", "AuditDashboard", new { slug = ViewContext.RouteData.Values["slug"] })"
+                   hx-target="#audit-list"
+                   class="btn btn-ghost btn-sm">Clear</a>
+            </form>
+        </div>
+    </div>
+
+    <div id="audit-list">
+        @await Html.PartialAsync("_List", Model)
+    </div>
+</div>

@@ -243,7 +243,7 @@ public class TenantProvisionerTests : IAsyncLifetime
 
         // Permissions seeded
         var permissions = await tenantDb.Permissions.ToListAsync();
-        Assert.Equal(10, permissions.Count);
+        Assert.Equal(11, permissions.Count);
         Assert.Contains(permissions, p => p.Key == saas.Modules.TenantAdmin.TenantAdminPermissions.SettingsEdit);
 
         // RolePermissions: Admin has all 10
@@ -251,7 +251,7 @@ public class TenantProvisionerTests : IAsyncLifetime
         var adminRolePerms = await tenantDb.RolePermissions
             .Where(rp => rp.RoleId == adminRole.Id)
             .ToListAsync();
-        Assert.Equal(10, adminRolePerms.Count);
+        Assert.Equal(11, adminRolePerms.Count);
     }
 
     [Fact]
