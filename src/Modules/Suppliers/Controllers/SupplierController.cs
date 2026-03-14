@@ -64,6 +64,14 @@ public class SupplierController : SwapController
         return model is null ? NotFound() : SwapView(model);
     }
 
+    [HttpGet("summary/{id:guid}")]
+    [HasPermission(SupplierPermissions.SuppliersRead)]
+    public async Task<IActionResult> Summary(Guid id)
+    {
+        var model = await _service.GetDetailsAsync(id);
+        return model is null ? NotFound() : PartialView("_Summary", model);
+    }
+
     [HttpGet("edit/{id:guid}")]
     [HasPermission(SupplierPermissions.SuppliersEdit)]
     public async Task<IActionResult> Edit(Guid id)

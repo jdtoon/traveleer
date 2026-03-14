@@ -2,139 +2,16 @@
 @{
     ViewData["Title"] = Model.Title;
     var slug = ViewContext.RouteData.Values["slug"]?.ToString();
-    var badgeClass = Model.Status switch
-    {
-        ItineraryStatus.Draft => "badge-warning",
-        ItineraryStatus.Published => "badge-success",
-        ItineraryStatus.Archived => "badge-ghost",
-        _ => "badge-ghost"
-    };
 }
 
-<div class="flex flex-col gap-6"
-     hx-get="@Url.Action("Details", "Itinerary", new { slug, id = Model.Id })"
-     hx-trigger="@saas.Modules.Itineraries.Events.ItineraryEvents.DetailsRefresh from:body"
-     hx-target="#main-content"
-     hx-swap="innerHTML show:none">
+<div class="flex flex-col gap-6">
 
-    @* ── Header ── *@
-    <div class="flex items-start justify-between">
-        <div class="flex items-center gap-3">
-            <a href="@Url.Action("Index", "Itinerary", new { slug })" class="btn btn-ghost btn-sm">← Back</a>
-            <div>
-                <h1 class="text-2xl font-bold">@Model.Title</h1>
-                <div class="flex items-center gap-2 text-sm opacity-60 mt-1">
-                    <span class="badge badge-sm @badgeClass">@Model.Status</span>
-                    @if (Model.ClientName != null)
-                    {
-                        <span>• @Model.ClientName</span>
-                    }
-                    @if (Model.BookingRef != null)
-                    {
-                        <span>• @Model.BookingRef</span>
-                    }
-                    @if (Model.TravelStartDate.HasValue && Model.TravelEndDate.HasValue)
-                    {
-                        <span>• @Model.TravelStartDate.Value.ToString("d MMM") – @Model.TravelEndDate.Value.ToString("d MMM yyyy")</span>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-            @if (Model.Status == ItineraryStatus.Draft)
-            {
-                <has-permission name="itineraries.edit">
-                    <form hx-post="@Url.Action("Publish", "Itinerary", new { slug, id = Model.Id })"
-                          hx-target="#modal-container">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-success btn-sm">Publish</button>
-                    </form>
-                </has-permission>
-            }
-            @if (Model.Status == ItineraryStatus.Published)
-            {
-                <has-permission name="itineraries.share">
-                    @if (Model.ShareToken != null)
-                    {
-                        <a href="/shared/itinerary/@Model.ShareToken" target="_blank" class="btn btn-outline btn-sm">View Shared Link</a>
-                    }
-                    else
-                    {
-                        <form hx-post="@Url.Action("Share", "Itinerary", new { slug, id = Model.Id })"
-                              hx-target="#modal-container">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-outline btn-sm">Generate Share Link</button>
-                        </form>
-                    }
-                </has-permission>
-                <has-permission name="itineraries.edit">
-                    <form hx-post="@Url.Action("Archive", "Itinerary", new { slug, id = Model.Id })"
-                          hx-target="#modal-container">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-ghost btn-sm">Archive</button>
-                    </form>
-                </has-permission>
-            }
-            <has-permission name="itineraries.edit">
-                <button class="btn btn-ghost btn-sm"
-                        hx-get="@Url.Action("Edit", "Itinerary", new { slug, id = Model.Id })"
-                        hx-target="#modal-container">Edit</button>
-            </has-permission>
-            <has-permission name="itineraries.delete">
-                <button class="btn btn-ghost btn-sm text-error"
-                        hx-get="@Url.Action("DeleteConfirm", "Itinerary", new { slug, id = Model.Id })"
-                        hx-target="#modal-container">Delete</button>
-            </has-permission>
-        </div>
+    <div id="itinerary-summary"
+         hx-get="@Url.Action("Summary", "Itinerary", new { slug, id = Model.Id })"
+         hx-trigger="@saas.Modules.Itineraries.Events.ItineraryEvents.DetailsRefresh from:body"
+         hx-swap="innerHTML">
+        @await Html.PartialAsync("_Summary", Model)
     </div>
-
-    @* ── Info Cards ── *@
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="card bg-base-100 border border-base-300 shadow-sm">
-            <div class="card-body p-4">
-                <div class="text-xs font-semibold uppercase opacity-50">Days</div>
-                <div class="text-2xl font-bold">@Model.Days.Count</div>
-            </div>
-        </div>
-        <div class="card bg-base-100 border border-base-300 shadow-sm">
-            <div class="card-body p-4">
-                <div class="text-xs font-semibold uppercase opacity-50">Items</div>
-                <div class="text-2xl font-bold">@Model.Days.Sum(d => d.Items.Count)</div>
-            </div>
-        </div>
-        <div class="card bg-base-100 border border-base-300 shadow-sm">
-            <div class="card-body p-4">
-                <div class="text-xs font-semibold uppercase opacity-50">Created</div>
-                <div class="text-sm font-medium">@Model.CreatedAt.ToString("d MMM yyyy")</div>
-            </div>
-        </div>
-    </div>
-
-    @* ── Notes ── *@
-    @if (!string.IsNullOrEmpty(Model.Notes) || !string.IsNullOrEmpty(Model.PublicNotes))
-    {
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            @if (!string.IsNullOrEmpty(Model.Notes))
-            {
-                <div class="card bg-base-100 border border-base-300 shadow-sm">
-                    <div class="card-body p-4">
-                        <h3 class="text-sm font-semibold opacity-60">Internal Notes</h3>
-                        <p class="text-sm whitespace-pre-wrap">@Model.Notes</p>
-                    </div>
-                </div>
-            }
-            @if (!string.IsNullOrEmpty(Model.PublicNotes))
-            {
-                <div class="card bg-base-100 border border-base-300 shadow-sm">
-                    <div class="card-body p-4">
-                        <h3 class="text-sm font-semibold opacity-60">Client Notes</h3>
-                        <p class="text-sm whitespace-pre-wrap">@Model.PublicNotes</p>
-                    </div>
-                </div>
-            }
-        </div>
-    }
 
     @* ── Day Builder ── *@
     <div class="card bg-base-100 border border-base-300 shadow-sm">
