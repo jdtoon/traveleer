@@ -1,0 +1,29 @@
+@{
+    ViewData["Title"] = "Submit Feedback";
+    var bookingId = ViewBag.BookingId as Guid?;
+}
+
+<div class="card bg-base-100 shadow-lg max-w-lg mx-auto">
+    <div class="card-body gap-6">
+        <h2 class="text-2xl font-bold text-center">Share Your Feedback</h2>
+        <p class="text-base-content/70 text-center">
+            We'd love to hear about your experience. Your feedback helps us improve our service.
+        </p>
+
+        <form method="post" action="/portal/@ViewBag.TenantSlug/@ViewBag.Token/feedback/@bookingId">
+            <div class="form-control mb-4">
+                <label class="label" for="notes">
+                    <span class="label-text">Your feedback</span>
+                </label>
+                <textarea id="notes" name="notes" class="textarea textarea-bordered h-32"
+                          placeholder="Tell us about your experience..."
+                          required></textarea>
+            </div>
+
+            <div class="flex gap-2 justify-end">
+                <a href="/portal/@ViewBag.TenantSlug/@ViewBag.Token/bookings/@bookingId" class="btn btn-ghost">Cancel</a>
+                <button type="submit" class="btn btn-primary">Submit Feedback</button>
+            </div>
+        </form>
+    </div>
+</div>

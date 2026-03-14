@@ -162,6 +162,210 @@ public class PortalController : SwapController
         return File(stream, doc.ContentType, doc.FileName);
     }
 
+    // ──── Client Self-Service Actions ────
+
+    [HttpPost("{tenantSlug}/{token}/quotes/{quoteId:guid}/accept")]
+    public async Task<IActionResult> AcceptQuote(string tenantSlug, string token, Guid quoteId)
+    {
+        await using var db = BuildTenantDb(tenantSlug);
+        if (db is null) return NotFound();
+
+        var portalService = new PortalService(db);
+        var link = await portalService.ValidateTokenAsync(token);
+        if (link is null) return SwapView("Expired");
+
+        var actionService = new ClientActionService(db);
+        await actionService.SubmitActionAsync(new SubmitClientActionDto
+        {
+            ActionType = ClientActionType.AcceptQuote,
+            EntityType = "Quote",
+            EntityId = quoteId
+        }, link.ClientId, null);
+
+        var branding = await GetBrandingAsync(db);
+        ViewBag.Token = token;
+        ViewBag.TenantSlug = tenantSlug;
+        ViewBag.Branding = branding;
+        return SwapView("ActionConfirmation", new ClientActionDetailDto
+        {
+            ActionType = ClientActionType.AcceptQuote,
+            EntityType = "Quote",
+            EntityId = quoteId,
+            ClientName = link.Client?.Name ?? "",
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    [HttpPost("{tenantSlug}/{token}/quotes/{quoteId:guid}/decline")]
+    public async Task<IActionResult> DeclineQuote(string tenantSlug, string token, Guid quoteId, [FromForm] string? notes)
+    {
+        await using var db = BuildTenantDb(tenantSlug);
+        if (db is null) return NotFound();
+
+        var portalService = new PortalService(db);
+        var link = await portalService.ValidateTokenAsync(token);
+        if (link is null) return SwapView("Expired");
+
+        var actionService = new ClientActionService(db);
+        await actionService.SubmitActionAsync(new SubmitClientActionDto
+        {
+            ActionType = ClientActionType.DeclineQuote,
+            EntityType = "Quote",
+            EntityId = quoteId,
+            Notes = notes
+        }, link.ClientId, null);
+
+        var branding = await GetBrandingAsync(db);
+        ViewBag.Token = token;
+        ViewBag.TenantSlug = tenantSlug;
+        ViewBag.Branding = branding;
+        return SwapView("ActionConfirmation", new ClientActionDetailDto
+        {
+            ActionType = ClientActionType.DeclineQuote,
+            EntityType = "Quote",
+            EntityId = quoteId,
+            Notes = notes,
+            ClientName = link.Client?.Name ?? "",
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    [HttpGet("{tenantSlug}/{token}/quotes/{quoteId:guid}/change")]
+    public async Task<IActionResult> RequestChangeForm(string tenantSlug, string token, Guid quoteId)
+    {
+        await using var db = BuildTenantDb(tenantSlug);
+        if (db is null) return NotFound();
+
+        var portalService = new PortalService(db);
+        var link = await portalService.ValidateTokenAsync(token);
+        if (link is null) return SwapView("Expired");
+
+        var branding = await GetBrandingAsync(db);
+        ViewBag.Token = token;
+        ViewBag.TenantSlug = tenantSlug;
+        ViewBag.Branding = branding;
+        ViewBag.QuoteId = quoteId;
+        return SwapView("RequestChange");
+    }
+
+    [HttpPost("{tenantSlug}/{token}/quotes/{quoteId:guid}/change")]
+    public async Task<IActionResult> RequestChange(string tenantSlug, string token, Guid quoteId, [FromForm] string? notes)
+    {
+        await using var db = BuildTenantDb(tenantSlug);
+        if (db is null) return NotFound();
+
+        var portalService = new PortalService(db);
+        var link = await portalService.ValidateTokenAsync(token);
+        if (link is null) return SwapView("Expired");
+
+        var actionService = new ClientActionService(db);
+        await actionService.SubmitActionAsync(new SubmitClientActionDto
+        {
+            ActionType = ClientActionType.RequestChange,
+            EntityType = "Quote",
+            EntityId = quoteId,
+            Notes = notes
+        }, link.ClientId, null);
+
+        var branding = await GetBrandingAsync(db);
+        ViewBag.Token = token;
+        ViewBag.TenantSlug = tenantSlug;
+        ViewBag.Branding = branding;
+        return SwapView("ActionConfirmation", new ClientActionDetailDto
+        {
+            ActionType = ClientActionType.RequestChange,
+            EntityType = "Quote",
+            EntityId = quoteId,
+            Notes = notes,
+            ClientName = link.Client?.Name ?? "",
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    [HttpPost("{tenantSlug}/{token}/itinerary/{itineraryId:guid}/approve")]
+    public async Task<IActionResult> ApproveItinerary(string tenantSlug, string token, Guid itineraryId)
+    {
+        await using var db = BuildTenantDb(tenantSlug);
+        if (db is null) return NotFound();
+
+        var portalService = new PortalService(db);
+        var link = await portalService.ValidateTokenAsync(token);
+        if (link is null) return SwapView("Expired");
+
+        var actionService = new ClientActionService(db);
+        await actionService.SubmitActionAsync(new SubmitClientActionDto
+        {
+            ActionType = ClientActionType.ApproveItinerary,
+            EntityType = "Itinerary",
+            EntityId = itineraryId
+        }, link.ClientId, null);
+
+        var branding = await GetBrandingAsync(db);
+        ViewBag.Token = token;
+        ViewBag.TenantSlug = tenantSlug;
+        ViewBag.Branding = branding;
+        return SwapView("ActionConfirmation", new ClientActionDetailDto
+        {
+            ActionType = ClientActionType.ApproveItinerary,
+            EntityType = "Itinerary",
+            EntityId = itineraryId,
+            ClientName = link.Client?.Name ?? "",
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    [HttpGet("{tenantSlug}/{token}/feedback/{bookingId:guid}")]
+    public async Task<IActionResult> FeedbackForm(string tenantSlug, string token, Guid bookingId)
+    {
+        await using var db = BuildTenantDb(tenantSlug);
+        if (db is null) return NotFound();
+
+        var portalService = new PortalService(db);
+        var link = await portalService.ValidateTokenAsync(token);
+        if (link is null) return SwapView("Expired");
+
+        var branding = await GetBrandingAsync(db);
+        ViewBag.Token = token;
+        ViewBag.TenantSlug = tenantSlug;
+        ViewBag.Branding = branding;
+        ViewBag.BookingId = bookingId;
+        return SwapView("Feedback");
+    }
+
+    [HttpPost("{tenantSlug}/{token}/feedback/{bookingId:guid}")]
+    public async Task<IActionResult> SubmitFeedback(string tenantSlug, string token, Guid bookingId, [FromForm] string? notes)
+    {
+        await using var db = BuildTenantDb(tenantSlug);
+        if (db is null) return NotFound();
+
+        var portalService = new PortalService(db);
+        var link = await portalService.ValidateTokenAsync(token);
+        if (link is null) return SwapView("Expired");
+
+        var actionService = new ClientActionService(db);
+        await actionService.SubmitActionAsync(new SubmitClientActionDto
+        {
+            ActionType = ClientActionType.SubmitFeedback,
+            EntityType = "Booking",
+            EntityId = bookingId,
+            Notes = notes
+        }, link.ClientId, null);
+
+        var branding = await GetBrandingAsync(db);
+        ViewBag.Token = token;
+        ViewBag.TenantSlug = tenantSlug;
+        ViewBag.Branding = branding;
+        return SwapView("ActionConfirmation", new ClientActionDetailDto
+        {
+            ActionType = ClientActionType.SubmitFeedback,
+            EntityType = "Booking",
+            EntityId = bookingId,
+            Notes = notes,
+            ClientName = link.Client?.Name ?? "",
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
     private TenantDbContext? BuildTenantDb(string tenantSlug)
     {
         if (string.IsNullOrWhiteSpace(tenantSlug)) return null;

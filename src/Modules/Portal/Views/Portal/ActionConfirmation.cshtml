@@ -1,0 +1,49 @@
+@model ClientActionDetailDto
+@{
+    var label = Model.ActionType switch
+    {
+        ClientActionType.AcceptQuote => "Quote Accepted",
+        ClientActionType.DeclineQuote => "Quote Declined",
+        ClientActionType.RequestChange => "Change Request Submitted",
+        ClientActionType.ApproveItinerary => "Itinerary Approved",
+        ClientActionType.SubmitFeedback => "Feedback Submitted",
+        _ => "Action Recorded"
+    };
+    var message = Model.ActionType switch
+    {
+        ClientActionType.AcceptQuote => "Your acceptance has been recorded. The agency team will follow up shortly.",
+        ClientActionType.DeclineQuote => "Your response has been recorded. The agency team will be in touch if needed.",
+        ClientActionType.RequestChange => "Your change request has been submitted. The agency team will review it and get back to you.",
+        ClientActionType.ApproveItinerary => "Your approval has been recorded. The agency team will proceed with the arrangements.",
+        ClientActionType.SubmitFeedback => "Thank you for your feedback. The agency team will review it.",
+        _ => "Your action has been recorded."
+    };
+    ViewData["Title"] = label;
+}
+
+<div class="card bg-base-100 shadow-lg max-w-lg mx-auto">
+    <div class="card-body text-center gap-6">
+        <div class="text-6xl text-success">✓</div>
+        <h2 class="text-2xl font-bold">@label</h2>
+        <p class="text-base-content/70">@message</p>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+        {
+            <div class="rounded-box bg-base-200 p-4 text-sm text-left">
+                <span class="text-xs uppercase tracking-wide text-base-content/50">Your message</span>
+                <p class="mt-1 whitespace-pre-line">@Model.Notes</p>
+            </div>
+        }
+
+        <div class="text-xs text-base-content/50">
+            Recorded on @Model.CreatedAt.ToString("dd MMM yyyy HH:mm") UTC
+        </div>
+
+        @if (ViewBag.Token is string token && ViewBag.TenantSlug is string tenantSlug)
+        {
+            <a href="/portal/@tenantSlug/@token/dashboard" class="btn btn-primary btn-sm">
+                Return to Portal
+            </a>
+        }
+    </div>
+</div>

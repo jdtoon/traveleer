@@ -1,0 +1,34 @@
+@model List<ClientActionListItemDto>
+@{
+    ViewData["Title"] = "Client Actions";
+    ViewData["PageHeader"] = "Client Actions";
+    ViewData["PageDescription"] = "Review and manage actions submitted by clients through the portal.";
+}
+
+<div class="flex flex-col gap-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="tabs tabs-box">
+            <a href="/@ViewContext.RouteData.Values["slug"]/portal/actions"
+               hx-get="/@ViewContext.RouteData.Values["slug"]/portal/actions/list"
+               hx-target="#action-list"
+               class="tab @(Context.Request.Query["status"].Count == 0 ? "tab-active" : "")">All</a>
+            <a href="/@ViewContext.RouteData.Values["slug"]/portal/actions?status=Pending"
+               hx-get="/@ViewContext.RouteData.Values["slug"]/portal/actions/list?status=Pending"
+               hx-target="#action-list"
+               class="tab @(Context.Request.Query["status"] == "Pending" ? "tab-active" : "")">Pending</a>
+            <a href="/@ViewContext.RouteData.Values["slug"]/portal/actions?status=Acknowledged"
+               hx-get="/@ViewContext.RouteData.Values["slug"]/portal/actions/list?status=Acknowledged"
+               hx-target="#action-list"
+               class="tab @(Context.Request.Query["status"] == "Acknowledged" ? "tab-active" : "")">Acknowledged</a>
+            <a href="/@ViewContext.RouteData.Values["slug"]/portal/actions?status=Actioned"
+               hx-get="/@ViewContext.RouteData.Values["slug"]/portal/actions/list?status=Actioned"
+               hx-target="#action-list"
+               class="tab @(Context.Request.Query["status"] == "Actioned" ? "tab-active" : "")">Actioned</a>
+        </div>
+    </div>
+
+    <div id="action-list">
+        <partial name="_ActionList" model="Model" />
+    </div>
+</div>
+

@@ -31,6 +31,20 @@ else
                             @quote.Status
                         </span>
                     </div>
+                    @if (quote.Status == "Sent" || quote.Status == "Draft")
+                    {
+                        <div class="flex flex-wrap gap-2 mt-3 border-t border-base-300 pt-3">
+                            <form method="post" action="/portal/@ViewBag.TenantSlug/@ViewBag.Token/quotes/@quote.Id/accept">
+                                <button type="submit" class="btn btn-success btn-sm">Accept Quote</button>
+                            </form>
+                            <form method="post" action="/portal/@ViewBag.TenantSlug/@ViewBag.Token/quotes/@quote.Id/decline">
+                                <button type="submit" class="btn btn-error btn-sm btn-outline">Decline</button>
+                            </form>
+                            <a href="/portal/@ViewBag.TenantSlug/@ViewBag.Token/quotes/@quote.Id/change" class="btn btn-ghost btn-sm">
+                                Request Change
+                            </a>
+                        </div>
+                    }
                 </div>
             </div>
         }

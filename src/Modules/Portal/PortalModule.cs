@@ -20,10 +20,11 @@ public class PortalModule : IModule
     public IReadOnlyDictionary<string, string> ControllerViewPaths => new Dictionary<string, string>
     {
         ["PortalLink"] = "Portal",
-        ["Portal"] = "Portal"
+        ["Portal"] = "Portal",
+        ["ClientAction"] = "Portal"
     };
 
-    public IReadOnlyList<string> PartialViewSearchPaths => ["PortalLink", "Portal"];
+    public IReadOnlyList<string> PartialViewSearchPaths => ["PortalLink", "Portal", "ClientAction"];
 
     public IReadOnlyList<string> PublicRoutePrefixes => ["portal"];
 
@@ -45,5 +46,6 @@ public class PortalModule : IModule
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IPortalService, PortalService>();
+        services.AddScoped<IClientActionService, ClientActionService>();
     }
 }

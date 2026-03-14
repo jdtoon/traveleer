@@ -1,0 +1,29 @@
+@{
+    ViewData["Title"] = "Request Change";
+    var quoteId = ViewBag.QuoteId as Guid?;
+}
+
+<div class="card bg-base-100 shadow-lg max-w-lg mx-auto">
+    <div class="card-body gap-6">
+        <h2 class="text-2xl font-bold text-center">Request a Change</h2>
+        <p class="text-base-content/70 text-center">
+            Describe the changes you'd like the agency to make. They will review your request and get back to you.
+        </p>
+
+        <form method="post" action="/portal/@ViewBag.TenantSlug/@ViewBag.Token/quotes/@quoteId/change">
+            <div class="form-control mb-4">
+                <label class="label" for="notes">
+                    <span class="label-text">What would you like to change?</span>
+                </label>
+                <textarea id="notes" name="notes" class="textarea textarea-bordered h-32"
+                          placeholder="e.g. Could we change the hotel to a beachfront property?"
+                          required></textarea>
+            </div>
+
+            <div class="flex gap-2 justify-end">
+                <a href="/portal/@ViewBag.TenantSlug/@ViewBag.Token/quotes" class="btn btn-ghost">Cancel</a>
+                <button type="submit" class="btn btn-primary">Submit Request</button>
+            </div>
+        </form>
+    </div>
+</div>
