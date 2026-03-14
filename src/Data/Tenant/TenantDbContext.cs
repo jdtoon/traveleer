@@ -18,6 +18,7 @@ using saas.Modules.Reports.Entities;
 using saas.Modules.TenantAdmin.Entities;
 using saas.Modules.Portal.Entities;
 using saas.Modules.Tasks.Entities;
+using saas.Modules.Communications.Entities;
 
 namespace saas.Data.Tenant;
 
@@ -72,6 +73,7 @@ public class TenantDbContext : IdentityDbContext<AppUser, AppRole, string>
     public DbSet<ActivityEntry> ActivityEntries => Set<ActivityEntry>();
     public DbSet<BookingAssignment> BookingAssignments => Set<BookingAssignment>();
     public DbSet<BookingComment> BookingComments => Set<BookingComment>();
+    public DbSet<CommunicationEntry> CommunicationEntries => Set<CommunicationEntry>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

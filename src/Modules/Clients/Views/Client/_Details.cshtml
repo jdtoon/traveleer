@@ -60,6 +60,14 @@
             <span class="loading loading-spinner loading-lg"></span>
         </div>
 
+        <div class="divider my-2"></div>
+        <div id="client-communications"
+             hx-get="@Url.Action("ClientComms", "Communication", new { slug, clientId = Model.Id })"
+             hx-trigger="load, @saas.Modules.Communications.Events.CommunicationEvents.Refresh from:body"
+             hx-swap="innerHTML">
+            <span class="loading loading-spinner loading-lg"></span>
+        </div>
+
         <div class="modal-action">
             <button type="button" class="btn btn-primary" onclick="this.closest('.modal').classList.remove('modal-open')">Close</button>
         </div>

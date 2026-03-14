@@ -1,0 +1,58 @@
+@model saas.Modules.Communications.DTOs.UpdateCommunicationDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"];
+    var entryId = ViewData["EntryId"];
+}
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-2xl">
+        <form hx-post="@Url.Action("Update", "Communication", new { slug, id = entryId })" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">Edit Communication</h3>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost"
+                        onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+            </div>
+            <div class="flex flex-col gap-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Channel</span></label>
+                        <select name="Channel" class="select select-bordered w-full">
+                            <option value="0" @(Model.Channel == saas.Modules.Communications.Entities.CommunicationChannel.Email ? "selected" : "")>✉️ Email</option>
+                            <option value="1" @(Model.Channel == saas.Modules.Communications.Entities.CommunicationChannel.Phone ? "selected" : "")>📞 Phone</option>
+                            <option value="2" @(Model.Channel == saas.Modules.Communications.Entities.CommunicationChannel.WhatsApp ? "selected" : "")>💬 WhatsApp</option>
+                            <option value="3" @(Model.Channel == saas.Modules.Communications.Entities.CommunicationChannel.InPerson ? "selected" : "")>🤝 In Person</option>
+                            <option value="4" @(Model.Channel == saas.Modules.Communications.Entities.CommunicationChannel.Other ? "selected" : "")>📝 Other</option>
+                        </select>
+                    </div>
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Direction</span></label>
+                        <select name="Direction" class="select select-bordered w-full">
+                            <option value="1" @(Model.Direction == saas.Modules.Communications.Entities.CommunicationDirection.Outbound ? "selected" : "")>↗ Outbound</option>
+                            <option value="0" @(Model.Direction == saas.Modules.Communications.Entities.CommunicationDirection.Inbound ? "selected" : "")>↙ Inbound</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Subject <span class="opacity-50">(optional)</span></span></label>
+                    <input type="text" name="Subject" class="input input-bordered w-full" maxlength="200" value="@Model.Subject" />
+                </div>
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Content</span></label>
+                    <textarea name="Content" class="textarea textarea-bordered w-full" rows="4" required maxlength="4000">@Model.Content</textarea>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Occurred At</span></label>
+                    <input type="datetime-local" name="OccurredAt" class="input input-bordered w-full"
+                           value="@Model.OccurredAt?.ToString("yyyy-MM-ddTHH:mm")" />
+                </div>
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

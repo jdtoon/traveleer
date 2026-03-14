@@ -7,6 +7,7 @@ using saas.Modules.Bookings.DTOs;
 using saas.Modules.Bookings.Entities;
 using saas.Modules.Bookings.Services;
 using saas.Modules.Clients.Entities;
+using saas.Modules.Communications.Services;
 using saas.Modules.Inventory.Entities;
 using saas.Modules.Quotes.Entities;
 using saas.Modules.RateCards.Entities;
@@ -99,7 +100,7 @@ public class BookingServiceTests : IAsyncLifetime
         _templateService = new FakeEmailTemplateService();
         _tenantContext = new FakeTenantContext();
         _voucherDocumentService = new FakeBookingVoucherDocumentService();
-        _service = new BookingService(_db, _emailService, _templateService, _tenantContext, _voucherDocumentService);
+        _service = new BookingService(_db, _emailService, _templateService, _tenantContext, _voucherDocumentService, new FakeCommunicationService());
     }
 
     public async Task DisposeAsync()
@@ -590,5 +591,22 @@ public class BookingServiceTests : IAsyncLifetime
             LastMimeType = "application/pdf";
             return System.Text.Encoding.ASCII.GetBytes($"PDF:{booking.BookingRef}:{item.VoucherNumber}:{agencyName}");
         }
+    }
+
+    private sealed class FakeCommunicationService : ICommunicationService
+    {
+        public Task<saas.Modules.Communications.DTOs.CommunicationListDto> GetByClientAsync(Guid clientId)
+            => Task.FromResult(new saas.Modules.Communications.DTOs.CommunicationListDto());
+        public Task<saas.Modules.Communications.DTOs.CommunicationListDto> GetByBookingAsync(Guid bookingId)
+            => Task.FromResult(new saas.Modules.Communications.DTOs.CommunicationListDto());
+        public Task<saas.Modules.Communications.DTOs.CommunicationListDto> GetBySupplierAsync(Guid supplierId)
+            => Task.FromResult(new saas.Modules.Communications.DTOs.CommunicationListDto());
+        public Task<saas.Modules.Communications.DTOs.CommunicationEntryDto?> GetByIdAsync(Guid id)
+            => Task.FromResult<saas.Modules.Communications.DTOs.CommunicationEntryDto?>(null);
+        public Task<saas.Modules.Communications.Entities.CommunicationEntry> CreateAsync(saas.Modules.Communications.DTOs.CreateCommunicationDto dto)
+            => Task.FromResult(new saas.Modules.Communications.Entities.CommunicationEntry());
+        public Task UpdateAsync(Guid id, saas.Modules.Communications.DTOs.UpdateCommunicationDto dto) => Task.CompletedTask;
+        public Task DeleteAsync(Guid id) => Task.CompletedTask;
+        public Task AutoLogEmailAsync(Guid? clientId, Guid? supplierId, Guid? bookingId, string subject, string recipient) => Task.CompletedTask;
     }
 }

@@ -5,6 +5,7 @@ using saas.Infrastructure.Services;
 using saas.Modules.Branding.Entities;
 using saas.Modules.Bookings.DTOs;
 using saas.Modules.Bookings.Entities;
+using saas.Modules.Communications.Services;
 using saas.Modules.Inventory.Entities;
 using saas.Modules.Quotes.Entities;
 using saas.Shared;
@@ -34,19 +35,22 @@ public class BookingService : IBookingService
     private readonly IEmailTemplateService _templateService;
     private readonly ITenantContext _tenantContext;
     private readonly IBookingVoucherDocumentService _voucherDocumentService;
+    private readonly ICommunicationService _communicationService;
 
     public BookingService(
         TenantDbContext db,
         IEmailService emailService,
         IEmailTemplateService templateService,
         ITenantContext tenantContext,
-        IBookingVoucherDocumentService voucherDocumentService)
+        IBookingVoucherDocumentService voucherDocumentService,
+        ICommunicationService communicationService)
     {
         _db = db;
         _emailService = emailService;
         _templateService = templateService;
         _tenantContext = tenantContext;
         _voucherDocumentService = voucherDocumentService;
+        _communicationService = communicationService;
     }
 
     public async Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12, string? assignedToUserId = null)
@@ -450,6 +454,8 @@ public class BookingService : IBookingService
             return BookingItemActionResult.Fail(result.ErrorMessage ?? "Supplier request could not be sent.");
         }
 
+        await _communicationService.AutoLogEmailAsync(null, item.SupplierId, bookingId, subject, item.Supplier.ContactEmail.Trim());
+
         if (!isReminder)
         {
             item.SupplierStatus = SupplierStatus.Requested;
@@ -561,6 +567,8 @@ public class BookingService : IBookingService
         {
             return BookingItemActionResult.Fail(result.ErrorMessage ?? "Voucher could not be sent.");
         }
+
+        await _communicationService.AutoLogEmailAsync(null, item.SupplierId, bookingId, subject, item.Supplier.ContactEmail.Trim());
 
         item.VoucherSent = true;
         item.VoucherSentAt = DateTime.UtcNow;

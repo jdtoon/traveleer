@@ -77,4 +77,16 @@
             </div>
         </div>
     </div>
+
+    <div class="card border border-base-300 bg-base-100 shadow-sm">
+        <div class="card-body gap-4">
+            <h2 class="card-title">Communications</h2>
+            <div id="booking-communications"
+                 hx-get="@Url.Action("BookingComms", "Communication", new { slug, bookingId = Model.Id })"
+                 hx-trigger="load, @saas.Modules.Communications.Events.CommunicationEvents.Refresh from:body"
+                 hx-swap="innerHTML">
+                <span class="loading loading-spinner loading-lg"></span>
+            </div>
+        </div>
+    </div>
 </div>

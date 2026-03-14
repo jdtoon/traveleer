@@ -1,0 +1,69 @@
+@model saas.Modules.Communications.DTOs.CreateCommunicationDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"];
+}
+<dialog class="modal modal-open modal-middle">
+    <div class="modal-box max-w-2xl">
+        <form hx-post="@Url.Action("Create", "Communication", new { slug })" hx-target="#modal-container">
+            @Html.AntiForgeryToken()
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">Log Communication</h3>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost"
+                        onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+            </div>
+            <div class="flex flex-col gap-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Channel</span></label>
+                        <select name="Channel" class="select select-bordered w-full">
+                            <option value="0">✉️ Email</option>
+                            <option value="1">📞 Phone</option>
+                            <option value="2">💬 WhatsApp</option>
+                            <option value="3">🤝 In Person</option>
+                            <option value="4">📝 Other</option>
+                        </select>
+                    </div>
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Direction</span></label>
+                        <select name="Direction" class="select select-bordered w-full">
+                            <option value="1" selected>↗ Outbound</option>
+                            <option value="0">↙ Inbound</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Subject <span class="opacity-50">(optional)</span></span></label>
+                    <input type="text" name="Subject" class="input input-bordered w-full" maxlength="200" />
+                </div>
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Content</span></label>
+                    <textarea name="Content" class="textarea textarea-bordered w-full" rows="4" required maxlength="4000" placeholder="What was discussed?"></textarea>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Occurred At</span></label>
+                    <input type="datetime-local" name="OccurredAt" class="input input-bordered w-full"
+                           value="@DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm")" />
+                </div>
+                @if (Model.ClientId.HasValue)
+                {
+                    <input type="hidden" name="ClientId" value="@Model.ClientId" />
+                }
+                @if (Model.SupplierId.HasValue)
+                {
+                    <input type="hidden" name="SupplierId" value="@Model.SupplierId" />
+                }
+                @if (Model.BookingId.HasValue)
+                {
+                    <input type="hidden" name="BookingId" value="@Model.BookingId" />
+                }
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Log Communication</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+    </form>
+</dialog>

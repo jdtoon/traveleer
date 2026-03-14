@@ -1,0 +1,61 @@
+@model saas.Modules.Communications.DTOs.CommunicationListDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+<div class="flex flex-col gap-4">
+    <div class="flex items-center justify-between">
+        <span class="text-sm font-semibold opacity-70 uppercase tracking-wide">Communications</span>
+        <button class="btn btn-primary btn-sm"
+                hx-get="@Url.Action("New", "Communication", new { slug, clientId = Model.ClientId, supplierId = Model.SupplierId, bookingId = Model.BookingId })"
+                hx-target="#modal-container">
+            Log Communication
+        </button>
+    </div>
+
+    @if (Model.Entries.Count == 0)
+    {
+        <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center">
+            <p class="opacity-70">No communications logged yet.</p>
+        </div>
+    }
+    else
+    {
+        <div class="flex flex-col gap-2">
+            @foreach (var entry in Model.Entries)
+            {
+                <div class="flex items-start gap-3 rounded-box bg-base-200/50 p-3">
+                    <div class="text-xl leading-none mt-0.5" title="@entry.Channel">@entry.ChannelIcon</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="badge badge-ghost badge-sm font-mono">@entry.DirectionArrow @entry.DirectionLabel</span>
+                            @if (!string.IsNullOrEmpty(entry.Subject))
+                            {
+                                <span class="font-medium text-sm truncate">@entry.Subject</span>
+                            }
+                        </div>
+                        <p class="text-sm mt-1 whitespace-pre-line line-clamp-3">@entry.Content</p>
+                        <div class="flex items-center gap-2 mt-1 text-xs opacity-60">
+                            <span>@entry.OccurredAt.ToString("dd MMM yyyy HH:mm")</span>
+                            <span>&middot;</span>
+                            <span>by @entry.LoggedByName</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-1 shrink-0">
+                        <button class="btn btn-ghost btn-xs"
+                                hx-get="@Url.Action("Edit", "Communication", new { slug, id = entry.Id })"
+                                hx-target="#modal-container"
+                                title="Edit">
+                            ✏️
+                        </button>
+                        <form hx-post="@Url.Action("Delete", "Communication", new { slug, id = entry.Id })"
+                              hx-target="#modal-container"
+                              hx-confirm="Delete this communication entry?">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-ghost btn-xs text-error" title="Delete">🗑️</button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
