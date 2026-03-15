@@ -7,6 +7,7 @@ namespace saas.Modules.Quotes.DTOs;
 public class QuoteListItemDto
 {
     public Guid Id { get; set; }
+    public Guid? ClientId { get; set; }
     public string ReferenceNumber { get; set; } = string.Empty;
     public QuoteStatus Status { get; set; }
     public string ClientName { get; set; } = string.Empty;

@@ -8,6 +8,7 @@ public class ItineraryListItemDto
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
+    public Guid? ClientId { get; set; }
     public string? ClientName { get; set; }
     public string? BookingRef { get; set; }
     public ItineraryStatus Status { get; set; }

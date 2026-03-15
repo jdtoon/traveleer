@@ -49,6 +49,16 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task BookingListPartial_RendersClientDetailLinks()
+    {
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/list");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync($"hx-get=\"/{TenantSlug}/clients/details/");
+        await response.AssertContainsAsync("hx-target=\"#modal-container\"");
+    }
+
+    [Fact]
     public async Task BookingNewPartial_RendersModalForm()
     {
         var response = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/new");
@@ -70,6 +80,7 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
         await response.AssertPartialViewAsync();
         await response.AssertContainsAsync("Totals");
         await response.AssertContainsAsync("Selling: USD");
+        await response.AssertContainsAsync($"hx-get=\"/{TenantSlug}/clients/details/");
     }
 
     [Fact]
@@ -235,6 +246,17 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
         var item = await db.BookingItems.FirstAsync(x => x.Id == itemId);
         Assert.Equal(SupplierStatus.Requested, item.SupplierStatus);
         Assert.NotNull(item.RequestedAt);
+    }
+
+    [Fact]
+    public async Task BookingItemsPartial_RendersSupplierDetailLinks()
+    {
+        var (bookingId, _) = await SeedBookingWithItemAsync();
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/items/{bookingId}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync($"href=\"/{TenantSlug}/suppliers/details/");
     }
 
     [Fact]

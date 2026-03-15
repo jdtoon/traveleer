@@ -42,7 +42,21 @@ else
                                 <div class="text-xs opacity-50">@item.BookingRef</div>
                             }
                         </td>
-                        <td>@(item.ClientName ?? "—")</td>
+                        <td onclick="event.stopPropagation()">
+                            @if (item.ClientId.HasValue && !string.IsNullOrWhiteSpace(item.ClientName))
+                            {
+                                <a href="@Url.Action("Index", "Client", new { slug })"
+                                   class="link link-hover"
+                                   hx-get="@Url.Action("Details", "Client", new { slug, id = item.ClientId })"
+                                   hx-target="#modal-container">
+                                    @item.ClientName
+                                </a>
+                            }
+                            else
+                            {
+                                <span>@(item.ClientName ?? "—")</span>
+                            }
+                        </td>
                         <td>
                             @if (item.TravelStartDate.HasValue && item.TravelEndDate.HasValue)
                             {

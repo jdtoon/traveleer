@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
 using saas.IntegrationTests.Fixtures;
 using saas.Modules.Inventory.Entities;
+using saas.Modules.Settings.Entities;
 using Swap.Testing;
 using Xunit;
 
@@ -62,6 +63,41 @@ public class InventoryIntegrationTests : IClassFixture<AppFixture>
 
         response.AssertSuccess();
         await response.AssertContainsAsync(excursionName);
+    }
+
+    [Fact]
+    public async Task InventoryListPartial_RendersSupplierDetailLinks()
+    {
+        var uniqueName = $"Inv-Supp-{Guid.NewGuid():N}"[..18];
+        var supplierId = Guid.NewGuid();
+
+        await using (var db = OpenTenantDb())
+        {
+            db.Suppliers.Add(new Supplier
+            {
+                Id = supplierId,
+                Name = $"Supplier {Guid.NewGuid():N}"[..17],
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            db.InventoryItems.Add(new saas.Modules.Inventory.Entities.InventoryItem
+            {
+                Id = Guid.NewGuid(),
+                Name = uniqueName,
+                Kind = InventoryItemKind.Hotel,
+                BaseCost = 1200m,
+                SupplierId = supplierId,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/inventory/list?search={Uri.EscapeDataString(uniqueName)}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync($"href=\"/{TenantSlug}/suppliers/details/{supplierId}\"");
     }
 
     [Fact]

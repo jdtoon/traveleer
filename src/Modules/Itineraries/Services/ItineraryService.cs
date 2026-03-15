@@ -65,6 +65,7 @@ public class ItineraryService : IItineraryService
             {
                 Id = i.Id,
                 Title = i.Title,
+                ClientId = i.ClientId,
                 ClientName = i.Client != null ? i.Client.Name : null,
                 BookingRef = i.Booking != null ? i.Booking.BookingRef : null,
                 Status = i.Status,

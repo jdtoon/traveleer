@@ -55,7 +55,14 @@ else
                             <div class="font-semibold">@item.BookingRef</div>
                             <div class="text-xs opacity-60">@item.ItemCount service@(item.ItemCount == 1 ? string.Empty : "s") · @item.Pax pax</div>
                         </td>
-                        <td>@item.ClientName</td>
+                        <td>
+                            <a href="@Url.Action("Index", "Client", new { slug })"
+                               class="link link-hover"
+                               hx-get="@Url.Action("Details", "Client", new { slug, id = item.ClientId })"
+                               hx-target="#modal-container">
+                                @item.ClientName
+                            </a>
+                        </td>
                         <td>
                             @if (item.TravelStartDate.HasValue)
                             {

@@ -92,6 +92,7 @@ public class BookingService : IBookingService
             .Select(x => new BookingListItemDto
             {
                 Id = x.Id,
+                ClientId = x.ClientId,
                 QuoteId = x.QuoteId,
                 BookingRef = x.BookingRef,
                 ClientName = x.Client != null ? x.Client.Name : "Unknown client",

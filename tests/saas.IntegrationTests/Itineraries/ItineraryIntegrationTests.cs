@@ -59,6 +59,25 @@ public class ItineraryIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task ItineraryListPartial_RendersClientDetailLinks()
+    {
+        var itineraryId = await SeedItineraryAsync();
+
+        await using (var db = OpenTenantDb())
+        {
+            var itinerary = await db.Itineraries.FirstAsync(i => i.Id == itineraryId);
+            var client = await db.Clients.OrderBy(c => c.Name).FirstAsync();
+            itinerary.ClientId = client.Id;
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/itineraries/list");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync($"hx-get=\"/{TenantSlug}/clients/details/");
+    }
+
+    [Fact]
     public async Task ItineraryListPartial_WhenMoreThanOnePage_PaginatesResults()
     {
         var prefix = $"PagedItin-{Guid.NewGuid():N}";

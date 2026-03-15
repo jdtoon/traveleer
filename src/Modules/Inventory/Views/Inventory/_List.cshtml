@@ -87,7 +87,18 @@ else
                         </div>
                         <div>
                             <div class="text-xs uppercase tracking-wide opacity-60">Supplier</div>
-                            <div>@(item.SupplierName ?? "Unassigned")</div>
+                            <div>
+                                @if (item.SupplierId.HasValue && !string.IsNullOrWhiteSpace(item.SupplierName))
+                                {
+                                    <a href="@Url.Action("Details", "Supplier", new { slug, id = item.SupplierId })" class="link link-hover">
+                                        @item.SupplierName
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span>Unassigned</span>
+                                }
+                            </div>
                         </div>
                         @if (!string.IsNullOrWhiteSpace(item.Address))
                         {

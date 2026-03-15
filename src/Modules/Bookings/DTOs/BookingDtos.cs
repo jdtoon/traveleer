@@ -13,6 +13,7 @@ public class BookingOptionDto
 public class BookingListItemDto
 {
     public Guid Id { get; set; }
+    public Guid ClientId { get; set; }
     public Guid? QuoteId { get; set; }
     public string BookingRef { get; set; } = string.Empty;
     public string ClientName { get; set; } = string.Empty;

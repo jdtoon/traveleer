@@ -51,6 +51,15 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task QuoteListPartial_RendersClientDetailLinks()
+    {
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/quotes/list");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync($"hx-get=\"/{TenantSlug}/clients/details/");
+    }
+
+    [Fact]
     public async Task QuoteBuilderPage_UserCanLoadPreview()
     {
         var rateCardId = await SeedRateCardAsync();

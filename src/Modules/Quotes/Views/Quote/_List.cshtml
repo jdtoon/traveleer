@@ -46,7 +46,21 @@ else
                             }
                         </td>
                         <td>
-                            <div>@item.ClientName</div>
+                            <div>
+                                @if (item.ClientId.HasValue)
+                                {
+                                    <a href="@Url.Action("Index", "Client", new { slug })"
+                                       class="link link-hover"
+                                       hx-get="@Url.Action("Details", "Client", new { slug, id = item.ClientId })"
+                                       hx-target="#modal-container">
+                                        @item.ClientName
+                                    </a>
+                                }
+                                else
+                                {
+                                    @item.ClientName
+                                }
+                            </div>
                             <div class="text-sm opacity-70">@(string.IsNullOrWhiteSpace(item.ClientEmail) ? "Email not set" : item.ClientEmail)</div>
                         </td>
                         <td>

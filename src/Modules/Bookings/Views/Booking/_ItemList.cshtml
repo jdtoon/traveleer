@@ -47,7 +47,19 @@
                                     }
                                     <span> · @item.Quantity qty · @item.Pax pax</span>
                                 </div>
-                                <div class="text-sm opacity-80">Supplier: @(string.IsNullOrWhiteSpace(item.SupplierName) ? "Unassigned" : item.SupplierName)</div>
+                                <div class="text-sm opacity-80">
+                                    Supplier:
+                                    @if (item.SupplierId.HasValue && !string.IsNullOrWhiteSpace(item.SupplierName))
+                                    {
+                                        <a href="@Url.Action("Details", "Supplier", new { slug, id = item.SupplierId })" class="link link-hover">
+                                            @item.SupplierName
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span>Unassigned</span>
+                                    }
+                                </div>
                                 <div class="text-sm opacity-70">Supplier email: @(string.IsNullOrWhiteSpace(item.SupplierEmail) ? "Not configured" : item.SupplierEmail)</div>
                                 @if (item.RequestedAt.HasValue || item.ConfirmedAt.HasValue)
                                 {

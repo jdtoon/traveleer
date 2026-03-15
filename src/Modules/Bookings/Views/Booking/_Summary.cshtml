@@ -10,7 +10,15 @@
                 <h1 class="text-2xl font-bold">@Model.BookingRef</h1>
                 <span class="badge badge-outline">@Model.Status</span>
             </div>
-            <p class="mt-2 opacity-70">@Model.ClientName · @Model.TravelWindowSummary</p>
+            <p class="mt-2 opacity-70">
+                <a href="@Url.Action("Index", "Client", new { slug })"
+                   class="link link-hover"
+                   hx-get="@Url.Action("Details", "Client", new { slug, id = Model.ClientId })"
+                   hx-target="#modal-container">
+                    @Model.ClientName
+                </a>
+                <span> · @Model.TravelWindowSummary</span>
+            </p>
         </div>
         <div class="flex gap-2">
             @if (Model.QuoteId.HasValue)
@@ -38,7 +46,14 @@
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-2">
                     <div class="text-sm uppercase tracking-wide opacity-60">Client</div>
-                    <div class="font-medium">@Model.ClientName</div>
+                    <div class="font-medium">
+                        <a href="@Url.Action("Index", "Client", new { slug })"
+                           class="link link-hover"
+                           hx-get="@Url.Action("Details", "Client", new { slug, id = Model.ClientId })"
+                           hx-target="#modal-container">
+                            @Model.ClientName
+                        </a>
+                    </div>
                     <div class="text-sm opacity-70">Reference: @(string.IsNullOrWhiteSpace(Model.ClientReference) ? "Not set" : Model.ClientReference)</div>
                 </div>
             </div>

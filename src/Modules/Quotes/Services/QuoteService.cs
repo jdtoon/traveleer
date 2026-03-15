@@ -71,6 +71,7 @@ public class QuoteService : IQuoteService
             .Select(x => new QuoteListItemDto
             {
                 Id = x.Id,
+                ClientId = x.ClientId,
                 ReferenceNumber = x.ReferenceNumber,
                 Status = x.Status,
                 ClientName = x.ClientName,
