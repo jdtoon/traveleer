@@ -98,6 +98,11 @@ public class BookingController : SwapController
     public async Task<IActionResult> Details(Guid id)
     {
         var model = await _service.GetDetailsAsync(id);
+        if (model is not null)
+        {
+            var slug = RouteData.Values["slug"]?.ToString() ?? string.Empty;
+            Breadcrumbs.Set(ViewData, model.BookingRef, "Bookings", $"/{slug}/bookings");
+        }
         return model is null ? NotFound() : SwapView(model);
     }
 

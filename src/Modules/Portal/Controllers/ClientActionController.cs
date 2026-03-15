@@ -26,6 +26,8 @@ public class ClientActionController : SwapController
     public async Task<IActionResult> Index([FromQuery] ClientActionStatus? status)
     {
         var actions = await _service.GetActionsAsync(status);
+        var slug = RouteData.Values["slug"]?.ToString() ?? string.Empty;
+        Breadcrumbs.Set(ViewData, "Client Actions", "Portal", $"/{slug}/portal/links");
         return SwapView("ActionIndex", actions);
     }
 

@@ -30,6 +30,7 @@ public class SessionController : SwapController
             .ToListAsync();
 
         ViewData["Title"] = "Active Sessions";
+        Breadcrumbs.Set(ViewData, "Active Sessions", "Profile & 2FA", $"/{slug}/profile");
         return SwapView(SwapViews.Session.Sessions, sessions);
     }
 

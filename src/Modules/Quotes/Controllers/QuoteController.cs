@@ -5,6 +5,7 @@ using saas.Modules.Quotes.DTOs;
 using saas.Modules.Quotes.Entities;
 using saas.Modules.Quotes.Events;
 using saas.Modules.Quotes.Services;
+using saas.Shared;
 using Swap.Htmx;
 
 namespace saas.Modules.Quotes.Controllers;
@@ -45,6 +46,8 @@ public class QuoteController : SwapController
     public async Task<IActionResult> New()
     {
         var model = await _service.CreateEmptyAsync();
+        var slug = RouteData.Values["slug"]?.ToString() ?? string.Empty;
+        Breadcrumbs.Set(ViewData, "New Quote", "Quotes", $"/{slug}/quotes");
         ViewData["ReferenceNumberPreview"] = await HttpContext.RequestServices.GetRequiredService<IQuoteNumberingService>().PreviewNextReferenceAsync();
         return SwapView("Builder", model);
     }
@@ -59,6 +62,8 @@ public class QuoteController : SwapController
             return NotFound();
         }
 
+        var slug = RouteData.Values["slug"]?.ToString() ?? string.Empty;
+        Breadcrumbs.Set(ViewData, "Edit Quote", "Quotes", $"/{slug}/quotes");
         ViewData["ReferenceNumberPreview"] = "Saved quote";
         ViewData["QuoteId"] = id;
         return SwapView("Builder", model);
@@ -130,6 +135,11 @@ public class QuoteController : SwapController
     public async Task<IActionResult> Details(Guid id)
     {
         var model = await _service.GetDetailsAsync(id);
+        if (model is not null)
+        {
+            var slug = RouteData.Values["slug"]?.ToString() ?? string.Empty;
+            Breadcrumbs.Set(ViewData, model.ReferenceNumber, "Quotes", $"/{slug}/quotes");
+        }
         return model is null ? NotFound() : SwapView(model);
     }
 

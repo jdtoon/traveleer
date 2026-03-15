@@ -6,6 +6,13 @@
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
     var path = (Context.Request.Path.Value ?? string.Empty).ToLowerInvariant();
     var tenantRoot = $"/{slug}".ToLowerInvariant();
+    var breadcrumbParentLabel = ViewData[saas.Shared.Breadcrumbs.ParentLabelKey]?.ToString();
+    var breadcrumbParentUrl = ViewData[saas.Shared.Breadcrumbs.ParentUrlKey]?.ToString();
+    var breadcrumbCurrent = ViewData[saas.Shared.Breadcrumbs.CurrentKey]?.ToString()
+        ?? ViewData["Breadcrumb"]?.ToString()
+        ?? ViewData["Title"]?.ToString();
+    var showBreadcrumbs = !string.IsNullOrWhiteSpace(breadcrumbParentLabel)
+        || (!string.IsNullOrWhiteSpace(breadcrumbCurrent) && !string.Equals(breadcrumbCurrent, "Dashboard", StringComparison.OrdinalIgnoreCase));
 
     bool IsActive(params string[] prefixes)
     {
@@ -103,6 +110,34 @@
 
             <!-- Announcement banners -->
             @await Html.PartialAsync("_AnnouncementBanner")
+
+            @if (showBreadcrumbs)
+            {
+                <div class="px-4 md:px-6 pt-4">
+                    <div class="text-sm breadcrumbs">
+                        <ul>
+                            <li><a href="/@slug">Dashboard</a></li>
+                            @if (!string.IsNullOrWhiteSpace(breadcrumbParentLabel))
+                            {
+                                <li>
+                                    @if (!string.IsNullOrWhiteSpace(breadcrumbParentUrl))
+                                    {
+                                        <a href="@breadcrumbParentUrl">@breadcrumbParentLabel</a>
+                                    }
+                                    else
+                                    {
+                                        @breadcrumbParentLabel
+                                    }
+                                </li>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(breadcrumbCurrent))
+                            {
+                                <li>@breadcrumbCurrent</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
 
             <!-- Main Content -->
             <main class="flex-1 p-4 md:p-6 overflow-auto" id="main-content" role="main" aria-label="Main content">

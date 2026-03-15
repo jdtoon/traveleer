@@ -4,6 +4,7 @@ using saas.Modules.Auth.Filters;
 using saas.Modules.Suppliers.DTOs;
 using saas.Modules.Suppliers.Events;
 using saas.Modules.Suppliers.Services;
+using saas.Shared;
 using Swap.Htmx;
 
 namespace saas.Modules.Suppliers.Controllers;
@@ -61,6 +62,11 @@ public class SupplierController : SwapController
     public async Task<IActionResult> Details(Guid id)
     {
         var model = await _service.GetDetailsAsync(id);
+        if (model is not null)
+        {
+            var slug = RouteData.Values["slug"]?.ToString() ?? string.Empty;
+            Breadcrumbs.Set(ViewData, model.Name, "Suppliers", $"/{slug}/suppliers");
+        }
         return model is null ? NotFound() : SwapView(model);
     }
 

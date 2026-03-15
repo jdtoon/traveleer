@@ -6,6 +6,7 @@ using saas.Modules.Auth.Filters;
 using saas.Modules.RateCards.DTOs;
 using saas.Modules.RateCards.Events;
 using saas.Modules.RateCards.Services;
+using saas.Shared;
 using Swap.Htmx;
 
 namespace saas.Modules.RateCards.Controllers;
@@ -96,6 +97,11 @@ public class RateCardController : SwapController
     public async Task<IActionResult> Details(Guid id)
     {
         var model = await _service.GetDetailsAsync(id);
+        if (model is not null)
+        {
+            var slug = RouteData.Values["slug"]?.ToString() ?? string.Empty;
+            Breadcrumbs.Set(ViewData, model.Name, "Rate Cards", $"/{slug}/rate-cards");
+        }
         return model is null ? NotFound() : SwapView(model);
     }
 

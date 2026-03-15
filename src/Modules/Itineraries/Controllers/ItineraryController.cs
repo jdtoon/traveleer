@@ -4,6 +4,7 @@ using saas.Modules.Auth.Filters;
 using saas.Modules.Itineraries.DTOs;
 using saas.Modules.Itineraries.Events;
 using saas.Modules.Itineraries.Services;
+using saas.Shared;
 using Swap.Htmx;
 
 namespace saas.Modules.Itineraries.Controllers;
@@ -67,6 +68,11 @@ public class ItineraryController : SwapController
     public async Task<IActionResult> Details(Guid id)
     {
         var model = await _service.GetDetailsAsync(id);
+        if (model is not null)
+        {
+            var slug = RouteData.Values["slug"]?.ToString() ?? string.Empty;
+            Breadcrumbs.Set(ViewData, model.Title, "Itineraries", $"/{slug}/itineraries");
+        }
         return model is null ? NotFound() : SwapView(model);
     }
 
