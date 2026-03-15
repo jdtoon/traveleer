@@ -15,7 +15,10 @@
         <div class="flex gap-2">
             @if (Model.QuoteId.HasValue)
             {
-                <a class="btn btn-outline btn-sm" href="@Url.Action("Details", "Quote", new { slug, id = Model.QuoteId })">View Quote</a>
+                <div class="badge badge-outline gap-2 px-3 py-3">
+                    <span>Linked quote</span>
+                    <a class="link link-hover font-medium" href="@Url.Action("Details", "Quote", new { slug, id = Model.QuoteId })">View quote</a>
+                </div>
             }
             <has-permission name="bookings.edit">
                 <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewItem", "Booking", new { slug, id = Model.Id })" hx-target="#modal-container">+ Add Service</button>

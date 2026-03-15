@@ -263,7 +263,8 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
         var response = await _client.GetAsync($"/{TenantSlug}/quotes/details/{quoteId}");
 
         response.AssertSuccess();
-        await response.AssertContainsAsync("View Booking");
+        await response.AssertContainsAsync("Linked booking");
+        await response.AssertContainsAsync("View booking");
     }
 
     [Fact]

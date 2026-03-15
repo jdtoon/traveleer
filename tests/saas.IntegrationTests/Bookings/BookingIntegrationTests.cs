@@ -5,6 +5,7 @@ using saas.IntegrationTests.Fixtures;
 using saas.Modules.Bookings.Entities;
 using saas.Modules.Clients.Entities;
 using saas.Modules.Inventory.Entities;
+using saas.Modules.Quotes.Entities;
 using saas.Modules.Settings.Entities;
 using Swap.Testing;
 using Xunit;
@@ -168,6 +169,50 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
         var summaryResponse = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/summary/{bookingId}");
         summaryResponse.AssertSuccess();
         await summaryResponse.AssertContainsAsync("Selling: USD 900.00");
+    }
+
+    [Fact]
+    public async Task BookingDetails_WhenQuoteExists_ShowsLinkedQuoteAction()
+    {
+        Guid bookingId;
+        await using (var db = OpenTenantDb())
+        {
+            var client = await db.Clients.OrderBy(x => x.Name).FirstAsync();
+            var quote = new Quote
+            {
+                ReferenceNumber = $"QT-BK-{Guid.NewGuid():N}"[..13],
+                ClientId = client.Id,
+                ClientName = client.Name,
+                ClientEmail = client.Email,
+                OutputCurrencyCode = "USD",
+                Status = QuoteStatus.Accepted,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var booking = new Booking
+            {
+                QuoteId = quote.Id,
+                BookingRef = $"BK-QT-{Guid.NewGuid():N}"[..13],
+                ClientId = client.Id,
+                Pax = 2,
+                TravelStartDate = new DateOnly(2026, 5, 1),
+                TravelEndDate = new DateOnly(2026, 5, 5),
+                CostCurrencyCode = "USD",
+                SellingCurrencyCode = "USD",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            db.Quotes.Add(quote);
+            db.Bookings.Add(booking);
+            await db.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        var response = await _client.GetAsync($"/{TenantSlug}/bookings/details/{bookingId}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("Linked quote");
+        await response.AssertContainsAsync("View quote");
     }
 
     [Fact]

@@ -15,7 +15,10 @@
         <div class="flex flex-wrap gap-2">
             @if (Model.BookingId.HasValue)
             {
-                <a class="btn btn-outline btn-sm" href="@Url.Action("Details", "Booking", new { slug, id = Model.BookingId })">View Booking</a>
+                <div class="badge badge-outline gap-2 px-3 py-3">
+                    <span>Linked booking</span>
+                    <a class="link link-hover font-medium" href="@Url.Action("Details", "Booking", new { slug, id = Model.BookingId })">View booking</a>
+                </div>
             }
             else if (Model.Status == QuoteStatus.Accepted && Model.ClientId.HasValue && Model.RateCardCount > 0)
             {
