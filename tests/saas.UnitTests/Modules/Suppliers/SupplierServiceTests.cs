@@ -59,8 +59,8 @@ public class SupplierServiceTests : IAsyncLifetime
 
         var result = await _service.GetListAsync();
 
-        Assert.Equal("Alpha Tours", result[0].Name);
-        Assert.Equal("Safari Lodge", result[1].Name);
+        Assert.Equal("Alpha Tours", result.Items[0].Name);
+        Assert.Equal("Safari Lodge", result.Items[1].Name);
     }
 
     [Fact]
@@ -70,15 +70,15 @@ public class SupplierServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         var byName = await _service.GetListAsync("safari");
-        Assert.Single(byName);
-        Assert.Equal("Safari Lodge", byName[0].Name);
+        Assert.Single(byName.Items);
+        Assert.Equal("Safari Lodge", byName.Items[0].Name);
 
         var byContact = await _service.GetListAsync("alice");
-        Assert.Single(byContact);
-        Assert.Equal("Beach Resort", byContact[0].Name);
+        Assert.Single(byContact.Items);
+        Assert.Equal("Beach Resort", byContact.Items[0].Name);
 
         var byEmail = await _service.GetListAsync("beach.test");
-        Assert.Single(byEmail);
+        Assert.Single(byEmail.Items);
     }
 
     [Fact]

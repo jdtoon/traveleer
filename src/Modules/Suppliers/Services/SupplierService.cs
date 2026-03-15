@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using saas.Data;
 using saas.Data.Tenant;
 using saas.Modules.Settings.Entities;
 using saas.Modules.Suppliers.DTOs;
@@ -8,7 +9,7 @@ namespace saas.Modules.Suppliers.Services;
 
 public interface ISupplierService
 {
-    Task<List<SupplierListItemDto>> GetListAsync(string? search = null);
+    Task<PaginatedList<SupplierListItemDto>> GetListAsync(string? search = null, int page = 1, int pageSize = 12);
     Task<SupplierFormDto> CreateEmptyAsync();
     Task<SupplierFormDto?> GetFormAsync(Guid id);
     Task CreateAsync(SupplierFormDto dto);
@@ -33,7 +34,7 @@ public class SupplierService : ISupplierService
         _db = db;
     }
 
-    public async Task<List<SupplierListItemDto>> GetListAsync(string? search = null)
+    public async Task<PaginatedList<SupplierListItemDto>> GetListAsync(string? search = null, int page = 1, int pageSize = 12)
     {
         var query = _db.Suppliers.AsNoTracking().AsQueryable();
 
@@ -45,7 +46,7 @@ public class SupplierService : ISupplierService
                 || (s.ContactEmail != null && s.ContactEmail.ToLower().Contains(term)));
         }
 
-        return await query
+        var projected = query
             .OrderBy(s => s.Name)
             .Select(s => new SupplierListItemDto
             {
@@ -56,8 +57,11 @@ public class SupplierService : ISupplierService
                 ContactPhone = s.ContactPhone,
                 Rating = s.Rating,
                 IsActive = s.IsActive
-            })
-            .ToListAsync();
+            });
+
+        var normalizedPage = Math.Max(1, page);
+        var normalizedPageSize = Math.Clamp(pageSize, 6, 48);
+        return await PaginatedList<SupplierListItemDto>.CreateAsync(projected, normalizedPage, normalizedPageSize);
     }
 
     public async Task<SupplierFormDto> CreateEmptyAsync()

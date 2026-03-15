@@ -44,6 +44,40 @@ public class SupplierIntegrationTests : IClassFixture<AppFixture>
         await response.AssertElementExistsAsync("table, div.rounded-box");
     }
 
+    [Fact]
+    public async Task SuppliersListPartial_WhenMoreThanOnePage_PaginatesResults()
+    {
+        var prefix = $"PagedSupp-{Guid.NewGuid():N}"[..12];
+
+        await using (var db = OpenTenantDb())
+        {
+            for (var index = 1; index <= 13; index++)
+            {
+                db.Suppliers.Add(new saas.Modules.Settings.Entities.Supplier
+                {
+                    Id = Guid.NewGuid(),
+                    Name = $"{prefix}-{index:D2}",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow.AddMinutes(index)
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var firstPage = await _client.HtmxGetAsync($"/{TenantSlug}/suppliers/list?search={prefix}");
+        firstPage.AssertSuccess();
+        await firstPage.AssertContainsAsync($"{prefix}-01");
+        await firstPage.AssertContainsAsync($"{prefix}-12");
+        await firstPage.AssertDoesNotContainAsync($"{prefix}-13");
+        await firstPage.AssertContainsAsync("Next");
+
+        var secondPage = await _client.HtmxGetAsync($"/{TenantSlug}/suppliers/list?search={prefix}&page=2");
+        secondPage.AssertSuccess();
+        await secondPage.AssertContainsAsync($"{prefix}-13");
+        await secondPage.AssertDoesNotContainAsync($"{prefix}-01");
+    }
+
     // ── Layer 3: User Flow ──
 
     [Fact]

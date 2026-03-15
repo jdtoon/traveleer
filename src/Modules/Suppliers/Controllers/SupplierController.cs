@@ -31,9 +31,10 @@ public class SupplierController : SwapController
 
     [HttpGet("list")]
     [HasPermission(SupplierPermissions.SuppliersRead)]
-    public async Task<IActionResult> List([FromQuery] string? search = null)
+    public async Task<IActionResult> List([FromQuery] string? search = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 12)
     {
-        var model = await _service.GetListAsync(search);
+        ViewData["Search"] = search;
+        var model = await _service.GetListAsync(search, page, pageSize);
         return PartialView("_List", model);
     }
 
