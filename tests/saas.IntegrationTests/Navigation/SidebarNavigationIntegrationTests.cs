@@ -16,10 +16,12 @@ public class SidebarNavigationIntegrationTests : IClassFixture<AppFixture>
         _client = fixture.CreateTenantClient(TenantSlug);
     }
 
+    private static string SidebarHostPage => $"/{TenantSlug}/clients";
+
     [Fact]
     public async Task Sidebar_ContainsSalesGroupWithExpectedModules()
     {
-        var response = await _client.GetAsync($"/{TenantSlug}");
+        var response = await _client.GetAsync(SidebarHostPage);
 
         response.AssertSuccess();
         await response.AssertContainsAsync("Sales");
@@ -32,7 +34,7 @@ public class SidebarNavigationIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task Sidebar_ContainsOperationsGroupWithExpectedModules()
     {
-        var response = await _client.GetAsync($"/{TenantSlug}");
+        var response = await _client.GetAsync(SidebarHostPage);
 
         response.AssertSuccess();
         await response.AssertContainsAsync("Operations");
@@ -45,7 +47,7 @@ public class SidebarNavigationIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task Sidebar_ContainsInsightsGroupWithExpectedModules()
     {
-        var response = await _client.GetAsync($"/{TenantSlug}");
+        var response = await _client.GetAsync(SidebarHostPage);
 
         response.AssertSuccess();
         await response.AssertContainsAsync("Insights");
@@ -56,7 +58,7 @@ public class SidebarNavigationIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task Sidebar_ContainsConfigurationGroupWithExpectedModules()
     {
-        var response = await _client.GetAsync($"/{TenantSlug}");
+        var response = await _client.GetAsync(SidebarHostPage);
 
         response.AssertSuccess();
         await response.AssertContainsAsync("Configuration");
@@ -68,7 +70,7 @@ public class SidebarNavigationIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task Sidebar_ContainsAllSectionHeaders()
     {
-        var response = await _client.GetAsync($"/{TenantSlug}");
+        var response = await _client.GetAsync(SidebarHostPage);
 
         response.AssertSuccess();
         await response.AssertContainsAsync("Sales");
@@ -90,7 +92,7 @@ public class SidebarNavigationIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task Sidebar_DashboardLink_AlwaysPresent()
     {
-        var response = await _client.GetAsync($"/{TenantSlug}");
+        var response = await _client.GetAsync(SidebarHostPage);
 
         response.AssertSuccess();
         await response.AssertContainsAsync("Dashboard");
@@ -145,5 +147,35 @@ public class SidebarNavigationIntegrationTests : IClassFixture<AppFixture>
         response.AssertSuccess();
         await response.AssertContainsAsync("<html");
         await response.AssertElementExistsAsync("#main-content");
+    }
+
+    [Fact]
+    public async Task PortalActionsPage_RendersFullLayoutWithSidebar()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}/portal/actions");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("<html");
+        await response.AssertElementExistsAsync("#main-content");
+        await response.AssertContainsAsync("Portal");
+    }
+
+    [Fact]
+    public async Task PortalActionsPage_MarksPortalNavigationActive()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}/portal/actions");
+
+        response.AssertSuccess();
+        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/portal/links'].active");
+    }
+
+    [Fact]
+    public async Task SessionsPage_MarksSessionsNavigationActive()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}/profile/sessions");
+
+        response.AssertSuccess();
+        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/profile/sessions'].active");
+        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/Profile']:not(.active)");
     }
 }
