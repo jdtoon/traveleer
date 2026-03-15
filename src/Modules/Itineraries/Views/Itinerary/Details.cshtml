@@ -5,6 +5,9 @@
 }
 
 <div class="flex flex-col gap-6">
+    <div class="flex justify-end">
+        <a href="@Url.Action("Index", "Itinerary", new { slug })" class="btn btn-ghost btn-sm">Back to Itineraries</a>
+    </div>
 
     <div id="itinerary-summary"
          hx-get="@Url.Action("Summary", "Itinerary", new { slug, id = Model.Id })"

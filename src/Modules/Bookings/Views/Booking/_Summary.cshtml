@@ -13,7 +13,6 @@
             <p class="mt-2 opacity-70">@Model.ClientName · @Model.TravelWindowSummary</p>
         </div>
         <div class="flex gap-2">
-            <a class="btn btn-ghost btn-sm" href="@Url.Action("Index", "Booking", new { slug })">Back to Bookings</a>
             @if (Model.QuoteId.HasValue)
             {
                 <a class="btn btn-outline btn-sm" href="@Url.Action("Details", "Quote", new { slug, id = Model.QuoteId })">View Quote</a>

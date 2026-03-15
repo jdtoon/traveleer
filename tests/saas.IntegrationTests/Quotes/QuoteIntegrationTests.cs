@@ -194,6 +194,8 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
 
         response.AssertSuccess();
         await response.AssertElementExistsAsync("#quote-versions");
+        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/quotes']");
+        await response.AssertContainsAsync("Back to Quotes");
         await response.AssertContainsAsync("Travel dates not set yet");
     }
 

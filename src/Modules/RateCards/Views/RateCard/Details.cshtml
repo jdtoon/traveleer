@@ -5,6 +5,10 @@
 }
 
 <div class="flex flex-col gap-6">
+    <div class="flex justify-end">
+        <a href="@Url.Action("Index", "RateCard", new { slug })" class="btn btn-ghost btn-sm">Back to Rate Cards</a>
+    </div>
+
     <div id="rate-card-summary"
          hx-get="@Url.Action("Summary", "RateCard", new { slug, id = Model.Id })"
          hx-trigger="@saas.Modules.RateCards.Events.RateCardEvents.DetailsRefresh from:body"

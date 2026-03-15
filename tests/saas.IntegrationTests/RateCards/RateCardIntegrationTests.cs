@@ -146,6 +146,8 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
         var page = await _client.GetAsync($"/{TenantSlug}/rate-cards/details/{rateCardId}");
         page.AssertSuccess();
         await page.AssertElementExistsAsync("#rate-card-grid");
+        await page.AssertElementExistsAsync($"a[href='/{TenantSlug}/rate-cards']");
+        await page.AssertContainsAsync("Back to Rate Cards");
 
         var seasonForm = await _client.HtmxGetAsync($"/{TenantSlug}/rate-cards/seasons/new/{rateCardId}");
         seasonForm.AssertSuccess();

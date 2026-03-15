@@ -4,6 +4,10 @@
     var slug = ViewContext.RouteData.Values["slug"]?.ToString();
 }
 <div class="flex flex-col gap-6">
+    <div class="flex justify-end">
+        <a href="@Url.Action("Index", "Booking", new { slug })" class="btn btn-ghost btn-sm">Back to Bookings</a>
+    </div>
+
     <div id="booking-summary"
          hx-get="@Url.Action("Summary", "Booking", new { slug, id = Model.Id })"
          hx-trigger="@saas.Modules.Bookings.Events.BookingEvents.ItemsRefresh from:body"

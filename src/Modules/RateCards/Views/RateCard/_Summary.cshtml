@@ -14,7 +14,6 @@
             <p class="mt-2 opacity-70">@Model.InventoryItemName@if (!string.IsNullOrWhiteSpace(Model.DestinationName)) { <text> · @Model.DestinationName</text> }</p>
         </div>
         <div class="flex flex-wrap gap-2">
-            <a class="btn btn-ghost btn-sm" href="@Url.Action("Index", "RateCard", new { slug })">Back to Rate Cards</a>
             <has-permission name="ratecards.edit">
                 <button class="btn btn-outline btn-sm" hx-get="@Url.Action("NewSeason", "RateCard", new { slug, id = Model.Id })" hx-target="#modal-container">+ Add Season</button>
                 <button class="btn btn-outline btn-sm" hx-get="@Url.Action("ImportCsv", "RateCard", new { slug, id = Model.Id })" hx-target="#modal-container">Import CSV</button>

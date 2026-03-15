@@ -5,8 +5,11 @@
 }
 
 <div class="flex flex-col gap-6">
+    <div class="flex justify-end">
+        <a href="@Url.Action("Index", "Supplier", new { slug })" class="btn btn-ghost btn-sm">Back to Suppliers</a>
+    </div>
+
     <div class="flex items-center gap-3">
-        <a href="@Url.Action("Index", "Supplier", new { slug })" class="btn btn-ghost btn-sm">← Back</a>
         <div class="flex-1">
             <div class="flex items-center gap-3">
                 <h1 class="text-2xl font-bold">@Model.Name</h1>

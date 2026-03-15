@@ -43,6 +43,8 @@ public class ItineraryIntegrationTests : IClassFixture<AppFixture>
         response.AssertSuccess();
         await response.AssertContainsAsync("<html");
         await response.AssertElementExistsAsync("#main-content");
+        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/itineraries']");
+        await response.AssertContainsAsync("Back to Itineraries");
     }
 
     // ── Layer 2: Partial Isolation ──

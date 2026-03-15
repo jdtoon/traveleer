@@ -141,6 +141,8 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
         var page = await _client.GetAsync($"/{TenantSlug}/bookings/details/{bookingId}");
         page.AssertSuccess();
         await page.AssertElementExistsAsync("#booking-items");
+        await page.AssertElementExistsAsync($"a[href='/{TenantSlug}/bookings']");
+        await page.AssertContainsAsync("Back to Bookings");
 
         var formResponse = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/items/new/{bookingId}");
         formResponse.AssertSuccess();

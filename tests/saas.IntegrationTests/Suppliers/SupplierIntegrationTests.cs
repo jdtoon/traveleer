@@ -114,6 +114,8 @@ public class SupplierIntegrationTests : IClassFixture<AppFixture>
         response.AssertSuccess();
         await response.AssertContainsAsync("<html");
         await response.AssertElementExistsAsync("#main-content");
+        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/suppliers']");
+        await response.AssertContainsAsync("Back to Suppliers");
     }
 
     [Fact]
