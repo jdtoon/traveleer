@@ -81,6 +81,30 @@ public class DashboardIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task DashboardPage_WithQuarterRange_PropagatesRangeToWidgets()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}?range=quarter");
+
+        response.AssertSuccess();
+        await response.AssertElementExistsAsync("select[name='range']");
+        await response.AssertContainsAsync("This Quarter");
+        await response.AssertContainsAsync($"/{TenantSlug}/reports/widget/bookings-status?range=quarter");
+        await response.AssertContainsAsync($"/{TenantSlug}/reports/widget/quotes-pipeline?range=quarter");
+        await response.AssertContainsAsync($"/{TenantSlug}/reports/widget/profitability-summary?range=quarter");
+    }
+
+    [Fact]
+    public async Task DashboardPage_WithInvalidRange_FallsBackToMonth()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}?range=unexpected");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync($"/{TenantSlug}/reports/widget/bookings-status?range=month");
+        await response.AssertContainsAsync($"/{TenantSlug}/reports/widget/quotes-pipeline?range=month");
+        await response.AssertContainsAsync($"/{TenantSlug}/reports/widget/profitability-summary?range=month");
+    }
+
+    [Fact]
     public async Task DashboardPage_WhenUnauthenticated_Redirects()
     {
         var publicClient = _fixture.CreateClient();

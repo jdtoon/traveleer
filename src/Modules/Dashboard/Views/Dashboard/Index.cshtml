@@ -6,11 +6,22 @@
     var slug = TenantContext.Slug;
     var tasksEnabled = await FeatureService.IsEnabledAsync("tasks");
     var reportsEnabled = await FeatureService.IsEnabledAsync("reports");
-    var dashboardRange = Context.Request.Query["range"].ToString();
-    dashboardRange = string.IsNullOrWhiteSpace(dashboardRange) ? "month" : dashboardRange;
+    var dashboardRange = ViewData["DashboardRange"]?.ToString() ?? "month";
 }
 
 <div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <form method="get" action="/@slug" class="flex items-center gap-2 self-start sm:self-auto">
+            <label for="dashboard-range" class="text-sm font-medium opacity-70">Date range</label>
+            <select id="dashboard-range" name="range" class="select select-bordered select-sm w-40">
+                <option value="month" selected="@(dashboardRange == "month" ? "selected" : null)">This Month</option>
+                <option value="quarter" selected="@(dashboardRange == "quarter" ? "selected" : null)">This Quarter</option>
+                <option value="year" selected="@(dashboardRange == "year" ? "selected" : null)">This Year</option>
+            </select>
+            <button type="submit" class="btn btn-outline btn-sm">Apply</button>
+        </form>
+    </div>
+
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.9fr)]">
         <section class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-4">
