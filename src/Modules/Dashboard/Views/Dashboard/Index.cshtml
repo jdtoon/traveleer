@@ -1,12 +1,39 @@
 @inject saas.Shared.ITenantContext TenantContext
+@inject saas.Shared.IFeatureService FeatureService
+@inject saas.Shared.ICurrentUser CurrentUser
 @{
     ViewData["Title"] = "Dashboard";
     var slug = TenantContext.Slug;
+    var tasksEnabled = await FeatureService.IsEnabledAsync("tasks");
 }
 
 <div class="flex flex-col gap-6">
-    <div>
-        <h1 class="text-2xl font-bold">Dashboard</h1>
-        <p class="opacity-60">Welcome to <span class="font-semibold">@TenantContext.TenantName</span></p>
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.9fr)]">
+        <section class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold">Dashboard</h1>
+                    <p class="opacity-60">Welcome to <span class="font-semibold">@TenantContext.TenantName</span></p>
+                </div>
+
+                <div class="rounded-box border border-dashed border-base-300 bg-base-50 p-4 text-sm opacity-70">
+                    Use the navigation on the left to jump into bookings, quotes, suppliers, and reporting. This dashboard now surfaces your task queue directly so urgent follow-up work is visible on arrival.
+                </div>
+            </div>
+        </section>
+
+        @if (tasksEnabled && CurrentUser.HasPermission("tasks.read"))
+        {
+            <section id="dashboard-tasks-widget"
+                     hx-get="@Url.Action("Widget", "Task", new { slug })"
+                     hx-trigger="load, @saas.Modules.Tasks.Events.TaskEvents.Refresh from:body"
+                     hx-swap="innerHTML show:none">
+                <div class="card bg-base-100 border border-base-300 shadow-sm">
+                    <div class="card-body items-center justify-center min-h-48">
+                        <span class="loading loading-spinner loading-lg"></span>
+                    </div>
+                </div>
+            </section>
+        }
     </div>
 </div>
