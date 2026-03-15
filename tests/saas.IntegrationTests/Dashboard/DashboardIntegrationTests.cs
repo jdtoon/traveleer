@@ -67,6 +67,20 @@ public class DashboardIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task DashboardPage_ContainsQuickActions()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("+ New Booking");
+        await response.AssertContainsAsync("+ New Quote");
+        await response.AssertContainsAsync("+ New Client");
+        await response.AssertContainsAsync($"/{TenantSlug}/bookings/new");
+        await response.AssertContainsAsync($"/{TenantSlug}/quotes/new");
+        await response.AssertContainsAsync($"/{TenantSlug}/clients/new");
+    }
+
+    [Fact]
     public async Task DashboardPage_WhenUnauthenticated_Redirects()
     {
         var publicClient = _fixture.CreateClient();
