@@ -111,6 +111,16 @@ public class InventoryIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task InventoryNewPartial_RendersImagePreviewMarkup()
+    {
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/inventory/new");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("id=\"image-preview\"");
+        await response.AssertContainsAsync("oninput=\"const preview = document.getElementById('image-preview')");
+    }
+
+    [Fact]
     public async Task InventoryPage_UserCanOpenCreateFormAndCreateItem()
     {
         var uniqueName = $"Inv-DB-{Guid.NewGuid():N}"[..20];

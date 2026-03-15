@@ -78,7 +78,17 @@
 
                 <div class="form-control w-full md:col-span-2">
                     <label class="label"><span class="label-text">Image URL</span></label>
-                    <input asp-for="ImageUrl" class="input input-bordered w-full" placeholder="https://..." />
+                    <input asp-for="ImageUrl"
+                           class="input input-bordered w-full"
+                           placeholder="https://..."
+                           oninput="const preview = document.getElementById('image-preview'); preview.src = this.value.trim(); if (!this.value.trim()) preview.classList.add('hidden');"
+                           onblur="const preview = document.getElementById('image-preview'); preview.src = this.value.trim(); if (!this.value.trim()) preview.classList.add('hidden');" />
+                    <img id="image-preview"
+                         src="@Model.ImageUrl"
+                         alt="Inventory preview"
+                         class="mt-3 max-h-40 rounded-box border border-base-300 object-cover @(string.IsNullOrWhiteSpace(Model.ImageUrl) ? "hidden" : string.Empty)"
+                         onerror="this.classList.add('hidden')"
+                         onload="this.classList.remove('hidden')" />
                     <span asp-validation-for="ImageUrl" class="text-error text-sm mt-1"></span>
                 </div>
 
