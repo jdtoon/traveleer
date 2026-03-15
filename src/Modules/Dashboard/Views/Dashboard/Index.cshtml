@@ -5,6 +5,9 @@
     ViewData["Title"] = "Dashboard";
     var slug = TenantContext.Slug;
     var tasksEnabled = await FeatureService.IsEnabledAsync("tasks");
+    var reportsEnabled = await FeatureService.IsEnabledAsync("reports");
+    var dashboardRange = Context.Request.Query["range"].ToString();
+    dashboardRange = string.IsNullOrWhiteSpace(dashboardRange) ? "month" : dashboardRange;
 }
 
 <div class="flex flex-col gap-6">
@@ -17,7 +20,7 @@
                 </div>
 
                 <div class="rounded-box border border-dashed border-base-300 bg-base-50 p-4 text-sm opacity-70">
-                    Use the navigation on the left to jump into bookings, quotes, suppliers, and reporting. This dashboard now surfaces your task queue directly so urgent follow-up work is visible on arrival.
+                    Start with the work that needs attention now: recent bookings, quote pipeline, financial performance, and outstanding tasks all load below as separate widgets so the page stays responsive.
                 </div>
             </div>
         </section>
@@ -36,4 +39,94 @@
             </section>
         }
     </div>
+
+    @if (reportsEnabled && CurrentUser.HasPermission("reports.read"))
+    {
+        <div class="grid gap-6 xl:grid-cols-4">
+            <section class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h2 class="card-title text-base">Active Bookings</h2>
+                            <p class="text-sm opacity-60">Current booking status mix.</p>
+                        </div>
+                        <a href="/@slug/bookings" class="btn btn-ghost btn-xs">View all</a>
+                    </div>
+                    <div id="dashboard-bookings-status"
+                         hx-get="@Url.Action("BookingsStatus", "Report", new { slug, range = dashboardRange })"
+                         hx-trigger="load"
+                         hx-swap="innerHTML show:none">
+                        <span class="loading loading-spinner loading-lg"></span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h2 class="card-title text-base">Quote Pipeline</h2>
+                            <p class="text-sm opacity-60">Draft to accepted flow for the current period.</p>
+                        </div>
+                        <a href="/@slug/quotes" class="btn btn-ghost btn-xs">View all</a>
+                    </div>
+                    <div id="dashboard-quotes-pipeline"
+                         hx-get="@Url.Action("QuotesPipeline", "Report", new { slug, range = dashboardRange })"
+                         hx-trigger="load"
+                         hx-swap="innerHTML show:none">
+                        <span class="loading loading-spinner loading-lg"></span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h2 class="card-title text-base">Revenue This Month</h2>
+                            <p class="text-sm opacity-60">Top-line revenue, cost, and profit.</p>
+                        </div>
+                        <a href="/@slug/reports" class="btn btn-ghost btn-xs">View all</a>
+                    </div>
+                    <div id="dashboard-profitability-summary"
+                         hx-get="@Url.Action("ProfitabilitySummary", "Report", new { slug, range = dashboardRange })"
+                         hx-trigger="load"
+                         hx-swap="innerHTML show:none">
+                        <span class="loading loading-spinner loading-lg"></span>
+                    </div>
+                </div>
+            </section>
+
+            @if (!(tasksEnabled && CurrentUser.HasPermission("tasks.read")))
+            {
+                <section class="card border border-base-300 bg-base-100 shadow-sm">
+                    <div class="card-body gap-4">
+                        <div>
+                            <h2 class="card-title text-base">Tasks</h2>
+                            <p class="text-sm opacity-60">Enable the Tasks module to surface due work here.</p>
+                        </div>
+                        <a href="/@slug/tasks" class="btn btn-outline btn-sm self-start">Open Tasks</a>
+                    </div>
+                </section>
+            }
+
+            <section class="card border border-base-300 bg-base-100 shadow-sm xl:col-span-4">
+                <div class="card-body gap-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h2 class="card-title text-base">Recent Bookings</h2>
+                            <p class="text-sm opacity-60">Latest bookings created in your tenant workspace.</p>
+                        </div>
+                        <a href="/@slug/bookings" class="btn btn-ghost btn-xs">View all</a>
+                    </div>
+                    <div id="dashboard-recent-bookings"
+                         hx-get="@Url.Action("BookingsRecent", "Report", new { slug })"
+                         hx-trigger="load"
+                         hx-swap="innerHTML show:none">
+                        <span class="loading loading-spinner loading-lg"></span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    }
 </div>

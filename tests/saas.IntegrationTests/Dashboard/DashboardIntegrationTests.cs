@@ -39,6 +39,34 @@ public class DashboardIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task DashboardPage_ContainsReportWidgetTargets()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}");
+
+        response.AssertSuccess();
+        await response.AssertElementExistsAsync("#dashboard-bookings-status");
+        await response.AssertElementExistsAsync("#dashboard-quotes-pipeline");
+        await response.AssertElementExistsAsync("#dashboard-profitability-summary");
+        await response.AssertElementExistsAsync("#dashboard-recent-bookings");
+        await response.AssertContainsAsync($"/{TenantSlug}/reports/widget/bookings-status?range=month");
+        await response.AssertContainsAsync($"/{TenantSlug}/reports/widget/quotes-pipeline?range=month");
+        await response.AssertContainsAsync($"/{TenantSlug}/reports/widget/profitability-summary?range=month");
+        await response.AssertContainsAsync($"/{TenantSlug}/reports/widget/bookings-recent");
+    }
+
+    [Fact]
+    public async Task DashboardPage_ContainsViewAllLinksForPrimaryWidgets()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}");
+
+        response.AssertSuccess();
+        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/bookings']");
+        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/quotes']");
+        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/reports']");
+        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/tasks']");
+    }
+
+    [Fact]
     public async Task DashboardPage_WhenUnauthenticated_Redirects()
     {
         var publicClient = _fixture.CreateClient();
