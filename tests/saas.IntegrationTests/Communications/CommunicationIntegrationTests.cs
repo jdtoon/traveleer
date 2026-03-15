@@ -203,6 +203,46 @@ public class CommunicationIntegrationTests : IClassFixture<AppFixture>
         await response.AssertContainsAsync("Booking communication");
     }
 
+    [Fact]
+    public async Task ClientCommsPartial_WhenMoreThanOnePage_PaginatesResults()
+    {
+        var clientId = await SeedFreshClientAsync();
+
+        await using (var db = OpenTenantDb())
+        {
+            var baseTime = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            for (var index = 1; index <= 21; index++)
+            {
+                db.CommunicationEntries.Add(new CommunicationEntry
+                {
+                    Id = Guid.NewGuid(),
+                    ClientId = clientId,
+                    Channel = CommunicationChannel.Email,
+                    Direction = CommunicationDirection.Outbound,
+                    Subject = $"Paged comm {index:D2}",
+                    Content = $"Paged client communication {index:D2}",
+                    LoggedByUserId = "seed-user",
+                    OccurredAt = baseTime.AddMinutes(index),
+                    CreatedAt = baseTime.AddMinutes(index)
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var firstPage = await _client.HtmxGetAsync($"/{TenantSlug}/comms/client/{clientId}");
+        firstPage.AssertSuccess();
+        await firstPage.AssertContainsAsync("Paged client communication 21");
+        await firstPage.AssertDoesNotContainAsync("Paged client communication 01");
+        await firstPage.AssertContainsAsync("Next");
+
+        var secondPage = await _client.HtmxGetAsync($"/{TenantSlug}/comms/client/{clientId}?page=2");
+        secondPage.AssertSuccess();
+        await secondPage.AssertContainsAsync("Paged client communication 01");
+        await secondPage.AssertDoesNotContainAsync("Paged client communication 21");
+    }
+
     // ── Auth ──
 
     [Fact]

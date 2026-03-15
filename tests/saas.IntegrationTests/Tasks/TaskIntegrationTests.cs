@@ -170,8 +170,8 @@ public class TaskIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task TaskList_WhenMoreThanOnePage_PaginatesResults()
     {
-        var prefix = $"PagedTask-{Guid.NewGuid():N}"[..12];
-        var entityType = $"Entity-{Guid.NewGuid():N}"[..16];
+        var prefix = $"PagedTask-{Guid.NewGuid():N}";
+        var entityType = $"Entity-{Guid.NewGuid():N}";
 
         await using (var db = OpenTenantDb())
         {

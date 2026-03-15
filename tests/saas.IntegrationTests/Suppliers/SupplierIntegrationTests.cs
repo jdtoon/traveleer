@@ -47,7 +47,7 @@ public class SupplierIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task SuppliersListPartial_WhenMoreThanOnePage_PaginatesResults()
     {
-        var prefix = $"PagedSupp-{Guid.NewGuid():N}"[..12];
+        var prefix = $"PagedSupp-{Guid.NewGuid():N}";
 
         await using (var db = OpenTenantDb())
         {

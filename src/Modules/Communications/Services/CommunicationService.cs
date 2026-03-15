@@ -8,9 +8,9 @@ namespace saas.Modules.Communications.Services;
 
 public interface ICommunicationService
 {
-    Task<CommunicationListDto> GetByClientAsync(Guid clientId);
-    Task<CommunicationListDto> GetByBookingAsync(Guid bookingId);
-    Task<CommunicationListDto> GetBySupplierAsync(Guid supplierId);
+    Task<CommunicationListDto> GetByClientAsync(Guid clientId, int page = 1, int pageSize = 20);
+    Task<CommunicationListDto> GetByBookingAsync(Guid bookingId, int page = 1, int pageSize = 20);
+    Task<CommunicationListDto> GetBySupplierAsync(Guid supplierId, int page = 1, int pageSize = 20);
     Task<CommunicationEntryDto?> GetByIdAsync(Guid id);
     Task<CommunicationEntry> CreateAsync(CreateCommunicationDto dto);
     Task UpdateAsync(Guid id, UpdateCommunicationDto dto);
@@ -29,34 +29,19 @@ public class CommunicationService : ICommunicationService
         _currentUser = currentUser;
     }
 
-    public async Task<CommunicationListDto> GetByClientAsync(Guid clientId)
+    public async Task<CommunicationListDto> GetByClientAsync(Guid clientId, int page = 1, int pageSize = 20)
     {
-        var entries = await QueryEntries()
-            .Where(e => e.ClientId == clientId)
-            .ToListAsync();
-
-        var dtos = await MapToDtosAsync(entries);
-        return new CommunicationListDto { Entries = dtos, ClientId = clientId };
+        return await GetListAsync(e => e.ClientId == clientId, list => list with { ClientId = clientId }, page, pageSize);
     }
 
-    public async Task<CommunicationListDto> GetByBookingAsync(Guid bookingId)
+    public async Task<CommunicationListDto> GetByBookingAsync(Guid bookingId, int page = 1, int pageSize = 20)
     {
-        var entries = await QueryEntries()
-            .Where(e => e.BookingId == bookingId)
-            .ToListAsync();
-
-        var dtos = await MapToDtosAsync(entries);
-        return new CommunicationListDto { Entries = dtos, BookingId = bookingId };
+        return await GetListAsync(e => e.BookingId == bookingId, list => list with { BookingId = bookingId }, page, pageSize);
     }
 
-    public async Task<CommunicationListDto> GetBySupplierAsync(Guid supplierId)
+    public async Task<CommunicationListDto> GetBySupplierAsync(Guid supplierId, int page = 1, int pageSize = 20)
     {
-        var entries = await QueryEntries()
-            .Where(e => e.SupplierId == supplierId)
-            .ToListAsync();
-
-        var dtos = await MapToDtosAsync(entries);
-        return new CommunicationListDto { Entries = dtos, SupplierId = supplierId };
+        return await GetListAsync(e => e.SupplierId == supplierId, list => list with { SupplierId = supplierId }, page, pageSize);
     }
 
     public async Task<CommunicationEntryDto?> GetByIdAsync(Guid id)
@@ -134,7 +119,35 @@ public class CommunicationService : ICommunicationService
 
     private IQueryable<CommunicationEntry> QueryEntries()
     {
-        return _db.CommunicationEntries.OrderByDescending(e => e.OccurredAt);
+        return _db.CommunicationEntries.AsNoTracking().OrderByDescending(e => e.OccurredAt);
+    }
+
+    private async Task<CommunicationListDto> GetListAsync(
+        System.Linq.Expressions.Expression<Func<CommunicationEntry, bool>> predicate,
+        Func<CommunicationListDto, CommunicationListDto> assignContext,
+        int page,
+        int pageSize)
+    {
+        var normalizedPage = Math.Max(1, page);
+        var normalizedPageSize = Math.Clamp(pageSize, 10, 50);
+        var filtered = QueryEntries().Where(predicate);
+        var totalCount = await filtered.CountAsync();
+        var entries = await filtered
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
+
+        var dtos = await MapToDtosAsync(entries);
+        var list = new CommunicationListDto
+        {
+            Entries = dtos,
+            PageIndex = normalizedPage,
+            PageSize = normalizedPageSize,
+            TotalCount = totalCount,
+            TotalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)normalizedPageSize)
+        };
+
+        return assignContext(list);
     }
 
     private async Task<IReadOnlyList<CommunicationEntryDto>> MapToDtosAsync(List<CommunicationEntry> entries)

@@ -23,16 +23,23 @@ public class CommunicationController : SwapController
     }
 
     [HttpGet("client/{clientId:guid}")]
-    public async Task<IActionResult> ClientComms(Guid clientId)
+    public async Task<IActionResult> ClientComms(Guid clientId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        var model = await _service.GetByClientAsync(clientId);
+        var model = await _service.GetByClientAsync(clientId, page, pageSize);
         return PartialView("_CommunicationList", model);
     }
 
     [HttpGet("booking/{bookingId:guid}")]
-    public async Task<IActionResult> BookingComms(Guid bookingId)
+    public async Task<IActionResult> BookingComms(Guid bookingId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        var model = await _service.GetByBookingAsync(bookingId);
+        var model = await _service.GetByBookingAsync(bookingId, page, pageSize);
+        return PartialView("_CommunicationList", model);
+    }
+
+    [HttpGet("supplier/{supplierId:guid}")]
+    public async Task<IActionResult> SupplierComms(Guid supplierId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        var model = await _service.GetBySupplierAsync(supplierId, page, pageSize);
         return PartialView("_CommunicationList", model);
     }
 

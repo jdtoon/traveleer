@@ -1,3 +1,4 @@
+using saas.Data;
 using saas.Modules.Communications.Entities;
 
 namespace saas.Modules.Communications.DTOs;
@@ -38,6 +39,13 @@ public record CommunicationListDto
     public Guid? SupplierId { get; init; }
     public Guid? BookingId { get; init; }
     public string? ContextName { get; init; }
+    public int PageIndex { get; init; } = 1;
+    public int TotalPages { get; init; }
+    public int TotalCount { get; init; }
+    public int PageSize { get; init; } = 20;
+
+    public PaginationModel ToPagination(string listUrl, string hxTarget)
+        => new(PageIndex, TotalPages, TotalCount, listUrl, hxTarget);
 }
 
 public record CreateCommunicationDto

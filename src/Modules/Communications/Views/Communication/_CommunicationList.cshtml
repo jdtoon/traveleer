@@ -1,6 +1,15 @@
 @model saas.Modules.Communications.DTOs.CommunicationListDto
 @{
     var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var listUrl = Model.ClientId.HasValue
+        ? $"/{slug}/comms/client/{Model.ClientId}?pageSize={Model.PageSize}"
+        : Model.BookingId.HasValue
+            ? $"/{slug}/comms/booking/{Model.BookingId}?pageSize={Model.PageSize}"
+            : $"/{slug}/comms/supplier/{Model.SupplierId}?pageSize={Model.PageSize}";
+    var targetId = Model.ClientId.HasValue ? "#client-communications" : Model.BookingId.HasValue ? "#booking-communications" : "#supplier-communications";
+    var hasPreviousPage = Model.PageIndex > 1;
+    var hasNextPage = Model.Entries.Count == Model.PageSize;
+    var pageSeparator = listUrl.Contains('?') ? "&" : "?";
 }
 <div class="flex flex-col gap-4">
     <div class="flex items-center justify-between">
@@ -57,5 +66,39 @@
                 </div>
             }
         </div>
+
+        @if ((hasPreviousPage || hasNextPage) && !string.IsNullOrWhiteSpace(listUrl))
+        {
+            <div class="flex items-center justify-between mt-4 pt-4 border-t border-base-300">
+                <span class="text-sm opacity-60">Page @Model.PageIndex</span>
+                <div class="join">
+                    @if (hasPreviousPage)
+                    {
+                        <button class="join-item btn btn-sm"
+                                hx-get="@(listUrl)@(pageSeparator)page=@(Model.PageIndex - 1)"
+                                hx-target="@targetId">
+                            « Prev
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="join-item btn btn-sm btn-disabled">« Prev</button>
+                    }
+
+                    @if (hasNextPage)
+                    {
+                        <button class="join-item btn btn-sm"
+                                hx-get="@(listUrl)@(pageSeparator)page=@(Model.PageIndex + 1)"
+                                hx-target="@targetId">
+                            Next »
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="join-item btn btn-sm btn-disabled">Next »</button>
+                    }
+                </div>
+            </div>
+        }
     }
 </div>

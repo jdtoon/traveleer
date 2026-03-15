@@ -118,6 +118,33 @@ public class CommunicationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetByClientAsync_ReturnsPaginatedEntries()
+    {
+        var clientId = Guid.NewGuid();
+
+        for (var index = 1; index <= 21; index++)
+        {
+            await _service.CreateAsync(new CreateCommunicationDto
+            {
+                ClientId = clientId,
+                Channel = CommunicationChannel.Email,
+                Direction = CommunicationDirection.Outbound,
+                Content = $"Entry {index:D2}",
+                OccurredAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMinutes(index)
+            });
+        }
+
+        var firstPage = await _service.GetByClientAsync(clientId, page: 1, pageSize: 20);
+        var secondPage = await _service.GetByClientAsync(clientId, page: 2, pageSize: 20);
+
+        Assert.Equal(20, firstPage.Entries.Count);
+        Assert.Single(secondPage.Entries);
+        Assert.Equal("Entry 01", secondPage.Entries[0].Content);
+        Assert.Equal(2, firstPage.TotalPages);
+        Assert.Equal(21, firstPage.TotalCount);
+    }
+
+    [Fact]
     public async Task GetByBookingAsync_FiltersCorrectly()
     {
         var bookingId = Guid.NewGuid();

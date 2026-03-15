@@ -61,7 +61,7 @@ public class ItineraryIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task ItineraryListPartial_WhenMoreThanOnePage_PaginatesResults()
     {
-        var prefix = $"PagedItin-{Guid.NewGuid():N}"[..12];
+        var prefix = $"PagedItin-{Guid.NewGuid():N}";
 
         await using (var db = OpenTenantDb())
         {

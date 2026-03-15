@@ -595,11 +595,11 @@ public class BookingServiceTests : IAsyncLifetime
 
     private sealed class FakeCommunicationService : ICommunicationService
     {
-        public Task<saas.Modules.Communications.DTOs.CommunicationListDto> GetByClientAsync(Guid clientId)
+        public Task<saas.Modules.Communications.DTOs.CommunicationListDto> GetByClientAsync(Guid clientId, int page = 1, int pageSize = 20)
             => Task.FromResult(new saas.Modules.Communications.DTOs.CommunicationListDto());
-        public Task<saas.Modules.Communications.DTOs.CommunicationListDto> GetByBookingAsync(Guid bookingId)
+        public Task<saas.Modules.Communications.DTOs.CommunicationListDto> GetByBookingAsync(Guid bookingId, int page = 1, int pageSize = 20)
             => Task.FromResult(new saas.Modules.Communications.DTOs.CommunicationListDto());
-        public Task<saas.Modules.Communications.DTOs.CommunicationListDto> GetBySupplierAsync(Guid supplierId)
+        public Task<saas.Modules.Communications.DTOs.CommunicationListDto> GetBySupplierAsync(Guid supplierId, int page = 1, int pageSize = 20)
             => Task.FromResult(new saas.Modules.Communications.DTOs.CommunicationListDto());
         public Task<saas.Modules.Communications.DTOs.CommunicationEntryDto?> GetByIdAsync(Guid id)
             => Task.FromResult<saas.Modules.Communications.DTOs.CommunicationEntryDto?>(null);
