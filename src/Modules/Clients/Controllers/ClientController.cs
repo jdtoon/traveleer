@@ -30,10 +30,10 @@ public class ClientController : SwapController
 
     [HttpGet("list")]
     [HasPermission(ClientPermissions.ClientsRead)]
-    public async Task<IActionResult> List([FromQuery] string? search = null, [FromQuery] int page = 1)
+    public async Task<IActionResult> List([FromQuery] string? search = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 12)
     {
         ViewData["Search"] = search;
-        var model = await _service.GetListAsync(search, page);
+        var model = await _service.GetListAsync(search, page, pageSize);
         return PartialView("_List", model);
     }
 

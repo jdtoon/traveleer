@@ -88,7 +88,36 @@ public class ClientIntegrationTests : IClassFixture<AppFixture>
         await response.AssertContainsAsync($"{prefix}-12");
         await response.AssertDoesNotContainAsync($"{prefix}-13");
         await response.AssertContainsAsync("Page 1 of 2");
+        await response.AssertContainsAsync("Show 12");
+        await response.AssertContainsAsync($"search={prefix}&amp;pageSize=24&amp;page=1");
         await response.AssertContainsAsync($"search={prefix}&amp;pageSize=12&amp;page=2");
+    }
+
+    [Fact]
+    public async Task ClientListPartial_WhenPageSizeIncreases_ShowsAllFilteredResultsOnFirstPage()
+    {
+        var prefix = $"ClientPageSize-{Guid.NewGuid():N}";
+
+        await using (var db = OpenTenantDb())
+        {
+            for (var index = 1; index <= 13; index++)
+            {
+                db.Clients.Add(new saas.Modules.Clients.Entities.Client
+                {
+                    Id = Guid.NewGuid(),
+                    Name = $"{prefix}-{index:D2}",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/clients/list?search={prefix}&pageSize=24");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync($"{prefix}-13");
+        await response.AssertDoesNotContainAsync("Page 2 of");
     }
 
     [Fact]

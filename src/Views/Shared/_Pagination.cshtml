@@ -1,18 +1,45 @@
 @model saas.Data.PaginationModel
 
+@{
+    var pageSizes = new[] { 12, 24, 48 };
+}
+
 @if (Model.TotalPages > 1)
 {
     <div class="flex items-center justify-between mt-4 pt-4 border-t border-base-300">
-        <span class="text-sm opacity-60">
-            Page @Model.PageIndex of @Model.TotalPages
-            <span class="hidden sm:inline">(@Model.TotalCount total)</span>
-        </span>
+        <div class="flex items-center gap-3">
+            <span class="text-sm opacity-60">
+                Page @Model.PageIndex of @Model.TotalPages
+                <span class="hidden sm:inline">(@Model.TotalCount total)</span>
+            </span>
+
+            @if (Model.SupportsPageSizeSelection)
+            {
+                <div class="dropdown">
+                    <label tabindex="0" class="btn btn-ghost btn-sm">
+                        Show @Model.PageSize
+                    </label>
+                    <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-200 rounded-box shadow-lg z-10 w-36">
+                        @foreach (var option in pageSizes)
+                        {
+                            <li>
+                                <button hx-get="@Model.WithPageSize(option)"
+                                        hx-target="@Model.HxTarget"
+                                        class="@(option == Model.PageSize ? "active" : null)">
+                                    @option per page
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+
         <div class="join">
             @if (Model.PageIndex > 1)
             {
-                var prevSep = Model.ListUrl.Contains('?') ? "&" : "?";
                 <button class="join-item btn btn-sm"
-                        hx-get="@(Model.ListUrl)@(prevSep)page=@(Model.PageIndex - 1)"
+                        hx-get="@Model.WithPage(Model.PageIndex - 1)"
                         hx-target="@Model.HxTarget">
                     « Prev
                 </button>
@@ -24,9 +51,8 @@
 
             @if (Model.PageIndex < Model.TotalPages)
             {
-                var nextSep = Model.ListUrl.Contains('?') ? "&" : "?";
                 <button class="join-item btn btn-sm"
-                        hx-get="@(Model.ListUrl)@(nextSep)page=@(Model.PageIndex + 1)"
+                        hx-get="@Model.WithPage(Model.PageIndex + 1)"
                         hx-target="@Model.HxTarget">
                     Next »
                 </button>
