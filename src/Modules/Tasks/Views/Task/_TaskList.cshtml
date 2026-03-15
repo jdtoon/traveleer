@@ -6,6 +6,14 @@
     var priority = ViewBag.PriorityFilter;
     var entityType = ViewBag.EntityTypeFilter;
     var listUrl = Url.Action("List", "Task", new { slug, status, assignee, priority, entityType, pageSize = Model.PageSize })!;
+
+    string? linkedEntityUrl(TaskListItemDto task) => task.LinkedEntityType switch
+    {
+        "Booking" when task.LinkedEntityId.HasValue => Url.Action("Details", "Booking", new { slug, id = task.LinkedEntityId }),
+        "Quote" when task.LinkedEntityId.HasValue => Url.Action("Details", "Quote", new { slug, id = task.LinkedEntityId }),
+        "Client" when task.LinkedEntityId.HasValue => Url.Action("Index", "Client", new { slug }),
+        _ => null
+    };
 }
 
 @if (Model.Items.Count == 0)
@@ -84,7 +92,23 @@ else
                         <td>
                             @if (!string.IsNullOrEmpty(task.LinkedEntityType))
                             {
-                                <span class="badge badge-ghost badge-sm">@task.LinkedEntityType</span>
+                                var url = linkedEntityUrl(task);
+                                var label = string.IsNullOrWhiteSpace(task.LinkedEntityLabel) ? task.LinkedEntityType : task.LinkedEntityLabel;
+
+                                if (!string.IsNullOrWhiteSpace(url))
+                                {
+                                    <a href="@url"
+                                       class="badge badge-ghost badge-sm gap-1 link-hover"
+                                       hx-get="@(task.LinkedEntityType == "Client" ? Url.Action("Details", "Client", new { slug, id = task.LinkedEntityId }) : null)"
+                                       hx-target="@(task.LinkedEntityType == "Client" ? "#modal-container" : null)">
+                                        <span>@task.LinkedEntityType</span>
+                                        <span>@label</span>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-ghost badge-sm">@task.LinkedEntityType</span>
+                                }
                             }
                         </td>
                         <td class="flex gap-1">

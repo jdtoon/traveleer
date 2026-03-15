@@ -13,6 +13,7 @@ public class TaskListItemDto
     public string? AssigneeName { get; set; }
     public string? LinkedEntityType { get; set; }
     public Guid? LinkedEntityId { get; set; }
+    public string? LinkedEntityLabel { get; set; }
     public DateTime CreatedAt { get; set; }
 
     public bool IsOverdue => DueDate.HasValue

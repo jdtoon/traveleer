@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
 using saas.IntegrationTests.Fixtures;
+using saas.Modules.Bookings.Entities;
+using saas.Modules.Clients.Entities;
+using saas.Modules.Quotes.Entities;
 using saas.Modules.Tasks.Entities;
 using Swap.Testing;
 using Xunit;
@@ -130,6 +133,80 @@ public class TaskIntegrationTests : IClassFixture<AppFixture>
 
         response.AssertSuccess();
         await response.AssertContainsAsync("Visible-Task-List-Test");
+    }
+
+    [Fact]
+    public async Task TaskList_RendersBookingDrilldownLinks()
+    {
+        var bookingId = Guid.NewGuid();
+
+        await using (var db = OpenTenantDb())
+        {
+            var client = await db.Clients.OrderBy(c => c.Name).FirstAsync();
+            db.Bookings.Add(new Booking
+            {
+                Id = bookingId,
+                BookingRef = $"BK-TSK-{Guid.NewGuid():N}"[..15],
+                ClientId = client.Id,
+                Status = BookingStatus.Provisional,
+                CostCurrencyCode = "USD",
+                SellingCurrencyCode = "USD",
+                CreatedAt = DateTime.UtcNow
+            });
+            db.AgentTasks.Add(new AgentTask
+            {
+                Id = Guid.NewGuid(),
+                Title = "Task linked to booking",
+                Priority = TaskPriority.Normal,
+                Status = AgentTaskStatus.Open,
+                LinkedEntityType = "Booking",
+                LinkedEntityId = bookingId,
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/tasks/list?entityType=Booking");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync($"href=\"/{TenantSlug}/bookings/details/{bookingId}\"");
+        await response.AssertContainsAsync("Task linked to booking");
+        await response.AssertContainsAsync("BK-TSK-");
+    }
+
+    [Fact]
+    public async Task TaskList_RendersClientModalDrilldownLinks()
+    {
+        var clientId = Guid.NewGuid();
+
+        await using (var db = OpenTenantDb())
+        {
+            db.Clients.Add(new Client
+            {
+                Id = clientId,
+                Name = $"Task Client {Guid.NewGuid():N}"[..20],
+                Email = "task-client@test.local",
+                CreatedAt = DateTime.UtcNow
+            });
+            db.AgentTasks.Add(new AgentTask
+            {
+                Id = Guid.NewGuid(),
+                Title = "Task linked to client",
+                Priority = TaskPriority.Normal,
+                Status = AgentTaskStatus.Open,
+                LinkedEntityType = "Client",
+                LinkedEntityId = clientId,
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/tasks/list?entityType=Client");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync($"href=\"/{TenantSlug}/clients\"");
+        await response.AssertContainsAsync($"hx-get=\"/{TenantSlug}/clients/details/{clientId}\"");
+        await response.AssertContainsAsync("Task linked to client");
     }
 
     [Fact]

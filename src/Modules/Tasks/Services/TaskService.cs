@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using saas.Data;
 using saas.Data.Tenant;
+using saas.Modules.Bookings.Entities;
+using saas.Modules.Clients.Entities;
+using saas.Modules.Quotes.Entities;
 using saas.Modules.Tasks.DTOs;
 using saas.Modules.Tasks.Entities;
 
@@ -62,6 +65,7 @@ public class TaskService : ITaskService
 
         var dtos = tasks.Select(MapToDto).ToList();
         await ResolveAssigneeNamesAsync(dtos);
+        await ResolveLinkedEntityLabelsAsync(dtos);
         var totalCount = await query.CountAsync();
         return new PaginatedList<TaskListItemDto>(dtos, totalCount, normalizedPage, normalizedPageSize);
     }
@@ -150,6 +154,7 @@ public class TaskService : ITaskService
 
         var upcomingDtos = upcoming.Select(MapToDto).ToList();
         await ResolveAssigneeNamesAsync(upcomingDtos);
+        await ResolveLinkedEntityLabelsAsync(upcomingDtos);
         return new TaskWidgetDto
         {
             OverdueCount = overdueCount,
@@ -167,6 +172,7 @@ public class TaskService : ITaskService
 
         var dtos = tasks.Select(MapToDto).ToList();
         await ResolveAssigneeNamesAsync(dtos);
+        await ResolveLinkedEntityLabelsAsync(dtos);
         return dtos;
     }
 
@@ -185,6 +191,62 @@ public class TaskService : ITaskService
         {
             if (dto.AssigneeUserId != null && lookup.TryGetValue(dto.AssigneeUserId, out var name))
                 dto.AssigneeName = name;
+        }
+    }
+
+    private async Task ResolveLinkedEntityLabelsAsync(List<TaskListItemDto> dtos)
+    {
+        var bookingIds = dtos
+            .Where(d => d.LinkedEntityType == "Booking" && d.LinkedEntityId.HasValue)
+            .Select(d => d.LinkedEntityId!.Value)
+            .Distinct()
+            .ToList();
+        var quoteIds = dtos
+            .Where(d => d.LinkedEntityType == "Quote" && d.LinkedEntityId.HasValue)
+            .Select(d => d.LinkedEntityId!.Value)
+            .Distinct()
+            .ToList();
+        var clientIds = dtos
+            .Where(d => d.LinkedEntityType == "Client" && d.LinkedEntityId.HasValue)
+            .Select(d => d.LinkedEntityId!.Value)
+            .Distinct()
+            .ToList();
+
+        var bookingLookup = bookingIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _db.Bookings
+                .AsNoTracking()
+                .Where(b => bookingIds.Contains(b.Id))
+                .ToDictionaryAsync(b => b.Id, b => b.BookingRef);
+
+        var quoteLookup = quoteIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _db.Set<Quote>()
+                .AsNoTracking()
+                .Where(q => quoteIds.Contains(q.Id))
+                .ToDictionaryAsync(q => q.Id, q => q.ReferenceNumber);
+
+        var clientLookup = clientIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _db.Set<Client>()
+                .AsNoTracking()
+                .Where(c => clientIds.Contains(c.Id))
+                .ToDictionaryAsync(c => c.Id, c => c.Name);
+
+        foreach (var dto in dtos)
+        {
+            if (!dto.LinkedEntityId.HasValue || string.IsNullOrWhiteSpace(dto.LinkedEntityType))
+            {
+                continue;
+            }
+
+            dto.LinkedEntityLabel = dto.LinkedEntityType switch
+            {
+                "Booking" when bookingLookup.TryGetValue(dto.LinkedEntityId.Value, out var bookingRef) => bookingRef,
+                "Quote" when quoteLookup.TryGetValue(dto.LinkedEntityId.Value, out var quoteRef) => quoteRef,
+                "Client" when clientLookup.TryGetValue(dto.LinkedEntityId.Value, out var clientName) => clientName,
+                _ => dto.LinkedEntityId.Value.ToString("N")[..8].ToUpperInvariant()
+            };
         }
     }
 
