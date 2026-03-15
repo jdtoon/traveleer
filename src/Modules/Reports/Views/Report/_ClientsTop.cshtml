@@ -1,4 +1,7 @@
 @model List<TopClientDto>
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
 
 @if (!Model.Any())
 {
@@ -22,7 +25,14 @@ else
                 {
                     <tr>
                         <td class="text-base-content/40">@(rank++)</td>
-                        <td>@c.Name</td>
+                        <td>
+                            <a href="@Url.Action("Index", "Client", new { slug })"
+                               class="link link-hover"
+                               hx-get="@Url.Action("Details", "Client", new { slug, id = c.Id })"
+                               hx-target="#modal-container">
+                                @c.Name
+                            </a>
+                        </td>
                         <td class="text-right font-mono text-xs">@c.BookingCount</td>
                         <td class="text-right font-mono text-xs">@c.TotalValue.ToString("N0")</td>
                     </tr>

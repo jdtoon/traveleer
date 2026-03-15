@@ -1,4 +1,7 @@
 @model List<BookingProfitDto>
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
 
 @if (!Model.Any())
 {
@@ -22,8 +25,26 @@ else
                 @foreach (var b in Model)
                 {
                     <tr>
-                        <td class="font-mono text-xs">@b.BookingRef</td>
-                        <td>@(b.ClientName ?? "—")</td>
+                        <td class="font-mono text-xs">
+                            <a href="@Url.Action("Details", "Booking", new { slug, id = b.Id })" class="link link-hover">
+                                @b.BookingRef
+                            </a>
+                        </td>
+                        <td>
+                            @if (b.ClientId.HasValue && !string.IsNullOrWhiteSpace(b.ClientName))
+                            {
+                                <a href="@Url.Action("Index", "Client", new { slug })"
+                                   class="link link-hover"
+                                   hx-get="@Url.Action("Details", "Client", new { slug, id = b.ClientId })"
+                                   hx-target="#modal-container">
+                                    @b.ClientName
+                                </a>
+                            }
+                            else
+                            {
+                                @:—
+                            }
+                        </td>
                         <td class="text-right font-mono text-xs">@b.TotalSelling.ToString("N0")</td>
                         <td class="text-right font-mono text-xs">@b.TotalCost.ToString("N0")</td>
                         <td class="text-right font-mono text-xs @(b.Profit >= 0 ? "text-success" : "text-error")">@b.Profit.ToString("N0")</td>

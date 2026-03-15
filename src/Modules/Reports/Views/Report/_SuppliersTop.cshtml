@@ -1,4 +1,7 @@
 @model List<TopSupplierDto>
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
 
 @if (!Model.Any())
 {
@@ -22,7 +25,11 @@ else
                 {
                     <tr>
                         <td class="text-base-content/40">@(rank++)</td>
-                        <td>@s.Name</td>
+                        <td>
+                            <a href="@Url.Action("Details", "Supplier", new { slug, id = s.Id })" class="link link-hover">
+                                @s.Name
+                            </a>
+                        </td>
                         <td class="text-right font-mono text-xs">@s.BookingItemCount</td>
                         <td class="text-right font-mono text-xs">@s.TotalCost.ToString("N0")</td>
                     </tr>

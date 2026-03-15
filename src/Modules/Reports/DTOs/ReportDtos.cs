@@ -36,6 +36,7 @@ public class BookingStatusDto
 public class RecentBookingDto
 {
     public Guid Id { get; set; }
+    public Guid? ClientId { get; set; }
     public string BookingRef { get; set; } = string.Empty;
     public string? ClientName { get; set; }
     public string Status { get; set; } = string.Empty;
@@ -84,6 +85,7 @@ public class ProfitabilitySummaryDto
 public class BookingProfitDto
 {
     public Guid Id { get; set; }
+    public Guid? ClientId { get; set; }
     public string BookingRef { get; set; } = string.Empty;
     public string? ClientName { get; set; }
     public decimal TotalSelling { get; set; }

@@ -1,6 +1,9 @@
 using saas.Data.Tenant;
 using saas.IntegrationTests.Fixtures;
 using Microsoft.EntityFrameworkCore;
+using saas.Modules.Bookings.Entities;
+using saas.Modules.Clients.Entities;
+using saas.Modules.Settings.Entities;
 using Swap.Testing;
 using Xunit;
 
@@ -80,6 +83,19 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task BookingsRecentWidget_RendersDrilldownLinks()
+    {
+        var seeded = await SeedReportLinkDataAsync();
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/reports/widget/bookings-recent");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync(seeded.BookingRef);
+        await response.AssertContainsAsync($"href=\"/{TenantSlug}/bookings/details/{seeded.BookingId}\"");
+        await response.AssertContainsAsync($"hx-get=\"/{TenantSlug}/clients/details/{seeded.ClientId}\"");
+    }
+
+    [Fact]
     public async Task QuotesConversionWidget_RendersWithoutLayout()
     {
         var response = await _client.HtmxGetAsync($"/{TenantSlug}/reports/widget/quotes-conversion?range=month");
@@ -107,12 +123,36 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task ClientsTopWidget_RendersClientDetailLinks()
+    {
+        var seeded = await SeedReportLinkDataAsync();
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/reports/widget/clients-top?range=year");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync(seeded.ClientName);
+        await response.AssertContainsAsync($"hx-get=\"/{TenantSlug}/clients/details/{seeded.ClientId}\"");
+    }
+
+    [Fact]
     public async Task SuppliersTopWidget_RendersWithoutLayout()
     {
         var response = await _client.HtmxGetAsync($"/{TenantSlug}/reports/widget/suppliers-top?range=year");
 
         response.AssertSuccess();
         await response.AssertPartialViewAsync();
+    }
+
+    [Fact]
+    public async Task SuppliersTopWidget_RendersSupplierDetailLinks()
+    {
+        var seeded = await SeedReportLinkDataAsync();
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/reports/widget/suppliers-top?range=year");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync(seeded.SupplierName);
+        await response.AssertContainsAsync($"href=\"/{TenantSlug}/suppliers/details/{seeded.SupplierId}\"");
     }
 
     [Fact]
@@ -131,6 +171,19 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
 
         response.AssertSuccess();
         await response.AssertPartialViewAsync();
+    }
+
+    [Fact]
+    public async Task ProfitByBookingWidget_RendersBookingAndClientDrilldownLinks()
+    {
+        var seeded = await SeedReportLinkDataAsync();
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/reports/widget/profitability-by-booking?range=month");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync(seeded.BookingRef);
+        await response.AssertContainsAsync($"href=\"/{TenantSlug}/bookings/details/{seeded.BookingId}\"");
+        await response.AssertContainsAsync($"hx-get=\"/{TenantSlug}/clients/details/{seeded.ClientId}\"");
     }
 
     // ── Layer 4: Database Verification ──
@@ -162,5 +215,67 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
             .UseSqlite($"Data Source={_fixture.GetTenantDbPath(TenantSlug)}")
             .Options;
         return new TenantDbContext(options);
+    }
+
+    private async Task<(Guid BookingId, string BookingRef, Guid ClientId, string ClientName, Guid SupplierId, string SupplierName)> SeedReportLinkDataAsync()
+    {
+        var clientId = Guid.NewGuid();
+        var supplierId = Guid.NewGuid();
+        var bookingId = Guid.NewGuid();
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var clientName = $"Report Client {suffix}";
+        var supplierName = $"Report Supplier {suffix}";
+        var bookingRef = $"BK-RPT-{suffix.ToUpperInvariant()}";
+
+        await using var db = OpenTenantDb();
+
+        db.Clients.Add(new Client
+        {
+            Id = clientId,
+            Name = clientName,
+            Email = $"{suffix}@client.test",
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = "integration-test"
+        });
+
+        db.Suppliers.Add(new Supplier
+        {
+            Id = supplierId,
+            Name = supplierName,
+            ContactEmail = $"{suffix}@supplier.test",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = "integration-test"
+        });
+
+        db.Bookings.Add(new Booking
+        {
+            Id = bookingId,
+            BookingRef = bookingRef,
+            ClientId = clientId,
+            Status = BookingStatus.Confirmed,
+            TotalSelling = 250000m,
+            TotalCost = 180000m,
+            TotalProfit = 70000m,
+            SellingCurrencyCode = "USD",
+            CostCurrencyCode = "USD",
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = "integration-test"
+        });
+
+        db.BookingItems.Add(new BookingItem
+        {
+            Id = Guid.NewGuid(),
+            BookingId = bookingId,
+            SupplierId = supplierId,
+            ServiceName = "Report-linked stay",
+            CostPrice = 180000m,
+            SellingPrice = 250000m,
+            Quantity = 1
+        });
+
+        await db.SaveChangesAsync();
+
+        return (bookingId, bookingRef, clientId, clientName, supplierId, supplierName);
     }
 }

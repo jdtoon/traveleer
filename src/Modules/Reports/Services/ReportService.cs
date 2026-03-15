@@ -143,6 +143,7 @@ public class ReportService : IReportService
             .Select(b => new RecentBookingDto
             {
                 Id = b.Id,
+                ClientId = b.ClientId,
                 BookingRef = b.BookingRef,
                 ClientName = b.Client != null ? b.Client.Name : null,
                 Status = b.Status.ToString(),
@@ -264,6 +265,7 @@ public class ReportService : IReportService
             .Select(b => new BookingProfitDto
             {
                 Id = b.Id,
+                ClientId = b.ClientId,
                 BookingRef = b.BookingRef,
                 ClientName = b.Client != null ? b.Client.Name : null,
                 TotalSelling = b.TotalSelling,
