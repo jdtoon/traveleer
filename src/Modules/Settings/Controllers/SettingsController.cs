@@ -15,6 +15,17 @@ namespace saas.Modules.Settings.Controllers;
 [Route("{slug}/settings")]
 public class SettingsController : SwapController
 {
+    private static readonly HashSet<string> ValidTabs =
+    [
+        "room-types",
+        "meal-plans",
+        "currencies",
+        "destinations",
+        "suppliers",
+        "rate-categories",
+        "users"
+    ];
+
     private readonly ISettingsService _service;
     private readonly ITenantAdminService _tenantAdminService;
 
@@ -26,9 +37,13 @@ public class SettingsController : SwapController
 
     [HttpGet("")]
     [HasPermission(SettingsPermissions.SettingsRead)]
-    public IActionResult Index([FromQuery] string tab = "room-types")
+    public IActionResult Index([FromQuery] string? tab = null)
     {
-        ViewData["ActiveTab"] = tab;
+        var activeTab = !string.IsNullOrWhiteSpace(tab) && ValidTabs.Contains(tab)
+            ? tab
+            : "room-types";
+
+        ViewData["ActiveTab"] = activeTab;
         return SwapView();
     }
 

@@ -4,6 +4,8 @@
     var activeTab = ViewData["ActiveTab"]?.ToString() ?? "room-types";
     string tabClass(string tab) => activeTab == tab ? "tab tab-active" : "tab";
     string panelClass(string tab) => activeTab == tab ? "space-y-4" : "hidden space-y-4";
+    string tabUrl(string tab) => Url.Action("Index", "Settings", new { slug, tab })!;
+    string tabTrigger(string tab, string refreshEvent) => activeTab == tab ? $"load, {refreshEvent} from:body" : $"{refreshEvent} from:body";
 }
 
 <div class="flex flex-col gap-6">
@@ -15,13 +17,13 @@
     <div class="card bg-base-100 border border-base-300 shadow-sm">
         <div class="card-body gap-6">
             <div role="tablist" class="tabs tabs-bordered flex-wrap gap-2">
-                <button role="tab" class="@tabClass("room-types")" onclick="switchSettingsTab('room-types')">Room Types</button>
-                <button role="tab" class="@tabClass("meal-plans")" onclick="switchSettingsTab('meal-plans')">Meal Plans</button>
-                <button role="tab" class="@tabClass("currencies")" onclick="switchSettingsTab('currencies')">Currencies</button>
-                <button role="tab" class="@tabClass("destinations")" onclick="switchSettingsTab('destinations')">Destinations</button>
-                <button role="tab" class="@tabClass("suppliers")" onclick="switchSettingsTab('suppliers')">Suppliers</button>
-                <button role="tab" class="@tabClass("rate-categories")" onclick="switchSettingsTab('rate-categories')">Rate Categories</button>
-                <button role="tab" class="@tabClass("users")" onclick="switchSettingsTab('users')">Users</button>
+                <a role="tab" href="@tabUrl("room-types")" class="@tabClass("room-types")">Room Types</a>
+                <a role="tab" href="@tabUrl("meal-plans")" class="@tabClass("meal-plans")">Meal Plans</a>
+                <a role="tab" href="@tabUrl("currencies")" class="@tabClass("currencies")">Currencies</a>
+                <a role="tab" href="@tabUrl("destinations")" class="@tabClass("destinations")">Destinations</a>
+                <a role="tab" href="@tabUrl("suppliers")" class="@tabClass("suppliers")">Suppliers</a>
+                <a role="tab" href="@tabUrl("rate-categories")" class="@tabClass("rate-categories")">Rate Categories</a>
+                <a role="tab" href="@tabUrl("users")" class="@tabClass("users")">Users</a>
             </div>
 
             <section id="tab-room-types" class="@panelClass("room-types")">
@@ -34,7 +36,7 @@
                         <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewRoomType", "Settings", new { slug })" hx-target="#modal-container">+ New Room Type</button>
                     </has-permission>
                 </div>
-                <div id="room-types-list" hx-get="@Url.Action("RoomTypes", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.RoomTypesRefresh from:body" hx-swap="innerHTML show:none">
+                <div id="room-types-list" hx-get="@Url.Action("RoomTypes", "Settings", new { slug })" hx-trigger="@tabTrigger("room-types", saas.Modules.Settings.Events.SettingsEvents.RoomTypesRefresh)" hx-swap="innerHTML show:none">
                     <span class="loading loading-spinner loading-lg"></span>
                 </div>
             </section>
@@ -49,7 +51,7 @@
                         <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewMealPlan", "Settings", new { slug })" hx-target="#modal-container">+ New Meal Plan</button>
                     </has-permission>
                 </div>
-                <div id="meal-plans-list" hx-get="@Url.Action("MealPlans", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.MealPlansRefresh from:body" hx-swap="innerHTML show:none">
+                <div id="meal-plans-list" hx-get="@Url.Action("MealPlans", "Settings", new { slug })" hx-trigger="@tabTrigger("meal-plans", saas.Modules.Settings.Events.SettingsEvents.MealPlansRefresh)" hx-swap="innerHTML show:none">
                     <span class="loading loading-spinner loading-lg"></span>
                 </div>
             </section>
@@ -64,7 +66,7 @@
                         <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewCurrency", "Settings", new { slug })" hx-target="#modal-container">+ New Currency</button>
                     </has-permission>
                 </div>
-                <div id="currencies-list" hx-get="@Url.Action("Currencies", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.CurrenciesRefresh from:body" hx-swap="innerHTML show:none">
+                <div id="currencies-list" hx-get="@Url.Action("Currencies", "Settings", new { slug })" hx-trigger="@tabTrigger("currencies", saas.Modules.Settings.Events.SettingsEvents.CurrenciesRefresh)" hx-swap="innerHTML show:none">
                     <span class="loading loading-spinner loading-lg"></span>
                 </div>
             </section>
@@ -79,7 +81,7 @@
                         <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewDestination", "Settings", new { slug })" hx-target="#modal-container">+ New Destination</button>
                     </has-permission>
                 </div>
-                <div id="destinations-list" hx-get="@Url.Action("Destinations", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.DestinationsRefresh from:body" hx-swap="innerHTML show:none">
+                <div id="destinations-list" hx-get="@Url.Action("Destinations", "Settings", new { slug })" hx-trigger="@tabTrigger("destinations", saas.Modules.Settings.Events.SettingsEvents.DestinationsRefresh)" hx-swap="innerHTML show:none">
                     <span class="loading loading-spinner loading-lg"></span>
                 </div>
             </section>
@@ -94,7 +96,7 @@
                         <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewSupplier", "Settings", new { slug })" hx-target="#modal-container">+ New Supplier</button>
                     </has-permission>
                 </div>
-                <div id="suppliers-list" hx-get="@Url.Action("Suppliers", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.SuppliersRefresh from:body" hx-swap="innerHTML show:none">
+                <div id="suppliers-list" hx-get="@Url.Action("Suppliers", "Settings", new { slug })" hx-trigger="@tabTrigger("suppliers", saas.Modules.Settings.Events.SettingsEvents.SuppliersRefresh)" hx-swap="innerHTML show:none">
                     <span class="loading loading-spinner loading-lg"></span>
                 </div>
             </section>
@@ -109,7 +111,7 @@
                         <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewRateCategory", "Settings", new { slug })" hx-target="#modal-container">+ New Rate Category</button>
                     </has-permission>
                 </div>
-                <div id="rate-categories-list" hx-get="@Url.Action("RateCategories", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.RateCategoriesRefresh from:body" hx-swap="innerHTML show:none">
+                <div id="rate-categories-list" hx-get="@Url.Action("RateCategories", "Settings", new { slug })" hx-trigger="@tabTrigger("rate-categories", saas.Modules.Settings.Events.SettingsEvents.RateCategoriesRefresh)" hx-swap="innerHTML show:none">
                     <span class="loading loading-spinner loading-lg"></span>
                 </div>
             </section>
@@ -122,22 +124,10 @@
                     </div>
                     <a href="/@slug/admin/users" class="btn btn-outline btn-sm">Manage Users & Roles</a>
                 </div>
-                <div id="settings-users-list" hx-get="@Url.Action("Users", "Settings", new { slug })" hx-trigger="load, @saas.Modules.Settings.Events.SettingsEvents.UsersRefresh from:body" hx-swap="innerHTML show:none">
+                <div id="settings-users-list" hx-get="@Url.Action("Users", "Settings", new { slug })" hx-trigger="@tabTrigger("users", saas.Modules.Settings.Events.SettingsEvents.UsersRefresh)" hx-swap="innerHTML show:none">
                     <span class="loading loading-spinner loading-lg"></span>
                 </div>
             </section>
         </div>
     </div>
 </div>
-
-<script>
-    function switchSettingsTab(tab) {
-        const tabs = ["room-types", "meal-plans", "currencies", "destinations", "suppliers", "rate-categories", "users"];
-        for (const current of tabs) {
-            const panel = document.getElementById(`tab-${current}`);
-            const button = Array.from(document.querySelectorAll('[role="tab"]')).find(x => x.textContent.trim().toLowerCase().replace(/\s+/g, '-') === current);
-            if (panel) panel.classList.toggle('hidden', current !== tab);
-            if (button) button.classList.toggle('tab-active', current === tab);
-        }
-    }
-</script>

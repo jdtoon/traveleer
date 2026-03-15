@@ -31,6 +31,29 @@ public class SettingsIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task SettingsPage_WithCurrenciesTabQuery_RendersCurrenciesTabActive()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}/settings?tab=currencies");
+
+        response.AssertSuccess();
+        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/settings?tab=currencies'].tab-active");
+        await response.AssertElementExistsAsync("#tab-currencies:not(.hidden)");
+        await response.AssertElementExistsAsync("#tab-room-types.hidden");
+        await response.AssertDoesNotContainAsync("switchSettingsTab(");
+    }
+
+    [Fact]
+    public async Task SettingsPage_WithInvalidTabQuery_FallsBackToRoomTypes()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}/settings?tab=unknown-tab");
+
+        response.AssertSuccess();
+        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/settings?tab=room-types'].tab-active");
+        await response.AssertElementExistsAsync("#tab-room-types:not(.hidden)");
+        await response.AssertElementExistsAsync("#tab-currencies.hidden");
+    }
+
+    [Fact]
     public async Task RoomTypesPartial_RendersWithoutLayout()
     {
         var response = await _client.HtmxGetAsync($"/{TenantSlug}/settings/room-types");
