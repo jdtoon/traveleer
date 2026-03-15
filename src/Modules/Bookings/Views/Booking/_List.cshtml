@@ -23,11 +23,23 @@
         <p class="mt-2 opacity-70">
             @if (!string.IsNullOrWhiteSpace(status) || !string.IsNullOrWhiteSpace(search))
             {
-                <text>No bookings match this filter. Try a broader search or switch status tabs.</text>
+                <text>
+                    No bookings match this filter. Try a broader search or switch status tabs while you prepare
+                    <a href="/@slug/clients" class="link link-hover">client records</a>
+                    and
+                    <a href="/@slug/inventory" class="link link-hover">inventory items</a>
+                    for the next booking.
+                </text>
             }
             else
             {
-                <text>Create your first booking once a client and inventory items are ready for operations.</text>
+                <text>
+                    Create your first booking once
+                    <a href="/@slug/clients" class="link link-hover">a client</a>
+                    and
+                    <a href="/@slug/inventory" class="link link-hover">inventory items</a>
+                    are ready for operations.
+                </text>
             }
         </p>
     </div>

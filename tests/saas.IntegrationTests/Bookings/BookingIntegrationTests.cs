@@ -59,6 +59,17 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task BookingListPartial_WhenFilterHasNoMatches_ShowsPreparationLinks()
+    {
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/list?search={Guid.NewGuid():N}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("No bookings match this filter.");
+        await response.AssertContainsAsync($"href=\"/{TenantSlug}/clients\"");
+        await response.AssertContainsAsync($"href=\"/{TenantSlug}/inventory\"");
+    }
+
+    [Fact]
     public async Task BookingNewPartial_RendersModalForm()
     {
         var response = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/new");

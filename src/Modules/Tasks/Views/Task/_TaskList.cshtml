@@ -6,6 +6,7 @@
     var priority = ViewBag.PriorityFilter;
     var entityType = ViewBag.EntityTypeFilter;
     var listUrl = Url.Action("List", "Task", new { slug, status, assignee, priority, entityType, pageSize = Model.PageSize })!;
+    var hasActiveFilters = status is not null || assignee is not null || priority is not null || entityType is not null;
 
     string? linkedEntityUrl(TaskListItemDto task) => task.LinkedEntityType switch
     {
@@ -18,8 +19,16 @@
 
 @if (Model.Items.Count == 0)
 {
-    <div class="text-center text-base-content/60 py-6">
-        <p>No tasks found.</p>
+    <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-8 text-center">
+        <h3 class="text-lg font-semibold">No tasks found</h3>
+        @if (hasActiveFilters)
+        {
+            <p class="mt-2 opacity-70">No tasks match this filter. Try a different status, priority, assignee, or linked type.</p>
+        }
+        else
+        {
+            <p class="mt-2 opacity-70">No tasks yet. Use tasks to track follow-ups for bookings, quotes, clients, and supplier confirmations.</p>
+        }
     </div>
 }
 else

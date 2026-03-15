@@ -136,6 +136,16 @@ public class TaskIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task TaskList_WhenNoTasksExistForFilter_ShowsFilterEmptyState()
+    {
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/tasks/list?entityType=NoMatch-{Guid.NewGuid():N}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("No tasks match this filter.");
+        await response.AssertContainsAsync("different status, priority, assignee, or linked type");
+    }
+
+    [Fact]
     public async Task TaskList_RendersBookingDrilldownLinks()
     {
         var bookingId = Guid.NewGuid();

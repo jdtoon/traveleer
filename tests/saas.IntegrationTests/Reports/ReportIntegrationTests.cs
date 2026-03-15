@@ -254,9 +254,9 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
             BookingRef = bookingRef,
             ClientId = clientId,
             Status = BookingStatus.Confirmed,
-            TotalSelling = 250000m,
-            TotalCost = 180000m,
-            TotalProfit = 70000m,
+            TotalSelling = 25000000m,
+            TotalCost = 18000000m,
+            TotalProfit = 7000000m,
             SellingCurrencyCode = "USD",
             CostCurrencyCode = "USD",
             CreatedAt = DateTime.UtcNow,
@@ -269,8 +269,8 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
             BookingId = bookingId,
             SupplierId = supplierId,
             ServiceName = "Report-linked stay",
-            CostPrice = 180000m,
-            SellingPrice = 250000m,
+            CostPrice = 18000000m,
+            SellingPrice = 25000000m,
             Quantity = 1
         });
 
