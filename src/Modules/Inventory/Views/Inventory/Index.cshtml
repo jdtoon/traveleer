@@ -21,6 +21,12 @@
         var query = QueryFor(nextType);
         return query is null ? $"/{slug}/inventory" : $"/{slug}/inventory?{query}";
     }
+
+    string TabListUrl(string? nextType)
+    {
+        var query = QueryFor(nextType);
+        return query is null ? $"/{slug}/inventory/list" : $"/{slug}/inventory/list?{query}";
+    }
 }
 
 <div class="flex flex-col gap-6">
@@ -37,13 +43,13 @@
     <div class="card border border-base-300 bg-base-100 shadow-sm">
         <div class="card-body gap-6">
             <div role="tablist" class="tabs tabs-bordered flex-wrap gap-2">
-                <a href="@TabUrl(null)" class="@tabClass(null)">All Items</a>
-                <a href="@TabUrl(nameof(InventoryItemKind.Hotel))" class="@tabClass(nameof(InventoryItemKind.Hotel))">Hotels</a>
-                <a href="@TabUrl(nameof(InventoryItemKind.Flight))" class="@tabClass(nameof(InventoryItemKind.Flight))">Flights</a>
-                <a href="@TabUrl(nameof(InventoryItemKind.Excursion))" class="@tabClass(nameof(InventoryItemKind.Excursion))">Excursions</a>
-                <a href="@TabUrl(nameof(InventoryItemKind.Transfer))" class="@tabClass(nameof(InventoryItemKind.Transfer))">Transfers</a>
-                <a href="@TabUrl(nameof(InventoryItemKind.Visa))" class="@tabClass(nameof(InventoryItemKind.Visa))">Visas</a>
-                <a href="@TabUrl(nameof(InventoryItemKind.Other))" class="@tabClass(nameof(InventoryItemKind.Other))">Other</a>
+                <a href="@TabUrl(null)" hx-get="@TabListUrl(null)" hx-target="#inventory-list" hx-push-url="@TabUrl(null)" class="@tabClass(null)">All Items</a>
+                <a href="@TabUrl(nameof(InventoryItemKind.Hotel))" hx-get="@TabListUrl(nameof(InventoryItemKind.Hotel))" hx-target="#inventory-list" hx-push-url="@TabUrl(nameof(InventoryItemKind.Hotel))" class="@tabClass(nameof(InventoryItemKind.Hotel))">Hotels</a>
+                <a href="@TabUrl(nameof(InventoryItemKind.Flight))" hx-get="@TabListUrl(nameof(InventoryItemKind.Flight))" hx-target="#inventory-list" hx-push-url="@TabUrl(nameof(InventoryItemKind.Flight))" class="@tabClass(nameof(InventoryItemKind.Flight))">Flights</a>
+                <a href="@TabUrl(nameof(InventoryItemKind.Excursion))" hx-get="@TabListUrl(nameof(InventoryItemKind.Excursion))" hx-target="#inventory-list" hx-push-url="@TabUrl(nameof(InventoryItemKind.Excursion))" class="@tabClass(nameof(InventoryItemKind.Excursion))">Excursions</a>
+                <a href="@TabUrl(nameof(InventoryItemKind.Transfer))" hx-get="@TabListUrl(nameof(InventoryItemKind.Transfer))" hx-target="#inventory-list" hx-push-url="@TabUrl(nameof(InventoryItemKind.Transfer))" class="@tabClass(nameof(InventoryItemKind.Transfer))">Transfers</a>
+                <a href="@TabUrl(nameof(InventoryItemKind.Visa))" hx-get="@TabListUrl(nameof(InventoryItemKind.Visa))" hx-target="#inventory-list" hx-push-url="@TabUrl(nameof(InventoryItemKind.Visa))" class="@tabClass(nameof(InventoryItemKind.Visa))">Visas</a>
+                <a href="@TabUrl(nameof(InventoryItemKind.Other))" hx-get="@TabListUrl(nameof(InventoryItemKind.Other))" hx-target="#inventory-list" hx-push-url="@TabUrl(nameof(InventoryItemKind.Other))" class="@tabClass(nameof(InventoryItemKind.Other))">Other</a>
             </div>
 
             <form class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end"

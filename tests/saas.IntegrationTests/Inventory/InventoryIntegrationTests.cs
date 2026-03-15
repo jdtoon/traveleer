@@ -29,6 +29,8 @@ public class InventoryIntegrationTests : IClassFixture<AppFixture>
         await response.AssertElementExistsAsync("#main-content");
         await response.AssertElementExistsAsync("#modal-container");
         await response.AssertElementExistsAsync("#inventory-list");
+        await response.AssertContainsAsync("hx-get=\"/demo/inventory/list\"");
+        await response.AssertContainsAsync("hx-target=\"#inventory-list\"");
     }
 
     [Fact]

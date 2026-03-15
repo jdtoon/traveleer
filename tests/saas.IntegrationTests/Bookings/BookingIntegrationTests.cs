@@ -34,6 +34,8 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
         await response.AssertElementExistsAsync("#main-content");
         await response.AssertElementExistsAsync("#modal-container");
         await response.AssertElementExistsAsync("#booking-list");
+        await response.AssertContainsAsync("hx-get=\"/demo/bookings/list\"");
+        await response.AssertContainsAsync("hx-target=\"#booking-list\"");
     }
 
     [Fact]

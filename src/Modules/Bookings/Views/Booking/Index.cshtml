@@ -23,6 +23,12 @@
         var query = QueryFor(nextStatus);
         return query is null ? $"/{slug}/bookings" : $"/{slug}/bookings?{query}";
     }
+
+    string TabListUrl(string? nextStatus)
+    {
+        var query = QueryFor(nextStatus);
+        return query is null ? $"/{slug}/bookings/list" : $"/{slug}/bookings/list?{query}";
+    }
 }
 
 <div class="flex flex-col gap-6">
@@ -39,12 +45,12 @@
     <div class="card border border-base-300 bg-base-100 shadow-sm">
         <div class="card-body gap-6">
             <div role="tablist" class="tabs tabs-bordered flex-wrap gap-2">
-                <a href="@TabUrl(null)" class="@tabClass(null)">All</a>
-                <a href="@TabUrl(nameof(BookingStatus.Provisional))" class="@tabClass(nameof(BookingStatus.Provisional))">Provisional</a>
-                <a href="@TabUrl(nameof(BookingStatus.Confirmed))" class="@tabClass(nameof(BookingStatus.Confirmed))">Confirmed</a>
-                <a href="@TabUrl(nameof(BookingStatus.InProgress))" class="@tabClass(nameof(BookingStatus.InProgress))">In Progress</a>
-                <a href="@TabUrl(nameof(BookingStatus.Completed))" class="@tabClass(nameof(BookingStatus.Completed))">Completed</a>
-                <a href="@TabUrl(nameof(BookingStatus.Cancelled))" class="@tabClass(nameof(BookingStatus.Cancelled))">Cancelled</a>
+                <a href="@TabUrl(null)" hx-get="@TabListUrl(null)" hx-target="#booking-list" hx-push-url="@TabUrl(null)" class="@tabClass(null)">All</a>
+                <a href="@TabUrl(nameof(BookingStatus.Provisional))" hx-get="@TabListUrl(nameof(BookingStatus.Provisional))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.Provisional))" class="@tabClass(nameof(BookingStatus.Provisional))">Provisional</a>
+                <a href="@TabUrl(nameof(BookingStatus.Confirmed))" hx-get="@TabListUrl(nameof(BookingStatus.Confirmed))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.Confirmed))" class="@tabClass(nameof(BookingStatus.Confirmed))">Confirmed</a>
+                <a href="@TabUrl(nameof(BookingStatus.InProgress))" hx-get="@TabListUrl(nameof(BookingStatus.InProgress))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.InProgress))" class="@tabClass(nameof(BookingStatus.InProgress))">In Progress</a>
+                <a href="@TabUrl(nameof(BookingStatus.Completed))" hx-get="@TabListUrl(nameof(BookingStatus.Completed))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.Completed))" class="@tabClass(nameof(BookingStatus.Completed))">Completed</a>
+                <a href="@TabUrl(nameof(BookingStatus.Cancelled))" hx-get="@TabListUrl(nameof(BookingStatus.Cancelled))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.Cancelled))" class="@tabClass(nameof(BookingStatus.Cancelled))">Cancelled</a>
             </div>
 
             <form class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-end"

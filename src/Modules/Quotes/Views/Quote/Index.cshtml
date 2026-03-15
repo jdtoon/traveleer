@@ -15,6 +15,14 @@
         if (!string.IsNullOrWhiteSpace(search)) pairs.Add($"search={Uri.EscapeDataString(search)}");
         return pairs.Count == 0 ? $"/{slug}/quotes" : $"/{slug}/quotes?{string.Join("&", pairs)}";
     }
+
+    string TabListUrl(string? nextStatus)
+    {
+        var pairs = new List<string>();
+        if (!string.IsNullOrWhiteSpace(nextStatus)) pairs.Add($"status={Uri.EscapeDataString(nextStatus)}");
+        if (!string.IsNullOrWhiteSpace(search)) pairs.Add($"search={Uri.EscapeDataString(search)}");
+        return pairs.Count == 0 ? $"/{slug}/quotes/list" : $"/{slug}/quotes/list?{string.Join("&", pairs)}";
+    }
 }
 
 <div class="flex flex-col gap-6">
@@ -31,11 +39,11 @@
     <div class="card border border-base-300 bg-base-100 shadow-sm">
         <div class="card-body gap-6">
             <div role="tablist" class="tabs tabs-bordered flex-wrap gap-2">
-                <a href="@TabUrl(null)" class="@tabClass(null)">All</a>
-                <a href="@TabUrl(nameof(QuoteStatus.Draft))" class="@tabClass(nameof(QuoteStatus.Draft))">Draft</a>
-                <a href="@TabUrl(nameof(QuoteStatus.Sent))" class="@tabClass(nameof(QuoteStatus.Sent))">Sent</a>
-                <a href="@TabUrl(nameof(QuoteStatus.Accepted))" class="@tabClass(nameof(QuoteStatus.Accepted))">Accepted</a>
-                <a href="@TabUrl(nameof(QuoteStatus.Expired))" class="@tabClass(nameof(QuoteStatus.Expired))">Expired</a>
+                <a href="@TabUrl(null)" hx-get="@TabListUrl(null)" hx-target="#quote-list" hx-push-url="@TabUrl(null)" class="@tabClass(null)">All</a>
+                <a href="@TabUrl(nameof(QuoteStatus.Draft))" hx-get="@TabListUrl(nameof(QuoteStatus.Draft))" hx-target="#quote-list" hx-push-url="@TabUrl(nameof(QuoteStatus.Draft))" class="@tabClass(nameof(QuoteStatus.Draft))">Draft</a>
+                <a href="@TabUrl(nameof(QuoteStatus.Sent))" hx-get="@TabListUrl(nameof(QuoteStatus.Sent))" hx-target="#quote-list" hx-push-url="@TabUrl(nameof(QuoteStatus.Sent))" class="@tabClass(nameof(QuoteStatus.Sent))">Sent</a>
+                <a href="@TabUrl(nameof(QuoteStatus.Accepted))" hx-get="@TabListUrl(nameof(QuoteStatus.Accepted))" hx-target="#quote-list" hx-push-url="@TabUrl(nameof(QuoteStatus.Accepted))" class="@tabClass(nameof(QuoteStatus.Accepted))">Accepted</a>
+                <a href="@TabUrl(nameof(QuoteStatus.Expired))" hx-get="@TabListUrl(nameof(QuoteStatus.Expired))" hx-target="#quote-list" hx-push-url="@TabUrl(nameof(QuoteStatus.Expired))" class="@tabClass(nameof(QuoteStatus.Expired))">Expired</a>
             </div>
 
             <form class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end"
