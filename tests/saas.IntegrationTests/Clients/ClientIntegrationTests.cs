@@ -88,6 +88,7 @@ public class ClientIntegrationTests : IClassFixture<AppFixture>
         await response.AssertContainsAsync($"{prefix}-12");
         await response.AssertDoesNotContainAsync($"{prefix}-13");
         await response.AssertContainsAsync("Page 1 of 2");
+        await response.AssertContainsAsync($"search={prefix}&amp;pageSize=12&amp;page=2");
     }
 
     [Fact]

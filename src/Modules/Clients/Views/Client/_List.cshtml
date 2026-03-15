@@ -2,7 +2,7 @@
 @{
     var slug = ViewContext.RouteData.Values["slug"]?.ToString();
     var search = ViewData["Search"]?.ToString();
-    var listUrl = Url.Action("List", "Client", new { slug, search })!;
+    var listUrl = Url.Action("List", "Client", new { slug, search, pageSize = Model.PageSize })!;
 }
 
 @if (Model.Items.Count == 0)
