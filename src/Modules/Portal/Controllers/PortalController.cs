@@ -59,7 +59,7 @@ public class PortalController : SwapController
     }
 
     [HttpGet("{tenantSlug}/{token}/bookings")]
-    public async Task<IActionResult> Bookings(string tenantSlug, string token)
+    public async Task<IActionResult> Bookings(string tenantSlug, string token, int page = 1, int pageSize = 12)
     {
         await using var db = BuildTenantDb(tenantSlug);
         if (db is null) return NotFound();
@@ -69,7 +69,7 @@ public class PortalController : SwapController
         if (link is null) return SwapView("Expired");
         if (link.Scope == PortalLinkScope.QuoteOnly) return NotFound();
 
-        var bookings = await service.GetBookingsAsync(link.ClientId);
+        var bookings = await service.GetBookingsAsync(link.ClientId, page, pageSize);
         var branding = await GetBrandingAsync(db);
 
         ViewBag.Token = token;
@@ -103,7 +103,7 @@ public class PortalController : SwapController
     }
 
     [HttpGet("{tenantSlug}/{token}/quotes")]
-    public async Task<IActionResult> Quotes(string tenantSlug, string token)
+    public async Task<IActionResult> Quotes(string tenantSlug, string token, int page = 1, int pageSize = 12)
     {
         await using var db = BuildTenantDb(tenantSlug);
         if (db is null) return NotFound();
@@ -113,7 +113,7 @@ public class PortalController : SwapController
         if (link is null) return SwapView("Expired");
         if (link.Scope == PortalLinkScope.BookingOnly) return NotFound();
 
-        var quotes = await service.GetQuotesAsync(link.ClientId);
+        var quotes = await service.GetQuotesAsync(link.ClientId, page, pageSize);
         var branding = await GetBrandingAsync(db);
 
         ViewBag.Token = token;
@@ -123,7 +123,7 @@ public class PortalController : SwapController
     }
 
     [HttpGet("{tenantSlug}/{token}/documents")]
-    public async Task<IActionResult> Documents(string tenantSlug, string token)
+    public async Task<IActionResult> Documents(string tenantSlug, string token, int page = 1, int pageSize = 12)
     {
         await using var db = BuildTenantDb(tenantSlug);
         if (db is null) return NotFound();
@@ -132,7 +132,7 @@ public class PortalController : SwapController
         var link = await service.ValidateTokenAsync(token);
         if (link is null) return SwapView("Expired");
 
-        var documents = await service.GetDocumentsAsync(link.ClientId);
+        var documents = await service.GetDocumentsAsync(link.ClientId, page, pageSize);
         var branding = await GetBrandingAsync(db);
 
         ViewBag.Token = token;

@@ -285,9 +285,9 @@ public class PortalServiceTests : IAsyncLifetime
     {
         var bookings = await _service.GetBookingsAsync(_client.Id);
 
-        Assert.Single(bookings);
-        Assert.Equal("BK-001", bookings[0].Reference);
-        Assert.Equal("Confirmed", bookings[0].Status);
+        Assert.Single(bookings.Items);
+        Assert.Equal("BK-001", bookings.Items[0].Reference);
+        Assert.Equal("Confirmed", bookings.Items[0].Status);
     }
 
     [Fact]
@@ -298,7 +298,7 @@ public class PortalServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         var bookings = await _service.GetBookingsAsync(other.Id);
-        Assert.Empty(bookings);
+        Assert.Empty(bookings.Items);
     }
 
     [Fact]
@@ -337,8 +337,8 @@ public class PortalServiceTests : IAsyncLifetime
     {
         var quotes = await _service.GetQuotesAsync(_client.Id);
 
-        Assert.Single(quotes);
-        Assert.Equal("QT-001", quotes[0].Reference);
+        Assert.Single(quotes.Items);
+        Assert.Equal("QT-001", quotes.Items[0].Reference);
     }
 
     // ========== DOCUMENTS ==========
@@ -360,14 +360,14 @@ public class PortalServiceTests : IAsyncLifetime
 
         var docs = await _service.GetDocumentsAsync(_client.Id);
 
-        Assert.Single(docs);
-        Assert.Equal("passport.pdf", docs[0].FileName);
+        Assert.Single(docs.Items);
+        Assert.Equal("passport.pdf", docs.Items[0].FileName);
     }
 
     [Fact]
     public async Task GetDocumentsAsync_NoDocuments_ReturnsEmpty()
     {
         var docs = await _service.GetDocumentsAsync(_client.Id);
-        Assert.Empty(docs);
+        Assert.Empty(docs.Items);
     }
 }

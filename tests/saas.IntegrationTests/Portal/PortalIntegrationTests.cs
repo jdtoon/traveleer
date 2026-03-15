@@ -4,6 +4,7 @@ using saas.IntegrationTests.Fixtures;
 using saas.Modules.Bookings.Entities;
 using saas.Modules.Clients.Entities;
 using saas.Modules.Portal.Entities;
+using saas.Modules.Quotes.Entities;
 using Swap.Testing;
 using Xunit;
 
@@ -179,6 +180,123 @@ public class PortalIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task PortalBookings_WhenMoreThanOnePage_PaginatesResults()
+    {
+        var (clientId, token) = await SeedDedicatedPortalContextAsync();
+        var prefix = $"PORT-BK-{Guid.NewGuid():N}";
+
+        await using (var db = OpenTenantDb())
+        {
+            for (var index = 1; index <= 13; index++)
+            {
+                db.Bookings.Add(new Booking
+                {
+                    Id = Guid.NewGuid(),
+                    BookingRef = $"{prefix}-{index:D2}",
+                    ClientId = clientId,
+                    Pax = 2,
+                    TravelStartDate = new DateOnly(2026, 1, 1).AddDays(index),
+                    TravelEndDate = new DateOnly(2026, 1, 2).AddDays(index),
+                    CostCurrencyCode = "USD",
+                    SellingCurrencyCode = "USD",
+                    TotalSelling = 1000m + index,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var publicClient = _fixture.CreateClient();
+        var firstPage = await publicClient.GetAsync($"/portal/{TenantSlug}/{token}/bookings");
+        firstPage.AssertSuccess();
+        await firstPage.AssertContainsAsync($"{prefix}-13");
+        await firstPage.AssertDoesNotContainAsync($"{prefix}-01");
+        await firstPage.AssertContainsAsync("Page 1 of 2");
+
+        var secondPage = await publicClient.GetAsync($"/portal/{TenantSlug}/{token}/bookings?page=2");
+        secondPage.AssertSuccess();
+        await secondPage.AssertContainsAsync($"{prefix}-01");
+        await secondPage.AssertContainsAsync("Page 2 of 2");
+    }
+
+    [Fact]
+    public async Task PortalQuotes_WhenMoreThanOnePage_PaginatesResults()
+    {
+        var (clientId, token) = await SeedDedicatedPortalContextAsync();
+        var prefix = $"PORT-QT-{Guid.NewGuid():N}";
+
+        await using (var db = OpenTenantDb())
+        {
+            for (var index = 1; index <= 13; index++)
+            {
+                db.Quotes.Add(new Quote
+                {
+                    Id = Guid.NewGuid(),
+                    ReferenceNumber = $"{prefix}-{index:D2}",
+                    ClientId = clientId,
+                    ClientName = "Portal Pagination Client",
+                    OutputCurrencyCode = "USD",
+                    Status = QuoteStatus.Sent,
+                    CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddDays(index)
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var publicClient = _fixture.CreateClient();
+        var firstPage = await publicClient.GetAsync($"/portal/{TenantSlug}/{token}/quotes");
+        firstPage.AssertSuccess();
+        await firstPage.AssertContainsAsync($"{prefix}-13");
+        await firstPage.AssertDoesNotContainAsync($"{prefix}-01");
+        await firstPage.AssertContainsAsync("Page 1 of 2");
+
+        var secondPage = await publicClient.GetAsync($"/portal/{TenantSlug}/{token}/quotes?page=2");
+        secondPage.AssertSuccess();
+        await secondPage.AssertContainsAsync($"{prefix}-01");
+        await secondPage.AssertContainsAsync("Page 2 of 2");
+    }
+
+    [Fact]
+    public async Task PortalDocuments_WhenMoreThanOnePage_PaginatesResults()
+    {
+        var (clientId, token) = await SeedDedicatedPortalContextAsync();
+
+        await using (var db = OpenTenantDb())
+        {
+            for (var index = 1; index <= 13; index++)
+            {
+                db.Documents.Add(new Document
+                {
+                    Id = Guid.NewGuid(),
+                    ClientId = clientId,
+                    FileName = $"portal-doc-{index:D2}.pdf",
+                    ContentType = "application/pdf",
+                    FileSize = 2048 + index,
+                    StorageKey = $"portal/docs/{Guid.NewGuid():N}",
+                    DocumentType = DocumentType.Other,
+                    CreatedAt = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc).AddDays(index)
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var publicClient = _fixture.CreateClient();
+        var firstPage = await publicClient.GetAsync($"/portal/{TenantSlug}/{token}/documents");
+        firstPage.AssertSuccess();
+        await firstPage.AssertContainsAsync("portal-doc-13.pdf");
+        await firstPage.AssertDoesNotContainAsync("portal-doc-01.pdf");
+        await firstPage.AssertContainsAsync("Page 1 of 2");
+
+        var secondPage = await publicClient.GetAsync($"/portal/{TenantSlug}/{token}/documents?page=2");
+        secondPage.AssertSuccess();
+        await secondPage.AssertContainsAsync("portal-doc-01.pdf");
+        await secondPage.AssertContainsAsync("Page 2 of 2");
+    }
+
+    [Fact]
     public async Task PortalBookings_QuoteOnlyScope_Returns404()
     {
         var (_, token) = await SeedPortalLinkWithTokenAsync(PortalLinkScope.QuoteOnly);
@@ -263,6 +381,34 @@ public class PortalIntegrationTests : IClassFixture<AppFixture>
         db.PortalLinks.Add(link);
         await db.SaveChangesAsync();
         return (link.Id, token);
+    }
+
+    private async Task<(Guid ClientId, string Token)> SeedDedicatedPortalContextAsync(PortalLinkScope scope = PortalLinkScope.Full)
+    {
+        await using var db = OpenTenantDb();
+
+        var client = new Client
+        {
+            Id = Guid.NewGuid(),
+            Name = $"Portal Pagination Client {Guid.NewGuid():N}"[..30],
+            Email = $"portal-pagination-{Guid.NewGuid():N}@test.local",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Clients.Add(client);
+
+        var token = $"portal-page-{Guid.NewGuid():N}";
+        db.PortalLinks.Add(new PortalLink
+        {
+            ClientId = client.Id,
+            Token = token,
+            ExpiresAt = DateTime.UtcNow.AddDays(30),
+            Scope = scope,
+            CreatedByUserId = "test-user",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await db.SaveChangesAsync();
+        return (client.Id, token);
     }
 
     private TenantDbContext OpenTenantDb()

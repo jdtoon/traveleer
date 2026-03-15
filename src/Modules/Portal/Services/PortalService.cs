@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using saas.Data;
 using saas.Data.Tenant;
 using saas.Modules.Bookings.Entities;
 using saas.Modules.Portal.DTOs;
@@ -21,10 +22,10 @@ public interface IPortalService
 
     // Public portal — data access
     Task<PortalDashboardDto> GetDashboardAsync(Guid clientId, PortalBrandingDto branding);
-    Task<List<PortalBookingListItemDto>> GetBookingsAsync(Guid clientId);
+    Task<PaginatedList<PortalBookingListItemDto>> GetBookingsAsync(Guid clientId, int page = 1, int pageSize = 12);
     Task<PortalBookingDetailDto?> GetBookingDetailAsync(Guid clientId, Guid bookingId);
-    Task<List<PortalQuoteListItemDto>> GetQuotesAsync(Guid clientId);
-    Task<List<PortalDocumentListItemDto>> GetDocumentsAsync(Guid clientId);
+    Task<PaginatedList<PortalQuoteListItemDto>> GetQuotesAsync(Guid clientId, int page = 1, int pageSize = 12);
+    Task<PaginatedList<PortalDocumentListItemDto>> GetDocumentsAsync(Guid clientId, int page = 1, int pageSize = 12);
 }
 
 public class PortalService : IPortalService
@@ -148,9 +149,12 @@ public class PortalService : IPortalService
         };
     }
 
-    public async Task<List<PortalBookingListItemDto>> GetBookingsAsync(Guid clientId)
+    public async Task<PaginatedList<PortalBookingListItemDto>> GetBookingsAsync(Guid clientId, int page = 1, int pageSize = 12)
     {
-        return await _db.Bookings.AsNoTracking()
+        var normalizedPage = Math.Max(1, page);
+        var normalizedPageSize = Math.Clamp(pageSize, 6, 48);
+
+        var query = _db.Bookings.AsNoTracking()
             .Where(b => b.ClientId == clientId)
             .OrderByDescending(b => b.TravelStartDate)
             .Select(b => new PortalBookingListItemDto
@@ -161,8 +165,9 @@ public class PortalService : IPortalService
                 StartDate = b.TravelStartDate,
                 EndDate = b.TravelEndDate,
                 Status = b.Status.ToString()
-            })
-            .ToListAsync();
+            });
+
+        return await PaginatedList<PortalBookingListItemDto>.CreateAsync(query, normalizedPage, normalizedPageSize);
     }
 
     public async Task<PortalBookingDetailDto?> GetBookingDetailAsync(Guid clientId, Guid bookingId)
@@ -193,9 +198,12 @@ public class PortalService : IPortalService
         };
     }
 
-    public async Task<List<PortalQuoteListItemDto>> GetQuotesAsync(Guid clientId)
+    public async Task<PaginatedList<PortalQuoteListItemDto>> GetQuotesAsync(Guid clientId, int page = 1, int pageSize = 12)
     {
-        return await _db.Quotes.AsNoTracking()
+        var normalizedPage = Math.Max(1, page);
+        var normalizedPageSize = Math.Clamp(pageSize, 6, 48);
+
+        var query = _db.Quotes.AsNoTracking()
             .Where(q => q.ClientId == clientId)
             .OrderByDescending(q => q.CreatedAt)
             .Select(q => new PortalQuoteListItemDto
@@ -205,13 +213,17 @@ public class PortalService : IPortalService
                 Destination = null,
                 CreatedAt = q.CreatedAt,
                 Status = q.Status.ToString()
-            })
-            .ToListAsync();
+            });
+
+        return await PaginatedList<PortalQuoteListItemDto>.CreateAsync(query, normalizedPage, normalizedPageSize);
     }
 
-    public async Task<List<PortalDocumentListItemDto>> GetDocumentsAsync(Guid clientId)
+    public async Task<PaginatedList<PortalDocumentListItemDto>> GetDocumentsAsync(Guid clientId, int page = 1, int pageSize = 12)
     {
-        return await _db.Documents.AsNoTracking()
+        var normalizedPage = Math.Max(1, page);
+        var normalizedPageSize = Math.Clamp(pageSize, 6, 48);
+
+        var query = _db.Documents.AsNoTracking()
             .Where(d => d.ClientId == clientId)
             .OrderByDescending(d => d.CreatedAt)
             .Select(d => new PortalDocumentListItemDto
@@ -221,8 +233,9 @@ public class PortalService : IPortalService
                 DocumentType = d.DocumentType.ToString(),
                 FileSize = d.FileSize,
                 CreatedAt = d.CreatedAt
-            })
-            .ToListAsync();
+            });
+
+        return await PaginatedList<PortalDocumentListItemDto>.CreateAsync(query, normalizedPage, normalizedPageSize);
     }
 
     private static string GenerateToken()

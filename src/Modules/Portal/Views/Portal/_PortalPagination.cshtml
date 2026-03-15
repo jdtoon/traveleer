@@ -1,0 +1,27 @@
+@model saas.Data.PaginationModel
+
+@if (Model.TotalPages > 1)
+{
+    <div class="mt-6 flex items-center justify-between gap-3 border-t border-base-300 pt-4 text-sm">
+        <span class="text-base-content/60">Page @Model.PageIndex of @Model.TotalPages</span>
+        <div class="join">
+            @if (Model.PageIndex > 1)
+            {
+                <a href="@Model.WithPage(Model.PageIndex - 1)" class="join-item btn btn-sm btn-ghost">« Prev</a>
+            }
+            else
+            {
+                <span class="join-item btn btn-sm btn-disabled">« Prev</span>
+            }
+
+            @if (Model.PageIndex < Model.TotalPages)
+            {
+                <a href="@Model.WithPage(Model.PageIndex + 1)" class="join-item btn btn-sm btn-primary">Next »</a>
+            }
+            else
+            {
+                <span class="join-item btn btn-sm btn-disabled">Next »</span>
+            }
+        </div>
+    </div>
+}
