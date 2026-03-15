@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using saas.Data;
 using saas.Data.Tenant;
 using saas.Modules.Itineraries.DTOs;
 using saas.Modules.Itineraries.Entities;
@@ -8,7 +9,7 @@ namespace saas.Modules.Itineraries.Services;
 
 public interface IItineraryService
 {
-    Task<List<ItineraryListItemDto>> GetListAsync(string? status = null, string? search = null);
+    Task<PaginatedList<ItineraryListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12);
     Task<ItineraryFormDto> CreateEmptyAsync();
     Task<ItineraryFormDto?> GetFormAsync(Guid id);
     Task<Guid> CreateAsync(ItineraryFormDto dto);
@@ -45,7 +46,7 @@ public class ItineraryService : IItineraryService
         _db = db;
     }
 
-    public async Task<List<ItineraryListItemDto>> GetListAsync(string? status = null, string? search = null)
+    public async Task<PaginatedList<ItineraryListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12)
     {
         var query = _db.Set<Itinerary>().AsNoTracking().AsQueryable();
 
@@ -58,7 +59,7 @@ public class ItineraryService : IItineraryService
             query = query.Where(i => i.Title.ToLower().Contains(term));
         }
 
-        return await query
+        var projected = query
             .OrderByDescending(i => i.CreatedAt)
             .Select(i => new ItineraryListItemDto
             {
@@ -70,8 +71,11 @@ public class ItineraryService : IItineraryService
                 TravelStartDate = i.TravelStartDate,
                 TravelEndDate = i.TravelEndDate,
                 DayCount = i.Days.Count
-            })
-            .ToListAsync();
+            });
+
+        var normalizedPage = Math.Max(1, page);
+        var normalizedPageSize = Math.Clamp(pageSize, 6, 48);
+        return await PaginatedList<ItineraryListItemDto>.CreateAsync(projected, normalizedPage, normalizedPageSize);
     }
 
     public async Task<ItineraryFormDto> CreateEmptyAsync()

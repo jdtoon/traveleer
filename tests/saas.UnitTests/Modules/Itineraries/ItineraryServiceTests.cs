@@ -62,9 +62,9 @@ public class ItineraryServiceTests : IAsyncLifetime
 
         var result = await _service.GetListAsync();
 
-        Assert.Equal(2, result.Count);
-        Assert.Equal("Beach Getaway", result[0].Title);
-        Assert.Equal("Safari Adventure", result[1].Title);
+        Assert.Equal(2, result.Items.Count);
+        Assert.Equal("Beach Getaway", result.Items[0].Title);
+        Assert.Equal("Safari Adventure", result.Items[1].Title);
     }
 
     [Fact]
@@ -79,12 +79,12 @@ public class ItineraryServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         var drafts = await _service.GetListAsync(status: "Draft");
-        Assert.Single(drafts);
-        Assert.Equal("Safari Adventure", drafts[0].Title);
+        Assert.Single(drafts.Items);
+        Assert.Equal("Safari Adventure", drafts.Items[0].Title);
 
         var published = await _service.GetListAsync(status: "Published");
-        Assert.Single(published);
-        Assert.Equal("Published Trip", published[0].Title);
+        Assert.Single(published.Items);
+        Assert.Equal("Published Trip", published.Items[0].Title);
     }
 
     [Fact]
@@ -99,8 +99,8 @@ public class ItineraryServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         var result = await _service.GetListAsync(search: "safari");
-        Assert.Single(result);
-        Assert.Equal("Safari Adventure", result[0].Title);
+        Assert.Single(result.Items);
+        Assert.Equal("Safari Adventure", result.Items[0].Title);
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class ItineraryServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         var result = await _service.GetListAsync();
-        Assert.Equal(2, result[0].DayCount);
+        Assert.Equal(2, result.Items[0].DayCount);
     }
 
     // ========== CREATE ==========

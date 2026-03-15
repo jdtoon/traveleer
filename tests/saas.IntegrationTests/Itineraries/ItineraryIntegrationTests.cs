@@ -59,6 +59,40 @@ public class ItineraryIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task ItineraryListPartial_WhenMoreThanOnePage_PaginatesResults()
+    {
+        var prefix = $"PagedItin-{Guid.NewGuid():N}"[..12];
+
+        await using (var db = OpenTenantDb())
+        {
+            for (var index = 1; index <= 13; index++)
+            {
+                db.Itineraries.Add(new Itinerary
+                {
+                    Id = Guid.NewGuid(),
+                    Title = $"{prefix}-{index:D2}",
+                    Status = ItineraryStatus.Draft,
+                    CreatedAt = DateTime.UtcNow.AddMinutes(index)
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var firstPage = await _client.HtmxGetAsync($"/{TenantSlug}/itineraries/list?search={prefix}");
+        firstPage.AssertSuccess();
+        await firstPage.AssertContainsAsync($"{prefix}-13");
+        await firstPage.AssertContainsAsync($"{prefix}-02");
+        await firstPage.AssertDoesNotContainAsync($"{prefix}-01");
+        await firstPage.AssertContainsAsync("Next");
+
+        var secondPage = await _client.HtmxGetAsync($"/{TenantSlug}/itineraries/list?search={prefix}&page=2");
+        secondPage.AssertSuccess();
+        await secondPage.AssertContainsAsync($"{prefix}-01");
+        await secondPage.AssertDoesNotContainAsync($"{prefix}-13");
+    }
+
+    [Fact]
     public async Task ItineraryDayListPartial_RendersWithoutLayout()
     {
         var id = await SeedItineraryAsync();

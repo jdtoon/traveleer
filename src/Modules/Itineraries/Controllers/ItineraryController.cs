@@ -34,9 +34,11 @@ public class ItineraryController : SwapController
 
     [HttpGet("list")]
     [HasPermission(ItineraryPermissions.ItinerariesRead)]
-    public async Task<IActionResult> List([FromQuery] string? status = null, [FromQuery] string? search = null)
+    public async Task<IActionResult> List([FromQuery] string? status = null, [FromQuery] string? search = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 12)
     {
-        var model = await _service.GetListAsync(status, search);
+        ViewData["Status"] = status;
+        ViewData["Search"] = search;
+        var model = await _service.GetListAsync(status, search, page, pageSize);
         return PartialView("_List", model);
     }
 

@@ -1,9 +1,12 @@
-@model List<ItineraryListItemDto>
+@model saas.Data.PaginatedList<ItineraryListItemDto>
 @{
     var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    var status = ViewData["Status"]?.ToString();
+    var search = ViewData["Search"]?.ToString();
+    var listUrl = Url.Action("List", "Itinerary", new { slug, status, search, pageSize = Model.PageSize })!;
 }
 
-@if (Model.Count == 0)
+@if (Model.Items.Count == 0)
 {
     <div class="rounded-box border border-dashed border-base-300 p-8 text-center">
         <p class="text-lg font-medium opacity-60">No itineraries yet</p>
@@ -25,7 +28,7 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var item in Model)
+                @foreach (var item in Model.Items)
                 {
                     <tr class="hover cursor-pointer"
                         hx-get="@Url.Action("Details", "Itinerary", new { slug, id = item.Id })"
@@ -83,4 +86,6 @@ else
             </tbody>
         </table>
     </div>
+
+    <partial name="_Pagination" model="@Model.ToPagination(listUrl, "#itinerary-list")" />
 }
