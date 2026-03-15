@@ -3,14 +3,23 @@
 <dialog class="modal modal-open modal-middle">
     <div class="modal-box max-w-md">
         <h3 class="text-lg font-bold">@Model.Title</h3>
-        <p class="py-4 text-sm opacity-70">@Model.Message</p>
-        <form hx-post="@Model.DeleteUrl" hx-target="#modal-container">
-            @Html.AntiForgeryToken()
+        <p class="py-4 text-sm @(Model.CanDelete ? "opacity-70" : "text-error")">@Model.Message</p>
+        @if (Model.CanDelete)
+        {
+            <form hx-post="@Model.DeleteUrl" hx-target="#modal-container">
+                @Html.AntiForgeryToken()
+                <div class="modal-action">
+                    <button type="button" class="btn btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">Cancel</button>
+                    <button type="submit" class="btn btn-error">Delete</button>
+                </div>
+            </form>
+        }
+        else
+        {
             <div class="modal-action">
-                <button type="button" class="btn btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">Cancel</button>
-                <button type="submit" class="btn btn-error">Delete</button>
+                <button type="button" class="btn btn-primary" hx-get="/ui/modal-close" hx-target="#modal-container">Close</button>
             </div>
-        </form>
+        }
     </div>
     <form method="dialog" class="modal-backdrop">
         <button hx-get="/ui/modal-close" hx-target="#modal-container">close</button>

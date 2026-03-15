@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
 using saas.IntegrationTests.Fixtures;
+using saas.Modules.Bookings.Entities;
+using saas.Modules.Clients.Entities;
+using saas.Modules.Inventory.Entities;
 using Swap.Testing;
 using Xunit;
 
@@ -195,6 +198,48 @@ public class SupplierIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task DeleteSupplierConfirm_WhenSupplierReferencedByBooking_ShowsBlockedMessage()
+    {
+        var supplierId = await SeedReferencedSupplierAsync(linkToBooking: true, linkToInventory: false);
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/suppliers/delete-confirm/{supplierId}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("cannot be deleted yet");
+        await response.AssertDoesNotContainAsync("<button type=\"submit\" class=\"btn btn-error\">Delete</button>");
+    }
+
+    [Fact]
+    public async Task DeleteSupplier_WhenSupplierReferencedByInventory_DoesNotDelete()
+    {
+        var supplierId = await SeedSupplierAsync();
+
+        var confirmResponse = await _client.HtmxGetAsync($"/{TenantSlug}/suppliers/delete-confirm/{supplierId}");
+        confirmResponse.AssertSuccess();
+
+        await using (var seedDb = OpenTenantDb())
+        {
+            seedDb.InventoryItems.Add(new InventoryItem
+            {
+                Id = Guid.NewGuid(),
+                Name = $"Ref-Inv-{Guid.NewGuid():N}"[..16],
+                Kind = InventoryItemKind.Hotel,
+                BaseCost = 500m,
+                SupplierId = supplierId,
+                CreatedAt = DateTime.UtcNow
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        var response = await _client.SubmitFormAsync(confirmResponse, "form", new Dictionary<string, string>());
+        response.AssertSuccess();
+        response.AssertToast("This supplier is referenced by inventory items and cannot be deleted yet.");
+
+        await using var db = OpenTenantDb();
+        Assert.True(await db.Suppliers.AnyAsync(s => s.Id == supplierId));
+    }
+
+    [Fact]
     public async Task CreateContact_OnValidSubmit_PersistsToDatabase()
     {
         var supplierId = await SeedSupplierAsync();
@@ -286,5 +331,61 @@ public class SupplierIntegrationTests : IClassFixture<AppFixture>
             .UseSqlite($"Data Source={_fixture.GetTenantDbPath(TenantSlug)}")
             .Options;
         return new TenantDbContext(options);
+    }
+
+    private async Task<Guid> SeedReferencedSupplierAsync(bool linkToBooking, bool linkToInventory)
+    {
+        var supplierId = Guid.NewGuid();
+
+        await using var db = OpenTenantDb();
+        db.Suppliers.Add(new saas.Modules.Settings.Entities.Supplier
+        {
+            Id = supplierId,
+            Name = $"Ref-Supp-{Guid.NewGuid():N}"[..17],
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        if (linkToBooking)
+        {
+            var client = await db.Clients.OrderBy(c => c.Name).FirstAsync();
+            var bookingId = Guid.NewGuid();
+            db.Bookings.Add(new Booking
+            {
+                Id = bookingId,
+                BookingRef = $"BK-SUP-{Guid.NewGuid():N}"[..15],
+                ClientId = client.Id,
+                Status = BookingStatus.Provisional,
+                CostCurrencyCode = "USD",
+                SellingCurrencyCode = "USD",
+                CreatedAt = DateTime.UtcNow
+            });
+            db.BookingItems.Add(new BookingItem
+            {
+                Id = Guid.NewGuid(),
+                BookingId = bookingId,
+                SupplierId = supplierId,
+                ServiceName = "Referenced supplier stay",
+                CostPrice = 100m,
+                SellingPrice = 150m,
+                Quantity = 1
+            });
+        }
+
+        if (linkToInventory)
+        {
+            db.InventoryItems.Add(new InventoryItem
+            {
+                Id = Guid.NewGuid(),
+                Name = $"Ref-Inv-{Guid.NewGuid():N}"[..16],
+                Kind = InventoryItemKind.Hotel,
+                BaseCost = 500m,
+                SupplierId = supplierId,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await db.SaveChangesAsync();
+        return supplierId;
     }
 }

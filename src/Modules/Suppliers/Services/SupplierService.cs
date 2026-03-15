@@ -15,6 +15,7 @@ public interface ISupplierService
     Task CreateAsync(SupplierFormDto dto);
     Task UpdateAsync(Guid id, SupplierFormDto dto);
     Task DeleteAsync(Guid id);
+    Task<string?> GetDeleteBlockReasonAsync(Guid id);
     Task<SupplierDetailsDto?> GetDetailsAsync(Guid id);
 
     Task<List<SupplierContactListItemDto>> GetContactsAsync(Guid supplierId);
@@ -149,12 +150,35 @@ public class SupplierService : ISupplierService
         var entity = await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == id)
             ?? throw new InvalidOperationException($"Supplier {id} was not found.");
 
+        var deleteBlockReason = await GetDeleteBlockReasonAsync(id);
+        if (!string.IsNullOrWhiteSpace(deleteBlockReason))
+        {
+            throw new InvalidOperationException(deleteBlockReason);
+        }
+
         // Remove associated contacts
         var contacts = await _db.SupplierContacts.Where(c => c.SupplierId == id).ToListAsync();
         _db.SupplierContacts.RemoveRange(contacts);
 
         _db.Suppliers.Remove(entity);
         await _db.SaveChangesAsync();
+    }
+
+    public async Task<string?> GetDeleteBlockReasonAsync(Guid id)
+    {
+        var referencedByBookings = await _db.BookingItems.AnyAsync(bi => bi.SupplierId == id);
+        if (referencedByBookings)
+        {
+            return "This supplier is referenced by existing booking services and cannot be deleted yet.";
+        }
+
+        var referencedByInventory = await _db.InventoryItems.AnyAsync(item => item.SupplierId == id);
+        if (referencedByInventory)
+        {
+            return "This supplier is referenced by inventory items and cannot be deleted yet.";
+        }
+
+        return null;
     }
 
     public async Task<SupplierDetailsDto?> GetDetailsAsync(Guid id)

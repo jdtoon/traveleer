@@ -124,4 +124,5 @@ public class SupplierDeleteConfirmDto
     public string Title { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
     public string DeleteUrl { get; set; } = string.Empty;
+    public bool CanDelete { get; set; } = true;
 }

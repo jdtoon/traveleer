@@ -108,11 +108,18 @@ public class SupplierController : SwapController
     public async Task<IActionResult> DeleteConfirm(Guid id)
     {
         var item = await _service.GetDetailsAsync(id);
-        return item is null ? NotFound() : PartialView("_DeleteConfirm", new SupplierDeleteConfirmDto
+        if (item is null)
         {
-            Title = $"Delete {item.Name}?",
-            Message = "This removes the supplier and all associated contacts from this tenant.",
-            DeleteUrl = Url.Action("Delete", new { slug = RouteData.Values["slug"], id })!
+            return NotFound();
+        }
+
+        var deleteBlockReason = await _service.GetDeleteBlockReasonAsync(id);
+        return PartialView("_DeleteConfirm", new SupplierDeleteConfirmDto
+        {
+            Title = deleteBlockReason is null ? $"Delete {item.Name}?" : $"Cannot delete {item.Name}",
+            Message = deleteBlockReason ?? "This removes the supplier and all associated contacts from this tenant.",
+            DeleteUrl = Url.Action("Delete", new { slug = RouteData.Values["slug"], id })!,
+            CanDelete = deleteBlockReason is null
         });
     }
 
@@ -121,11 +128,33 @@ public class SupplierController : SwapController
     [HasPermission(SupplierPermissions.SuppliersDelete)]
     public async Task<IActionResult> Delete(Guid id)
     {
-        await _service.DeleteAsync(id);
-        Response.Headers["HX-Redirect"] = Url.Action(nameof(Index), new { slug = RouteData.Values["slug"] }) ?? string.Empty;
-        return SwapResponse()
-            .WithSuccessToast("Supplier deleted.")
-            .Build();
+        try
+        {
+            await _service.DeleteAsync(id);
+            Response.Headers["HX-Redirect"] = Url.Action(nameof(Index), new { slug = RouteData.Values["slug"] }) ?? string.Empty;
+            return SwapResponse()
+                .WithSuccessToast("Supplier deleted.")
+                .Build();
+        }
+        catch (InvalidOperationException ex)
+        {
+            var item = await _service.GetDetailsAsync(id);
+            if (item is null)
+            {
+                return NotFound();
+            }
+
+            return SwapResponse()
+                .WithErrorToast(ex.Message)
+                .WithView("_DeleteConfirm", new SupplierDeleteConfirmDto
+                {
+                    Title = $"Cannot delete {item.Name}",
+                    Message = ex.Message,
+                    DeleteUrl = Url.Action("Delete", new { slug = RouteData.Values["slug"], id })!,
+                    CanDelete = false
+                })
+                .Build();
+        }
     }
 
     // ========== CONTACTS ==========
