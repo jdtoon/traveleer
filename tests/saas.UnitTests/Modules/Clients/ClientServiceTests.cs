@@ -124,16 +124,16 @@ public class ClientServiceTests : IAsyncLifetime
     [Fact]
     public async Task GetListAsync_PaginatesCorrectly()
     {
-        // Add enough clients to exceed the minimum page size (5)
+        // Add enough clients to exceed the minimum page size (6)
         for (var i = 0; i < 8; i++)
             _db.Clients.Add(new Client { Name = $"Paginate Client {i}", CreatedAt = DateTime.UtcNow });
         await _db.SaveChangesAsync();
 
-        var page1 = await _service.GetListAsync(page: 1, pageSize: 5);
-        var page2 = await _service.GetListAsync(page: 2, pageSize: 5);
+        var page1 = await _service.GetListAsync(page: 1, pageSize: 6);
+        var page2 = await _service.GetListAsync(page: 2, pageSize: 6);
 
-        Assert.Equal(5, page1.Items.Count);
-        Assert.Equal(5, page2.Items.Count);
+        Assert.Equal(6, page1.Items.Count);
+        Assert.Equal(4, page2.Items.Count);
         Assert.Equal(10, page1.TotalCount);
         Assert.True(page1.HasNextPage);
         Assert.False(page2.HasNextPage);
@@ -153,8 +153,22 @@ public class ClientServiceTests : IAsyncLifetime
     {
         var result = await _service.GetListAsync(pageSize: 1);
 
-        // pageSize min is 5
+        // pageSize min is 6
         Assert.Equal(2, result.Items.Count);
+    }
+
+    [Fact]
+    public async Task GetListAsync_UsesStandardDefaultPageSize()
+    {
+        for (var index = 0; index < 15; index++)
+            _db.Clients.Add(new Client { Name = $"Default Page Client {index}", CreatedAt = DateTime.UtcNow });
+        await _db.SaveChangesAsync();
+
+        var result = await _service.GetListAsync();
+
+        Assert.Equal(12, result.PageSize);
+        Assert.Equal(12, result.Items.Count);
+        Assert.True(result.HasNextPage);
     }
 
     // ── EmailExistsAsync ──

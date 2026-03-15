@@ -8,7 +8,7 @@ namespace saas.Modules.Clients.Services;
 
 public interface IClientService
 {
-    Task<PaginatedList<ClientListItemDto>> GetListAsync(string? search = null, int page = 1, int pageSize = 10);
+    Task<PaginatedList<ClientListItemDto>> GetListAsync(string? search = null, int page = 1, int pageSize = 12);
     Task<ClientDto> CreateEmptyAsync();
     Task<ClientDto?> GetAsync(Guid id);
     Task<ClientDetailsDto?> GetDetailsAsync(Guid id);
@@ -30,10 +30,10 @@ public class ClientService : IClientService
     public Task<ClientDto> CreateEmptyAsync()
         => Task.FromResult(new ClientDto());
 
-    public async Task<PaginatedList<ClientListItemDto>> GetListAsync(string? search = null, int page = 1, int pageSize = 10)
+    public async Task<PaginatedList<ClientListItemDto>> GetListAsync(string? search = null, int page = 1, int pageSize = 12)
     {
         page = Math.Max(1, page);
-        pageSize = Math.Clamp(pageSize, 5, 50);
+        pageSize = Math.Clamp(pageSize, 6, 48);
 
         var query = _db.Clients.AsNoTracking();
 

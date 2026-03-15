@@ -62,6 +62,35 @@ public class ClientIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task ClientListPartial_UsesStandardDefaultPageSize()
+    {
+        var prefix = $"ClientPage-{Guid.NewGuid():N}";
+
+        await using (var db = OpenTenantDb())
+        {
+            for (var index = 1; index <= 13; index++)
+            {
+                db.Clients.Add(new saas.Modules.Clients.Entities.Client
+                {
+                    Id = Guid.NewGuid(),
+                    Name = $"{prefix}-{index:D2}",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/clients/list?search={prefix}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync($"{prefix}-01");
+        await response.AssertContainsAsync($"{prefix}-12");
+        await response.AssertDoesNotContainAsync($"{prefix}-13");
+        await response.AssertContainsAsync("Page 1 of 2");
+    }
+
+    [Fact]
     public async Task ClientNewPartial_RendersModalForm()
     {
         var response = await _client.HtmxGetAsync($"/{TenantSlug}/clients/new");
