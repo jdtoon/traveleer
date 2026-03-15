@@ -28,9 +28,9 @@ public class TaskController : SwapController
 
     [HttpGet("{slug}/tasks")]
     [HasPermission(TaskPermissions.TasksRead)]
-    public async Task<IActionResult> Index(AgentTaskStatus? status, string? assignee, TaskPriority? priority, string? entityType)
+    public async Task<IActionResult> Index(AgentTaskStatus? status, string? assignee, TaskPriority? priority, string? entityType, int page = 1, int pageSize = 12)
     {
-        var tasks = await _taskService.GetListAsync(status, assignee, priority, entityType);
+        var tasks = await _taskService.GetListAsync(status, assignee, priority, entityType, page, pageSize);
         ViewBag.StatusFilter = status;
         ViewBag.AssigneeFilter = assignee;
         ViewBag.PriorityFilter = priority;
@@ -40,9 +40,13 @@ public class TaskController : SwapController
 
     [HttpGet("{slug}/tasks/list")]
     [HasPermission(TaskPermissions.TasksRead)]
-    public async Task<IActionResult> List(AgentTaskStatus? status, string? assignee, TaskPriority? priority, string? entityType)
+    public async Task<IActionResult> List(AgentTaskStatus? status, string? assignee, TaskPriority? priority, string? entityType, int page = 1, int pageSize = 12)
     {
-        var tasks = await _taskService.GetListAsync(status, assignee, priority, entityType);
+        ViewBag.StatusFilter = status;
+        ViewBag.AssigneeFilter = assignee;
+        ViewBag.PriorityFilter = priority;
+        ViewBag.EntityTypeFilter = entityType;
+        var tasks = await _taskService.GetListAsync(status, assignee, priority, entityType, page, pageSize);
         return PartialView("_TaskList", tasks);
     }
 
@@ -147,6 +151,6 @@ public class TaskController : SwapController
     public async Task<IActionResult> LinkedTasks(string entityType, Guid entityId)
     {
         var tasks = await _taskService.GetLinkedTasksAsync(entityType, entityId);
-        return PartialView("_TaskList", tasks);
+        return PartialView("_TaskList", new saas.Data.PaginatedList<TaskListItemDto>(tasks, tasks.Count, 1, Math.Max(tasks.Count, 1)));
     }
 }

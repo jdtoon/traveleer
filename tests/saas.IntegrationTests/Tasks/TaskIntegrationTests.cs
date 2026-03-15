@@ -109,6 +109,8 @@ public class TaskIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task TaskList_ShowsCreatedTask()
     {
+        var entityType = $"Entity-{Guid.NewGuid():N}"[..16];
+
         // Seed a task directly
         await using (var db = OpenTenantDb())
         {
@@ -118,12 +120,13 @@ public class TaskIntegrationTests : IClassFixture<AppFixture>
                 Title = "Visible-Task-List-Test",
                 Priority = TaskPriority.Normal,
                 Status = AgentTaskStatus.Open,
+                LinkedEntityType = entityType,
                 CreatedAt = DateTime.UtcNow
             });
             await db.SaveChangesAsync();
         }
 
-        var response = await _client.HtmxGetAsync($"/{TenantSlug}/tasks/list");
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/tasks/list?entityType={entityType}");
 
         response.AssertSuccess();
         await response.AssertContainsAsync("Visible-Task-List-Test");
@@ -132,6 +135,8 @@ public class TaskIntegrationTests : IClassFixture<AppFixture>
     [Fact]
     public async Task TaskList_FilterByStatus_ReturnsFiltered()
     {
+        var entityType = $"Entity-{Guid.NewGuid():N}"[..16];
+
         // Seed tasks
         await using (var db = OpenTenantDb())
         {
@@ -140,6 +145,7 @@ public class TaskIntegrationTests : IClassFixture<AppFixture>
                 Id = Guid.NewGuid(),
                 Title = "OpenFilterTest",
                 Status = AgentTaskStatus.Open,
+                LinkedEntityType = entityType,
                 CreatedAt = DateTime.UtcNow
             });
             db.AgentTasks.Add(new AgentTask
@@ -147,17 +153,53 @@ public class TaskIntegrationTests : IClassFixture<AppFixture>
                 Id = Guid.NewGuid(),
                 Title = "CompletedFilterTest",
                 Status = AgentTaskStatus.Completed,
+                LinkedEntityType = entityType,
                 CompletedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow
             });
             await db.SaveChangesAsync();
         }
 
-        var response = await _client.HtmxGetAsync($"/{TenantSlug}/tasks/list?status=0");
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/tasks/list?status=0&entityType={entityType}");
 
         response.AssertSuccess();
         await response.AssertContainsAsync("OpenFilterTest");
         await response.AssertDoesNotContainAsync("CompletedFilterTest");
+    }
+
+    [Fact]
+    public async Task TaskList_WhenMoreThanOnePage_PaginatesResults()
+    {
+        var prefix = $"PagedTask-{Guid.NewGuid():N}"[..12];
+        var entityType = $"Entity-{Guid.NewGuid():N}"[..16];
+
+        await using (var db = OpenTenantDb())
+        {
+            for (var index = 1; index <= 13; index++)
+            {
+                db.AgentTasks.Add(new AgentTask
+                {
+                    Id = Guid.NewGuid(),
+                    Title = $"{prefix}-{index:D2}",
+                    Priority = TaskPriority.Normal,
+                    Status = AgentTaskStatus.Open,
+                    LinkedEntityType = entityType,
+                    CreatedAt = DateTime.UtcNow.AddMinutes(index)
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var firstPage = await _client.HtmxGetAsync($"/{TenantSlug}/tasks/list?entityType={entityType}");
+        firstPage.AssertSuccess();
+        await firstPage.AssertContainsAsync($"{prefix}-13");
+        await firstPage.AssertContainsAsync("Next");
+
+        var secondPage = await _client.HtmxGetAsync($"/{TenantSlug}/tasks/list?entityType={entityType}&page=2");
+        secondPage.AssertSuccess();
+        await secondPage.AssertContainsAsync($"{prefix}-01");
+        await secondPage.AssertDoesNotContainAsync($"{prefix}-13");
     }
 
     [Fact]

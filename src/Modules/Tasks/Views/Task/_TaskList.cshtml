@@ -1,9 +1,14 @@
-@model List<TaskListItemDto>
+@model saas.Data.PaginatedList<TaskListItemDto>
 @{
     var slug = ViewContext.RouteData.Values["slug"];
+    var status = ViewBag.StatusFilter;
+    var assignee = ViewBag.AssigneeFilter;
+    var priority = ViewBag.PriorityFilter;
+    var entityType = ViewBag.EntityTypeFilter;
+    var listUrl = Url.Action("List", "Task", new { slug, status, assignee, priority, entityType, pageSize = Model.PageSize })!;
 }
 
-@if (Model.Count == 0)
+@if (Model.Items.Count == 0)
 {
     <div class="text-center text-base-content/60 py-6">
         <p>No tasks found.</p>
@@ -25,7 +30,7 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var task in Model)
+                @foreach (var task in Model.Items)
                 {
                     <tr>
                         <td class="font-medium max-w-xs truncate">@task.Title</td>
@@ -119,4 +124,6 @@ else
             </tbody>
         </table>
     </div>
+
+    <partial name="_Pagination" model="@Model.ToPagination(listUrl, "#task-list")" />
 }

@@ -121,7 +121,7 @@ public class TaskServiceTests : IAsyncLifetime
 
         var list = await _service.GetListAsync();
 
-        Assert.Equal(3, list.Count);
+        Assert.Equal(3, list.Items.Count);
     }
 
     [Fact]
@@ -133,8 +133,8 @@ public class TaskServiceTests : IAsyncLifetime
 
         var openTasks = await _service.GetListAsync(status: AgentTaskStatus.Open);
 
-        Assert.Single(openTasks);
-        Assert.Equal("Open", openTasks[0].Title);
+        Assert.Single(openTasks.Items);
+        Assert.Equal("Open", openTasks.Items[0].Title);
     }
 
     [Fact]
@@ -145,8 +145,8 @@ public class TaskServiceTests : IAsyncLifetime
 
         var result = await _service.GetListAsync(assigneeUserId: "user-a");
 
-        Assert.Single(result);
-        Assert.Equal("For A", result[0].Title);
+        Assert.Single(result.Items);
+        Assert.Equal("For A", result.Items[0].Title);
     }
 
     [Fact]
@@ -157,8 +157,8 @@ public class TaskServiceTests : IAsyncLifetime
 
         var result = await _service.GetListAsync(priority: TaskPriority.Urgent);
 
-        Assert.Single(result);
-        Assert.Equal("Urgent", result[0].Title);
+        Assert.Single(result.Items);
+        Assert.Equal("Urgent", result.Items[0].Title);
     }
 
     [Fact]
@@ -169,8 +169,8 @@ public class TaskServiceTests : IAsyncLifetime
 
         var result = await _service.GetListAsync(linkedEntityType: "Booking");
 
-        Assert.Single(result);
-        Assert.Equal("Booking task", result[0].Title);
+        Assert.Single(result.Items);
+        Assert.Equal("Booking task", result.Items[0].Title);
     }
 
     [Fact]
@@ -191,8 +191,8 @@ public class TaskServiceTests : IAsyncLifetime
 
         var result = await _service.GetListAsync();
 
-        Assert.Equal("Urgent later", result[0].Title);
-        Assert.Equal("Low soon", result[1].Title);
+        Assert.Equal("Urgent later", result.Items[0].Title);
+        Assert.Equal("Low soon", result.Items[1].Title);
     }
 
     // ── UpdateAsync ─────────────────────────────────────────

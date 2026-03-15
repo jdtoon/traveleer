@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using saas.Data;
 using saas.Data.Tenant;
 using saas.Modules.Tasks.DTOs;
 using saas.Modules.Tasks.Entities;
@@ -7,7 +8,7 @@ namespace saas.Modules.Tasks.Services;
 
 public interface ITaskService
 {
-    Task<List<TaskListItemDto>> GetListAsync(AgentTaskStatus? status = null, string? assigneeUserId = null, TaskPriority? priority = null, string? linkedEntityType = null);
+    Task<PaginatedList<TaskListItemDto>> GetListAsync(AgentTaskStatus? status = null, string? assigneeUserId = null, TaskPriority? priority = null, string? linkedEntityType = null, int page = 1, int pageSize = 12);
     Task<AgentTask?> GetByIdAsync(Guid id);
     Task<AgentTask> CreateAsync(CreateTaskDto dto, string createdByUserId);
     Task UpdateAsync(EditTaskDto dto);
@@ -26,11 +27,13 @@ public class TaskService : ITaskService
         _db = db;
     }
 
-    public async Task<List<TaskListItemDto>> GetListAsync(
+    public async Task<PaginatedList<TaskListItemDto>> GetListAsync(
         AgentTaskStatus? status = null,
         string? assigneeUserId = null,
         TaskPriority? priority = null,
-        string? linkedEntityType = null)
+        string? linkedEntityType = null,
+        int page = 1,
+        int pageSize = 12)
     {
         var query = _db.AgentTasks.AsQueryable();
 
@@ -46,15 +49,21 @@ public class TaskService : ITaskService
         if (!string.IsNullOrEmpty(linkedEntityType))
             query = query.Where(t => t.LinkedEntityType == linkedEntityType);
 
+        var normalizedPage = Math.Max(1, page);
+        var normalizedPageSize = Math.Clamp(pageSize, 6, 48);
+
         var tasks = await query
             .OrderByDescending(t => t.Priority)
             .ThenBy(t => t.DueDate)
             .ThenByDescending(t => t.CreatedAt)
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
             .ToListAsync();
 
         var dtos = tasks.Select(MapToDto).ToList();
         await ResolveAssigneeNamesAsync(dtos);
-        return dtos;
+        var totalCount = await query.CountAsync();
+        return new PaginatedList<TaskListItemDto>(dtos, totalCount, normalizedPage, normalizedPageSize);
     }
 
     public async Task<AgentTask?> GetByIdAsync(Guid id)
