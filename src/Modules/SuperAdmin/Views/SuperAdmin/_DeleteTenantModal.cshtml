@@ -7,7 +7,7 @@
     <div class="modal-box">
         <div class="flex items-center justify-between mb-4">
             <h3 class="font-bold text-lg text-error">⚠️ Delete Tenant — @Model.Name</h3>
-            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">✕</button>
         </div>
         <form hx-post="/super-admin/tenants/@Model.Id/delete" hx-target="#modal-container">
             <div class="alert alert-error mb-4">
@@ -18,12 +18,12 @@
                 <input type="text" name="confirmSlug" class="input input-bordered w-full" required placeholder="@Model.Slug" />
             </div>
             <div class="modal-action">
-                <button type="button" class="btn" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="button" class="btn" hx-get="/ui/modal-close" hx-target="#modal-container">Cancel</button>
                 <button type="submit" class="btn btn-error btn-sm">Schedule Deletion</button>
             </div>
         </form>
     </div>
     <form method="dialog" class="modal-backdrop">
-        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+        <button hx-get="/ui/modal-close" hx-target="#modal-container">close</button>
     </form>
 </dialog>

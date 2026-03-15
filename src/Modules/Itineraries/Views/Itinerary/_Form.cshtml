@@ -72,10 +72,10 @@
             <div class="modal-action">
                 <button type="button" class="btn btn-ghost btn-sm"
                         onclick="this.closest('dialog').close();"
-                        hx-on:click="document.getElementById('modal-container').innerHTML = ''">Cancel</button>
+                        hx-get="/ui/modal-close" hx-target="#modal-container">Cancel</button>
                 <button type="submit" class="btn btn-primary btn-sm">@(isEdit ? "Update" : "Create")</button>
             </div>
         </form>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <form method="dialog" class="modal-backdrop"><button hx-get="/ui/modal-close" hx-target="#modal-container">close</button></form>
 </dialog>

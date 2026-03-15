@@ -10,7 +10,7 @@
                 <h3 class="text-lg font-bold">Import Rates From CSV</h3>
                 <p class="text-sm opacity-70">Upload a CSV for @Model.RateCardName to preview updates before replacing room-rate values.</p>
             </div>
-            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">x</button>
         </div>
 
         <div class="alert alert-info mb-4 text-sm">
@@ -40,6 +40,6 @@
         </div>
     </div>
     <form method="dialog" class="modal-backdrop">
-        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+        <button hx-get="/ui/modal-close" hx-target="#modal-container">close</button>
     </form>
 </dialog>

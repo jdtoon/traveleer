@@ -11,7 +11,7 @@
                     <h3 class="text-lg font-bold">New Booking</h3>
                     <p class="text-sm opacity-70">Capture the trip owner, travel window, and internal handoff notes before adding services.</p>
                 </div>
-                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">x</button>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">x</button>
             </div>
 
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -102,12 +102,12 @@
             </div>
 
             <div class="modal-action">
-                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="button" class="btn btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">Cancel</button>
                 <button type="submit" class="btn btn-primary">Create Booking</button>
             </div>
         </form>
     </div>
     <form method="dialog" class="modal-backdrop">
-        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+        <button hx-get="/ui/modal-close" hx-target="#modal-container">close</button>
     </form>
 </dialog>

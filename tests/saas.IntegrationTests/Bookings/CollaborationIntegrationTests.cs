@@ -206,6 +206,10 @@ public class CollaborationIntegrationTests : IClassFixture<AppFixture>
         await response.AssertElementExistsAsync("#booking-assignments");
         await response.AssertElementExistsAsync("#booking-comments");
         await response.AssertElementExistsAsync("#booking-activity");
+        await response.AssertContainsAsync("hx-trigger=\"revealed, bookings.assignments.refresh from:body\"");
+        await response.AssertContainsAsync("hx-trigger=\"revealed, bookings.comments.refresh from:body\"");
+        await response.AssertContainsAsync("hx-trigger=\"revealed, bookings.activity.refresh from:body\"");
+        await response.AssertContainsAsync("hx-trigger=\"revealed, comms.refresh from:body\"");
     }
 
     // --- Auth ---

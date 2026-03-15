@@ -54,6 +54,7 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
         response.AssertSuccess();
         await response.AssertElementExistsAsync("dialog.modal");
         await response.AssertContainsAsync("New Booking");
+        await response.AssertContainsAsync("hx-get=\"/ui/modal-close\"");
     }
 
     [Fact]

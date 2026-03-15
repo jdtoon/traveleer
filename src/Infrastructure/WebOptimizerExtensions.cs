@@ -8,11 +8,6 @@ public static class WebOptimizerExtensions
     {
         services.AddWebOptimizer(pipeline =>
         {
-            // JavaScript bundle (layout utilities only — Tailwind browser runtime removed)
-            pipeline.AddJavaScriptBundle("/js/bundle.js",
-                "js/layout.js"
-            );
-
             // Minify in production
             if (!environment.IsDevelopment())
             {

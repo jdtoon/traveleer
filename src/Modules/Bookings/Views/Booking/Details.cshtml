@@ -63,7 +63,7 @@
             <h2 class="card-title">Team</h2>
             <div id="booking-assignments"
                  hx-get="@Url.Action("Assignments", "Collaboration", new { slug, bookingId = Model.Id })"
-                 hx-trigger="load, @saas.Modules.Bookings.Events.BookingEvents.AssignmentsRefresh from:body"
+                 hx-trigger="revealed, @saas.Modules.Bookings.Events.BookingEvents.AssignmentsRefresh from:body"
                  hx-swap="innerHTML">
                 <span class="loading loading-spinner loading-lg"></span>
             </div>
@@ -75,7 +75,7 @@
             <h2 class="card-title">Comments</h2>
             <div id="booking-comments"
                  hx-get="@Url.Action("Comments", "Collaboration", new { slug, bookingId = Model.Id })"
-                 hx-trigger="load, @saas.Modules.Bookings.Events.BookingEvents.CommentsRefresh from:body"
+                 hx-trigger="revealed, @saas.Modules.Bookings.Events.BookingEvents.CommentsRefresh from:body"
                  hx-swap="innerHTML">
                 <span class="loading loading-spinner loading-lg"></span>
             </div>
@@ -87,7 +87,7 @@
             <h2 class="card-title">Activity</h2>
             <div id="booking-activity"
                  hx-get="@Url.Action("Activity", "Collaboration", new { slug, bookingId = Model.Id })"
-                 hx-trigger="load, @saas.Modules.Bookings.Events.BookingEvents.ActivityRefresh from:body"
+                 hx-trigger="revealed, @saas.Modules.Bookings.Events.BookingEvents.ActivityRefresh from:body"
                  hx-swap="innerHTML">
                 <span class="loading loading-spinner loading-lg"></span>
             </div>
@@ -99,7 +99,7 @@
             <h2 class="card-title">Communications</h2>
             <div id="booking-communications"
                  hx-get="@Url.Action("BookingComms", "Communication", new { slug, bookingId = Model.Id })"
-                 hx-trigger="load, @saas.Modules.Communications.Events.CommunicationEvents.Refresh from:body"
+                 hx-trigger="revealed, @saas.Modules.Communications.Events.CommunicationEvents.Refresh from:body"
                  hx-swap="innerHTML">
                 <span class="loading loading-spinner loading-lg"></span>
             </div>

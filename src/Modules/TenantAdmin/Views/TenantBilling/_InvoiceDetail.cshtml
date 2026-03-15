@@ -148,8 +148,8 @@
                     <span class="text-xs opacity-50 ml-2">Paid @inv.PaidDate.Value.ToString("dd MMM yyyy")</span>
                 }
             </div>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('.modal').classList.remove('modal-open')">Close</button>
+            <button type="button" class="btn btn-ghost btn-sm" hx-get="/ui/modal-close" hx-target="#modal-container">Close</button>
         </div>
     </div>
-    <form method="dialog" class="modal-backdrop"><button onclick="this.closest('.modal').classList.remove('modal-open')">close</button></form>
+    <form method="dialog" class="modal-backdrop"><button hx-get="/ui/modal-close" hx-target="#modal-container">close</button></form>
 </dialog>

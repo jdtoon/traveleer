@@ -414,6 +414,11 @@ public static class ApplicationBuilderExtensions
             defaults: new { controller = "Marketing", action = "LoginModal" });
 
         app.MapControllerRoute(
+            name: "ui-modal-close",
+            pattern: "ui/modal-close",
+            defaults: new { controller = "Home", action = "ModalClose" });
+
+        app.MapControllerRoute(
             name: "marketing-sitemap",
             pattern: "sitemap.xml",
             defaults: new { controller = "Marketing", action = "Sitemap" });

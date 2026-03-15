@@ -7,7 +7,7 @@
     <div class="modal-box">
         <div class="flex items-center justify-between mb-4">
             <h3 class="font-bold text-lg">Extend Trial — @Model.Name</h3>
-            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">✕</button>
         </div>
         <form hx-post="/super-admin/tenants/@Model.Id/extend-trial" hx-target="#modal-container">
             <div class="form-control mb-4">
@@ -16,12 +16,12 @@
                 <label class="label"><span class="label-text-alt">Days to add to the current trial end date</span></label>
             </div>
             <div class="modal-action">
-                <button type="button" class="btn" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="button" class="btn" hx-get="/ui/modal-close" hx-target="#modal-container">Cancel</button>
                 <button type="submit" class="btn btn-primary btn-sm">Extend Trial</button>
             </div>
         </form>
     </div>
     <form method="dialog" class="modal-backdrop">
-        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+        <button hx-get="/ui/modal-close" hx-target="#modal-container">close</button>
     </form>
 </dialog>

@@ -128,7 +128,7 @@ var publicRoutePrefixes = modules
     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 // System-level reserved prefixes — never treated as tenant slugs
-foreach (var reserved in new[] { "api", "swagger", ".well-known", "assets", "static", "webhook", "hangfire", "health", "favicon.svg", "css", "js", "lib", "errors" })
+foreach (var reserved in new[] { "api", "swagger", ".well-known", "assets", "static", "webhook", "hangfire", "health", "favicon.svg", "css", "js", "lib", "errors", "ui" })
     publicRoutePrefixes.Add(reserved);
 
 // =============================================================================

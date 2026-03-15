@@ -3,7 +3,7 @@
         <form hx-post="@Url.Action("CreateRole", "TenantAdmin", new { slug = ViewContext.RouteData.Values["slug"] })" hx-target="#modal-container">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold">Create Role</h3>
-                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">✕</button>
             </div>
 
             <div class="form-control w-full mb-4">
@@ -21,12 +21,12 @@
             </div>
 
             <div class="modal-action">
-                <button type="button" class="btn" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="button" class="btn" hx-get="/ui/modal-close" hx-target="#modal-container">Cancel</button>
                 <button type="submit" class="btn btn-primary">Create</button>
             </div>
         </form>
     </div>
     <form method="dialog" class="modal-backdrop">
-        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+        <button hx-get="/ui/modal-close" hx-target="#modal-container">close</button>
     </form>
 </dialog>

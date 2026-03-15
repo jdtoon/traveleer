@@ -6,7 +6,7 @@
     <div class="modal-box">
         <div class="flex items-center justify-between mb-4">
             <h3 class="font-bold text-lg">📢 Create Announcement</h3>
-            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">✕</button>
         </div>
         <form hx-post="/super-admin/announcements/send" hx-target="#modal-container">
             <div class="form-control mb-3">
@@ -35,7 +35,7 @@
                 <span>This banner will appear at the top of every tenant page until deactivated or expired.</span>
             </div>
             <div class="modal-action">
-                <button type="button" class="btn" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="button" class="btn" hx-get="/ui/modal-close" hx-target="#modal-container">Cancel</button>
                 <button type="submit" class="btn btn-primary btn-sm">
                     Create Announcement
                 </button>
@@ -43,6 +43,6 @@
         </form>
     </div>
     <form method="dialog" class="modal-backdrop">
-        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+        <button hx-get="/ui/modal-close" hx-target="#modal-container">close</button>
     </form>
 </dialog>

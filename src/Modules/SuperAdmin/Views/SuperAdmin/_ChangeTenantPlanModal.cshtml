@@ -8,7 +8,7 @@
         <form hx-post="/super-admin/tenants/@Model.Id/change-plan" hx-target="#modal-container">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold">Change Plan</h3>
-                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">✕</button>
+                <button type="button" class="btn btn-sm btn-circle btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">✕</button>
             </div>
 
             <p class="text-sm opacity-60 mb-4">
@@ -36,12 +36,12 @@
             </div>
 
             <div class="modal-action">
-                <button type="button" class="btn" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="button" class="btn" hx-get="/ui/modal-close" hx-target="#modal-container">Cancel</button>
                 <button type="submit" class="btn btn-primary">Change Plan</button>
             </div>
         </form>
     </div>
     <form method="dialog" class="modal-backdrop">
-        <button onclick="this.closest('.modal').classList.remove('modal-open')">close</button>
+        <button hx-get="/ui/modal-close" hx-target="#modal-container">close</button>
     </form>
 </dialog>

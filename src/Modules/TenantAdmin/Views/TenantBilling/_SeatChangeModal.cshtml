@@ -30,10 +30,10 @@
                 }
             </div>
             <div class="modal-action">
-                <button type="button" class="btn btn-ghost" onclick="this.closest('.modal').classList.remove('modal-open')">Cancel</button>
+                <button type="button" class="btn btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">Cancel</button>
                 <button type="submit" class="btn btn-primary">Preview Change</button>
             </div>
         </form>
     </div>
-    <form method="dialog" class="modal-backdrop"><button onclick="this.closest('.modal').classList.remove('modal-open')">close</button></form>
+    <form method="dialog" class="modal-backdrop"><button hx-get="/ui/modal-close" hx-target="#modal-container">close</button></form>
 </dialog>

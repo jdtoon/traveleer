@@ -10,6 +10,12 @@ public class HomeController : SwapController
         return Redirect("/");
     }
 
+    [HttpGet("/ui/modal-close")]
+    public IActionResult ModalClose()
+    {
+        return Content("<div></div>", "text/html");
+    }
+
     [Route("/Home/Error")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error([FromQuery] int? statusCode)
