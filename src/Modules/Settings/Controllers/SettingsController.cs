@@ -276,8 +276,8 @@ public class SettingsController : SwapController
 
     [HttpGet("destinations")]
     [HasPermission(SettingsPermissions.SettingsRead)]
-    public async Task<IActionResult> Destinations()
-        => PartialView("_DestinationsList", await _service.GetDestinationsAsync());
+    public async Task<IActionResult> Destinations([FromQuery] int page = 1, [FromQuery] int pageSize = 12)
+        => PartialView("_DestinationsList", await _service.GetDestinationsAsync(page, pageSize));
 
     [HttpGet("destinations/new")]
     [HasPermission(SettingsPermissions.SettingsEdit)]
@@ -334,8 +334,8 @@ public class SettingsController : SwapController
 
     [HttpGet("suppliers")]
     [HasPermission(SettingsPermissions.SettingsRead)]
-    public async Task<IActionResult> Suppliers()
-        => PartialView("_SuppliersList", await _service.GetSuppliersAsync());
+    public async Task<IActionResult> Suppliers([FromQuery] int page = 1, [FromQuery] int pageSize = 12)
+        => PartialView("_SuppliersList", await _service.GetSuppliersAsync(page, pageSize));
 
     [HttpGet("suppliers/new")]
     [HasPermission(SettingsPermissions.SettingsEdit)]

@@ -74,6 +74,70 @@ public class SettingsIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task DestinationsPartial_WhenMoreThanOnePage_PaginatesResults()
+    {
+        var prefix = $"000-Dest-{Guid.NewGuid():N}";
+        var sortBase = int.MinValue / 2 + Math.Abs(prefix.GetHashCode()) % 1000;
+
+        await using (var db = OpenTenantDb())
+        {
+            for (var index = 1; index <= 13; index++)
+            {
+                db.Destinations.Add(new saas.Modules.Settings.Entities.Destination
+                {
+                    Id = Guid.NewGuid(),
+                    Name = $"{prefix}-{index:D2}",
+                    SortOrder = sortBase + index,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var firstPage = await _client.HtmxGetAsync($"/{TenantSlug}/settings/destinations");
+        firstPage.AssertSuccess();
+        await firstPage.AssertContainsAsync("Next");
+
+        var secondPage = await _client.HtmxGetAsync($"/{TenantSlug}/settings/destinations?page=2");
+        secondPage.AssertSuccess();
+        await secondPage.AssertContainsAsync($"{prefix}-13");
+        await secondPage.AssertDoesNotContainAsync($"{prefix}-01");
+    }
+
+    [Fact]
+    public async Task SuppliersPartial_WhenMoreThanOnePage_PaginatesResults()
+    {
+        var prefix = $"!!!Supp-{Guid.NewGuid():N}";
+
+        await using (var db = OpenTenantDb())
+        {
+            for (var index = 1; index <= 13; index++)
+            {
+                db.Suppliers.Add(new saas.Modules.Settings.Entities.Supplier
+                {
+                    Id = Guid.NewGuid(),
+                    Name = $"{prefix}-{index:D2}",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var firstPage = await _client.HtmxGetAsync($"/{TenantSlug}/settings/suppliers");
+        firstPage.AssertSuccess();
+        await firstPage.AssertContainsAsync("Next");
+
+        var secondPage = await _client.HtmxGetAsync($"/{TenantSlug}/settings/suppliers?page=2");
+        secondPage.AssertSuccess();
+        await secondPage.AssertContainsAsync($"{prefix}-13");
+        await secondPage.AssertDoesNotContainAsync($"{prefix}-01");
+    }
+
+    [Fact]
     public async Task UsersPartial_RendersWithoutLayout()
     {
         var response = await _client.HtmxGetAsync($"/{TenantSlug}/settings/users");

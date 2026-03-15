@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using saas.Data;
 using saas.Data.Tenant;
 using saas.Modules.Settings.DTOs;
 using saas.Modules.Settings.Entities;
@@ -29,14 +30,14 @@ public interface ISettingsService
     Task DeleteCurrencyAsync(Guid id);
     Task SetBaseCurrencyAsync(Guid id);
 
-    Task<List<DestinationListItemDto>> GetDestinationsAsync();
+    Task<PaginatedList<DestinationListItemDto>> GetDestinationsAsync(int page = 1, int pageSize = 12);
     Task<DestinationDto> CreateEmptyDestinationAsync();
     Task<DestinationDto?> GetDestinationAsync(Guid id);
     Task CreateDestinationAsync(DestinationDto dto);
     Task UpdateDestinationAsync(Guid id, DestinationDto dto);
     Task DeleteDestinationAsync(Guid id);
 
-    Task<List<SupplierListItemDto>> GetSuppliersAsync();
+    Task<PaginatedList<SupplierListItemDto>> GetSuppliersAsync(int page = 1, int pageSize = 12);
     Task<SupplierDto> CreateEmptySupplierAsync();
     Task<SupplierDto?> GetSupplierAsync(Guid id);
     Task CreateSupplierAsync(SupplierDto dto);
@@ -284,8 +285,12 @@ public class SettingsService : ISettingsService
         await _db.SaveChangesAsync();
     }
 
-    public async Task<List<DestinationListItemDto>> GetDestinationsAsync()
-        => await _db.Destinations.AsNoTracking()
+    public async Task<PaginatedList<DestinationListItemDto>> GetDestinationsAsync(int page = 1, int pageSize = 12)
+    {
+        var normalizedPage = Math.Max(1, page);
+        var normalizedPageSize = Math.Clamp(pageSize, 6, 48);
+
+        var query = _db.Destinations.AsNoTracking()
             .OrderBy(x => x.SortOrder).ThenBy(x => x.Name)
             .Select(x => new DestinationListItemDto
             {
@@ -296,8 +301,10 @@ public class SettingsService : ISettingsService
                 Region = x.Region,
                 SortOrder = x.SortOrder,
                 IsActive = x.IsActive
-            })
-            .ToListAsync();
+            });
+
+        return await PaginatedList<DestinationListItemDto>.CreateAsync(query, normalizedPage, normalizedPageSize);
+    }
 
     public Task<DestinationDto> CreateEmptyDestinationAsync() => Task.FromResult(new DestinationDto { IsActive = true });
 
@@ -350,8 +357,12 @@ public class SettingsService : ISettingsService
         await _db.SaveChangesAsync();
     }
 
-    public async Task<List<SupplierListItemDto>> GetSuppliersAsync()
-        => await _db.Suppliers.AsNoTracking()
+    public async Task<PaginatedList<SupplierListItemDto>> GetSuppliersAsync(int page = 1, int pageSize = 12)
+    {
+        var normalizedPage = Math.Max(1, page);
+        var normalizedPageSize = Math.Clamp(pageSize, 6, 48);
+
+        var query = _db.Suppliers.AsNoTracking()
             .OrderBy(x => x.Name)
             .Select(x => new SupplierListItemDto
             {
@@ -361,8 +372,10 @@ public class SettingsService : ISettingsService
                 ContactEmail = x.ContactEmail,
                 ContactPhone = x.ContactPhone,
                 IsActive = x.IsActive
-            })
-            .ToListAsync();
+            });
+
+        return await PaginatedList<SupplierListItemDto>.CreateAsync(query, normalizedPage, normalizedPageSize);
+    }
 
     public Task<SupplierDto> CreateEmptySupplierAsync() => Task.FromResult(new SupplierDto { IsActive = true });
 

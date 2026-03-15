@@ -138,6 +138,53 @@ public class SettingsServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetDestinationsAsync_ReturnsPaginatedItems()
+    {
+        for (var index = 1; index <= 13; index++)
+        {
+            _db.Destinations.Add(new Destination
+            {
+                Name = $"Destination {index:D2}",
+                SortOrder = index,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync();
+
+        var firstPage = await _service.GetDestinationsAsync(page: 1, pageSize: 12);
+        var secondPage = await _service.GetDestinationsAsync(page: 2, pageSize: 12);
+
+        Assert.Equal(12, firstPage.Items.Count);
+        Assert.Single(secondPage.Items);
+        Assert.Equal("Destination 13", secondPage.Items[0].Name);
+    }
+
+    [Fact]
+    public async Task GetSuppliersAsync_ReturnsPaginatedItems()
+    {
+        for (var index = 1; index <= 13; index++)
+        {
+            _db.Suppliers.Add(new Supplier
+            {
+                Name = $"Supplier {index:D2}",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync();
+
+        var firstPage = await _service.GetSuppliersAsync(page: 1, pageSize: 12);
+        var secondPage = await _service.GetSuppliersAsync(page: 2, pageSize: 12);
+
+        Assert.Equal(12, firstPage.Items.Count);
+        Assert.Single(secondPage.Items);
+        Assert.Equal("Supplier 13", secondPage.Items[0].Name);
+    }
+
+    [Fact]
     public async Task CreateRateCategoryAsync_ClearsCapacityForNonTransfer()
     {
         await _service.CreateRateCategoryAsync(new RateCategoryDto
