@@ -48,6 +48,16 @@ public class SupplierIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task SuppliersListPartial_RendersExplicitOpenActions()
+    {
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/suppliers/list");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("Open");
+        await response.AssertContainsAsync($"href=\"/{TenantSlug}/suppliers/details/");
+    }
+
+    [Fact]
     public async Task SuppliersListPartial_WhenMoreThanOnePage_PaginatesResults()
     {
         var prefix = $"PagedSupp-{Guid.NewGuid():N}";

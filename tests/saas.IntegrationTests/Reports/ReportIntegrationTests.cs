@@ -248,31 +248,37 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
             CreatedBy = "integration-test"
         });
 
-        db.Bookings.Add(new Booking
+        var createdAt = DateTime.UtcNow;
+        var bookingIds = new[] { bookingId, Guid.NewGuid(), Guid.NewGuid() };
+        for (var index = 0; index < bookingIds.Length; index++)
         {
-            Id = bookingId,
-            BookingRef = bookingRef,
-            ClientId = clientId,
-            Status = BookingStatus.Confirmed,
-            TotalSelling = 25000000m,
-            TotalCost = 18000000m,
-            TotalProfit = 7000000m,
-            SellingCurrencyCode = "USD",
-            CostCurrencyCode = "USD",
-            CreatedAt = DateTime.UtcNow,
-            CreatedBy = "integration-test"
-        });
+            var currentBookingId = bookingIds[index];
+            db.Bookings.Add(new Booking
+            {
+                Id = currentBookingId,
+                BookingRef = index == 0 ? bookingRef : $"{bookingRef}-{index + 1}",
+                ClientId = clientId,
+                Status = BookingStatus.Confirmed,
+                TotalSelling = 500000000m,
+                TotalCost = 350000000m,
+                TotalProfit = 150000000m,
+                SellingCurrencyCode = "USD",
+                CostCurrencyCode = "USD",
+                CreatedAt = createdAt.AddMinutes(-index),
+                CreatedBy = "integration-test"
+            });
 
-        db.BookingItems.Add(new BookingItem
-        {
-            Id = Guid.NewGuid(),
-            BookingId = bookingId,
-            SupplierId = supplierId,
-            ServiceName = "Report-linked stay",
-            CostPrice = 18000000m,
-            SellingPrice = 25000000m,
-            Quantity = 1
-        });
+            db.BookingItems.Add(new BookingItem
+            {
+                Id = Guid.NewGuid(),
+                BookingId = currentBookingId,
+                SupplierId = supplierId,
+                ServiceName = "Report-linked stay",
+                CostPrice = 350000000m,
+                SellingPrice = 500000000m,
+                Quantity = 1
+            });
+        }
 
         await db.SaveChangesAsync();
 

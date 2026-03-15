@@ -60,6 +60,10 @@ else
                             </span>
                         </td>
                         <td class="text-right" onclick="event.stopPropagation()">
+                            <a class="btn btn-ghost btn-xs"
+                               href="@Url.Action("Details", "Supplier", new { slug, id = item.Id })">
+                                Open
+                            </a>
                             <has-permission name="suppliers.edit">
                                 <div class="dropdown dropdown-end">
                                     <label tabindex="0" class="btn btn-ghost btn-xs">...</label>
