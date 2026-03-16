@@ -1,0 +1,160 @@
+@model saas.Modules.Clients.DTOs.ClientDetailsDto
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+    ViewData["Title"] = $"Profile: {Model.Name}";
+}
+
+<div class="space-y-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <div class="breadcrumbs text-sm mb-2">
+                <ul>
+                    <li>
+                        <a href="@Url.Action("Index", "Client", new { slug })"
+                           hx-get="@Url.Action("Index", "Client", new { slug })"
+                           hx-target="#main-content"
+                           hx-push-url="true">Clients</a>
+                    </li>
+                    <li>Profile: @Model.Name</li>
+                </ul>
+            </div>
+            <h1 class="text-3xl font-bold">@Model.Name</h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <button class="btn btn-primary"
+                    hx-get="@Url.Action("Edit", "Client", new { slug, id = Model.Id })"
+                    hx-target="#modal-container">
+                <i class="iconify lucide--edit"></i>
+                Edit Client
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <div class="card bg-base-100 shadow-xl col-span-1 border border-base-300">
+            <div class="card-body p-6">
+                <h2 class="card-title text-xl mb-4 border-b border-base-200 pb-2">Contact Details</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-xs uppercase tracking-wide opacity-60 mb-1">Company</div>
+                        <div class="font-medium text-lg">@(Model.Company ?? "-")</div>
+                    </div>
+                    
+                    <div class="divider my-0"></div>
+
+                    <div>
+                        <div class="text-xs uppercase tracking-wide opacity-60 mb-1">Email</div>
+                        @if (!string.IsNullOrEmpty(Model.Email))
+                        {
+                            <div class="flex items-center gap-2">
+                                <a href="mailto:@Model.Email" class="link link-primary">@Model.Email</a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div>-</div>
+                        }
+                    </div>
+
+                    <div class="divider my-0"></div>
+
+                    <div>
+                        <div class="text-xs uppercase tracking-wide opacity-60 mb-1">Phone</div>
+                        @if (!string.IsNullOrEmpty(Model.Phone))
+                        {
+                            <div class="flex items-center gap-2">
+                                <a href="tel:@Model.Phone" class="link link-primary">@Model.Phone</a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div>-</div>
+                        }
+                    </div>
+
+                    <div class="divider my-0"></div>
+
+                    <div>
+                        <div class="text-xs uppercase tracking-wide opacity-60 mb-1">Address & Country</div>
+                        <div class="whitespace-pre-line text-sm opacity-90">@(Model.Address ?? "-")</div>
+                        <div class="mt-1 font-medium badge badge-ghost badge-sm">@(Model.Country ?? "-")</div>
+                    </div>
+
+                    <div class="divider my-0"></div>
+
+                    <div>
+                        <div class="text-xs uppercase tracking-wide opacity-60 mb-1">Internal Notes</div>
+                        <div class="text-sm bg-base-200 p-3 rounded-lg whitespace-pre-line italic opacity-80">
+                            @(Model.Notes ?? "No notes recorded.")
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-span-1 lg:col-span-2 space-y-6">
+            <div class="card border border-base-300">
+                <div class="card-body p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="card-title text-xl">Bookings</h2>
+                    </div>
+                    <div id="profile-bookings"
+                         hx-get="@Url.Action("ProfileBookings", "Client", new { slug, id = Model.Id })"
+                         hx-trigger="load, @saas.Modules.Bookings.Events.BookingEvents.Refresh from:body"
+                         hx-swap="innerHTML">
+                        <div class="flex justify-center p-8">
+                            <span class="loading loading-spinner loading-lg text-primary"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300">
+                <div class="card-body p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="card-title text-xl">Quotes</h2>
+                    </div>
+                    <div id="profile-quotes"
+                         hx-get="@Url.Action("ProfileQuotes", "Client", new { slug, id = Model.Id })"
+                         hx-trigger="load, @saas.Modules.Quotes.Events.QuoteEvents.Refresh from:body"
+                         hx-swap="innerHTML">
+                        <div class="flex justify-center p-8">
+                            <span class="loading loading-spinner loading-lg text-primary"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300 mb-8">
+                <div class="card-body p-6">
+                    <h2 class="card-title text-xl mb-4">Documents</h2>
+                    <div id="profile-documents"
+                         hx-get="@Url.Action("ClientDocuments", "Document", new { slug, clientId = Model.Id })"
+                         hx-trigger="load, @saas.Modules.Bookings.Events.BookingEvents.ClientDocumentsRefresh from:body"
+                         hx-swap="innerHTML">
+                        <div class="flex justify-center p-8">
+                            <span class="loading loading-spinner loading-lg text-primary"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border border-base-300">
+                <div class="card-body p-6">
+                    <h2 class="card-title text-xl mb-4">Communications</h2>
+                    <div id="profile-communications"
+                         hx-get="@Url.Action("ClientComms", "Communication", new { slug, clientId = Model.Id })"
+                         hx-trigger="load, @saas.Modules.Communications.Events.CommunicationEvents.Refresh from:body"
+                         hx-swap="innerHTML">
+                        <div class="flex justify-center p-8">
+                            <span class="loading loading-spinner loading-lg text-primary"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>

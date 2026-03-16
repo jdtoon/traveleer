@@ -37,7 +37,7 @@ Target files:
 - `src/Modules/Reports/Views/Report/_QuotesPipeline.cshtml`
 - `src/Modules/Reports/Controllers/ReportController.cs`
 
-### CL-1 — Client Full Profile Page
+### ✅ CL-1 — Client Full Profile Page
 The client module has a details modal but no dedicated full-profile page. Add a `Profile` action that renders a `SwapView` with:
 - Contact info panel
 - Linked bookings table (paginated, 10 per page)

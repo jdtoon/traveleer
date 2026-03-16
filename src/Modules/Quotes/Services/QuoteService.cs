@@ -13,7 +13,7 @@ namespace saas.Modules.Quotes.Services;
 
 public interface IQuoteService
 {
-    Task<PaginatedList<QuoteListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12);
+    Task<PaginatedList<QuoteListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12, Guid? clientId = null);
     Task<QuoteBuilderDto> CreateEmptyAsync();
     Task<QuoteBuilderDto?> GetEditAsync(Guid id);
     Task PopulateOptionsAsync(QuoteBuilderDto dto);
@@ -39,7 +39,7 @@ public class QuoteService : IQuoteService
         _numberingService = numberingService;
     }
 
-    public async Task<PaginatedList<QuoteListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12)
+    public async Task<PaginatedList<QuoteListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12, Guid? clientId = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 6, 48);
@@ -50,6 +50,11 @@ public class QuoteService : IQuoteService
                 .ThenInclude(x => x.RateCard)
                     .ThenInclude(x => x!.InventoryItem)
             .AsQueryable();
+
+        if (clientId.HasValue)
+        {
+            query = query.Where(x => x.ClientId == clientId.Value);
+        }
 
         if (TryParseStatus(status, out var parsedStatus))
         {

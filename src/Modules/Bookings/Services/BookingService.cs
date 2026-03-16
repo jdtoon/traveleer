@@ -14,7 +14,7 @@ namespace saas.Modules.Bookings.Services;
 
 public interface IBookingService
 {
-    Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12, string? assignedToUserId = null);
+    Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12, string? assignedToUserId = null, Guid? clientId = null);
     Task<BookingFormDto> CreateEmptyAsync();
     Task<Guid> CreateAsync(BookingFormDto dto);
     Task<BookingConversionResult> ConvertFromQuoteAsync(Guid quoteId);
@@ -53,7 +53,7 @@ public class BookingService : IBookingService
         _communicationService = communicationService;
     }
 
-    public async Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12, string? assignedToUserId = null)
+    public async Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12, string? assignedToUserId = null, Guid? clientId = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 6, 48);
@@ -63,6 +63,11 @@ public class BookingService : IBookingService
             .Include(x => x.Client)
             .Include(x => x.Items)
             .AsQueryable();
+
+        if (clientId.HasValue)
+        {
+            query = query.Where(x => x.ClientId == clientId.Value);
+        }
 
         if (TryParseStatus(status, out var parsedStatus))
         {

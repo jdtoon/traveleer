@@ -4,6 +4,9 @@ using saas.Modules.Auth.Filters;
 using saas.Modules.Clients.DTOs;
 using saas.Modules.Clients.Events;
 using saas.Modules.Clients.Services;
+using saas.Modules.Bookings.Services;
+using saas.Modules.Quotes.Services;
+using saas.Shared;
 using Swap.Htmx;
 
 namespace saas.Modules.Clients.Controllers;
@@ -14,10 +17,14 @@ namespace saas.Modules.Clients.Controllers;
 public class ClientController : SwapController
 {
     private readonly IClientService _service;
+    private readonly IBookingService _bookingService;
+    private readonly IQuoteService _quoteService;
 
-    public ClientController(IClientService service)
+    public ClientController(IClientService service, IBookingService bookingService, IQuoteService quoteService)
     {
         _service = service;
+        _bookingService = bookingService;
+        _quoteService = quoteService;
     }
 
     [HttpGet("")]
@@ -147,6 +154,36 @@ public class ClientController : SwapController
     {
         var model = await _service.GetRecentQuotesAsync(id);
         return PartialView("_RecentQuotes", model);
+    }
+
+    [HttpGet("profile/{id:guid}")]
+    [HasPermission(ClientPermissions.ClientsRead)]
+    public async Task<IActionResult> Profile(Guid id)
+    {
+        var model = await _service.GetDetailsAsync(id);
+        if (model is null)
+        {
+            return NotFound();
+        }
+
+        ViewData["ClientId"] = id;
+        return SwapView(model);
+    }
+
+    [HttpGet("profile/{id:guid}/bookings")]
+    [HasPermission(ClientPermissions.ClientsRead)]
+    public async Task<IActionResult> ProfileBookings(Guid id, [FromQuery] string? search = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        var model = await _bookingService.GetListAsync(search: search, page: page, pageSize: pageSize, clientId: id);
+        return PartialView("~/Modules/Bookings/Views/Booking/_List.cshtml", model);
+    }
+
+    [HttpGet("profile/{id:guid}/quotes")]
+    [HasPermission(ClientPermissions.ClientsRead)]
+    public async Task<IActionResult> ProfileQuotes(Guid id, [FromQuery] string? search = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        var model = await _quoteService.GetListAsync(search: search, page: page, pageSize: pageSize, clientId: id);
+        return PartialView("~/Modules/Quotes/Views/Quote/_List.cshtml", model);
     }
 
     [HttpGet("delete-confirm/{id:guid}")]

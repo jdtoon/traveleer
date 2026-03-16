@@ -84,7 +84,15 @@
             <span class="loading loading-spinner loading-lg"></span>
         </div>
 
-        <div class="modal-action">
+        <div class="modal-action flex justify-between w-full">
+            <a href="@Url.Action("Profile", "Client", new { slug, id = Model.Id })"
+               hx-push-url="true"
+               hx-get="@Url.Action("Profile", "Client", new { slug, id = Model.Id })"
+               hx-target="#main-content"
+               onClick="document.getElementById('modal-container').innerHTML=''"
+               class="btn btn-outline">
+                View Full Profile
+            </a>
             <button type="button" class="btn btn-primary" hx-get="/ui/modal-close" hx-target="#modal-container">Close</button>
         </div>
     </div>
