@@ -18,7 +18,7 @@ else
             <tbody>
             @foreach (var item in Model.Items)
             {
-                <tr class="hover">
+                <tr class="hover destination-row" data-search="@($"{item.Name} {item.CountryName} {item.Region}".ToLowerInvariant())">
                     <td class="font-medium">@item.Name</td>
                     <td>@(item.CountryName ?? "-") @if (!string.IsNullOrWhiteSpace(item.CountryCode)) { <span class="opacity-60">(@item.CountryCode)</span> }</td>
                     <td>@(item.Region ?? "-")</td>

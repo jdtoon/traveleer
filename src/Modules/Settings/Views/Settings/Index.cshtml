@@ -77,9 +77,12 @@
                         <h2 class="text-lg font-semibold">Destinations</h2>
                         <p class="text-sm opacity-70">Store your core places once so inventory and quotes stay consistent.</p>
                     </div>
-                    <has-permission name="masterdata.edit">
-                        <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewDestination", "Settings", new { slug })" hx-target="#modal-container">+ New Destination</button>
-                    </has-permission>
+                      <div class="flex gap-2 items-center">
+                          <input type="search" id="destinations-search" placeholder="Search destinations..." class="input input-sm input-bordered w-full max-w-xs" />
+                          <has-permission name="masterdata.edit">
+                              <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewDestination", "Settings", new { slug })" hx-target="#modal-container">+ New Destination</button>
+                          </has-permission>
+                      </div>
                 </div>
                 <div id="destinations-list" hx-get="@Url.Action("Destinations", "Settings", new { slug })" hx-trigger="@tabTrigger("destinations", saas.Modules.Settings.Events.SettingsEvents.DestinationsRefresh)" hx-swap="innerHTML show:none">
                     <span class="loading loading-spinner loading-lg"></span>
@@ -92,9 +95,12 @@
                         <h2 class="text-lg font-semibold">Suppliers</h2>
                         <p class="text-sm opacity-70">Track hotel, transport, visa, and experience providers for your tenant.</p>
                     </div>
-                    <has-permission name="masterdata.edit">
-                        <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewSupplier", "Settings", new { slug })" hx-target="#modal-container">+ New Supplier</button>
-                    </has-permission>
+                      <div class="flex gap-2 items-center">
+                          <input type="search" id="suppliers-search" placeholder="Search suppliers..." class="input input-sm input-bordered w-full max-w-xs" />
+                          <has-permission name="masterdata.edit">
+                              <button class="btn btn-primary btn-sm" hx-get="@Url.Action("NewSupplier", "Settings", new { slug })" hx-target="#modal-container">+ New Supplier</button>
+                          </has-permission>
+                      </div>
                 </div>
                 <div id="suppliers-list" hx-get="@Url.Action("Suppliers", "Settings", new { slug })" hx-trigger="@tabTrigger("suppliers", saas.Modules.Settings.Events.SettingsEvents.SuppliersRefresh)" hx-swap="innerHTML show:none">
                     <span class="loading loading-spinner loading-lg"></span>
@@ -131,3 +137,47 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const destSearch = document.getElementById("destinations-search");
+        if (destSearch) {
+            destSearch.addEventListener("input", (e) => {
+                const term = e.target.value.trim().toLowerCase();
+                document.querySelectorAll(".destination-row").forEach(row => {
+                    const searchable = row.getAttribute("data-search") || "";
+                    row.classList.toggle("hidden", term.length > 0 && !searchable.includes(term));
+                });
+            });
+        }
+
+        const suppSearch = document.getElementById("suppliers-search");
+        if (suppSearch) {
+            suppSearch.addEventListener("input", (e) => {
+                const term = e.target.value.trim().toLowerCase();
+                document.querySelectorAll(".supplier-row").forEach(row => {
+                    const searchable = row.getAttribute("data-search") || "";
+                    row.classList.toggle("hidden", term.length > 0 && !searchable.includes(term));
+                });
+            });
+        }
+    });
+
+    // Re-apply filters after HTMX dynamically loads the partial
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id === 'destinations-list') {
+            const destSearch = document.getElementById("destinations-search");
+            if (destSearch && destSearch.value) {
+                const event = new Event('input', { bubbles: true });
+                destSearch.dispatchEvent(event);
+            }
+        }
+        if (evt.detail.target.id === 'suppliers-list') {
+            const suppSearch = document.getElementById("suppliers-search");
+            if (suppSearch && suppSearch.value) {
+                const event = new Event('input', { bubbles: true });
+                suppSearch.dispatchEvent(event);
+            }
+        }
+    });
+</script>

@@ -18,7 +18,7 @@ else
             <tbody>
             @foreach (var item in Model.Items)
             {
-                <tr class="hover">
+                <tr class="hover supplier-row" data-search="@($"{item.Name} {item.ContactName} {item.ContactEmail} {item.ContactPhone}".ToLowerInvariant())">
                     <td class="font-medium">@item.Name</td>
                     <td>@(item.ContactName ?? "-")</td>
                     <td>@(item.ContactEmail ?? "-")</td>
