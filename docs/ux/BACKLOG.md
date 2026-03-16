@@ -98,7 +98,7 @@ Add a timeline or calendar view to the bookings index, toggled alongside the exi
 ### ✅ QT-3 — Quote Version Comparison
 When a quote has multiple versions, add a side-by-side or diff view comparing line items and totals between any two selected versions.
 
-### TK-2 — Task Relative Due Dates
+### ✅ TK-2 — Task Relative Due Dates
 Tasks list shows absolute dates. Add relative display ("due today", "2 days overdue", "due in 3 days") with color coding (red = overdue, amber = due today, grey = future).
 
 
