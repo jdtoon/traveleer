@@ -102,3 +102,4 @@ When a quote has multiple versions, add a side-by-side or diff view comparing li
 Tasks list shows absolute dates. Add relative display ("due today", "2 days overdue", "due in 3 days") with color coding (red = overdue, amber = due today, grey = future).
 
 
+
