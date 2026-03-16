@@ -15,6 +15,25 @@
         "Client" when task.LinkedEntityId.HasValue => Url.Action("Index", "Client", new { slug }),
         _ => null
     };
+
+    string RelativeDateText(TaskListItemDto task)
+    {
+        if (!task.DueDate.HasValue) return "—";
+        var due = task.DueDate.Value;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var days = due.DayNumber - today.DayNumber;
+        
+        if (task.Status == AgentTaskStatus.Completed || task.Status == AgentTaskStatus.Cancelled)
+        {
+            return "No longer due";
+        }
+        
+        if (days == 0) return "Due today";
+        if (days == 1) return "Due tomorrow";
+        if (days == -1) return "1 day overdue";
+        if (days < 0) return $"{Math.Abs(days)} days overdue";
+        return $"Due in {days} days";
+    }
 }
 
 @if (Model.Items.Count == 0)
@@ -54,9 +73,12 @@ else
                         <td>
                             @if (task.DueDate.HasValue)
                             {
-                                <span class="@(task.IsOverdue ? "text-error font-semibold" : task.IsDueToday ? "text-warning font-semibold" : "")">
-                                    @task.DueDate.Value.ToString("dd MMM yyyy")
-                                </span>
+                                <div class="flex flex-col">
+                                    <span class="@(task.IsOverdue ? "text-error font-semibold" : task.IsDueToday ? "text-warning font-semibold" : "text-base-content/70") text-sm">
+                                        @RelativeDateText(task)
+                                    </span>
+                                    <span class="text-xs opacity-50">@task.DueDate.Value.ToString("dd MMM yyyy")</span>
+                                </div>
                             }
                             else
                             {

@@ -1,6 +1,20 @@
 @model TaskWidgetDto
 @{
     var slug = ViewContext.RouteData.Values["slug"];
+    
+    string RelativeDateText(TaskListItemDto task)
+    {
+        if (!task.DueDate.HasValue) return "—";
+        var due = task.DueDate.Value;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var days = due.DayNumber - today.DayNumber;
+        
+        if (days == 0) return "Today";
+        if (days == 1) return "Tomorrow";
+        if (days == -1) return "1d overdue";
+        if (days < 0) return $"{Math.Abs(days)}d overdue";
+        return $"In {days}d";
+    }
 }
 
 <div class="card bg-base-100 border border-base-300 shadow-sm">
@@ -39,8 +53,8 @@
                         </div>
                         @if (task.DueDate.HasValue)
                         {
-                            <span class="text-xs opacity-60 shrink-0 ml-2 @(task.IsOverdue ? "text-error" : "")">
-                                @task.DueDate.Value.ToString("dd MMM")
+                            <span class="text-xs shrink-0 ml-2 font-medium @(task.IsOverdue ? "text-error" : task.IsDueToday ? "text-warning" : "text-base-content/60")" title="@task.DueDate.Value.ToString("dd MMM yyyy")">
+                                @RelativeDateText(task)
                             </span>
                         }
                     </div>
