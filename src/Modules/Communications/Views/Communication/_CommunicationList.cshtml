@@ -67,37 +67,15 @@
             }
         </div>
 
-        @if ((hasPreviousPage || hasNextPage) && !string.IsNullOrWhiteSpace(listUrl))
+        @if (hasNextPage && !string.IsNullOrWhiteSpace(listUrl))
         {
-            <div class="flex items-center justify-between mt-4 pt-4 border-t border-base-300">
-                <span class="text-sm opacity-60">Page @Model.PageIndex</span>
-                <div class="join">
-                    @if (hasPreviousPage)
-                    {
-                        <button class="join-item btn btn-sm"
-                                hx-get="@(listUrl)@(pageSeparator)page=@(Model.PageIndex - 1)"
-                                hx-target="@targetId">
-                            « Prev
-                        </button>
-                    }
-                    else
-                    {
-                        <button class="join-item btn btn-sm btn-disabled">« Prev</button>
-                    }
-
-                    @if (hasNextPage)
-                    {
-                        <button class="join-item btn btn-sm"
-                                hx-get="@(listUrl)@(pageSeparator)page=@(Model.PageIndex + 1)"
-                                hx-target="@targetId">
-                            Next »
-                        </button>
-                    }
-                    else
-                    {
-                        <button class="join-item btn btn-sm btn-disabled">Next »</button>
-                    }
-                </div>
+            <div class="flex items-center justify-center mt-4 pt-4 border-t border-base-300" id="comms-load-more">
+                <button class="btn btn-sm btn-outline"
+                        hx-get="@(listUrl)@(pageSeparator)page=@(Model.PageIndex + 1)"
+                        hx-target="#comms-load-more"
+                        hx-swap="outerHTML">
+                    Load More
+                </button>
             </div>
         }
     }
