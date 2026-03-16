@@ -66,7 +66,7 @@ Target files:
 - `src/Modules/RateCards/Views/RateCard/Index.cshtml`
 - `src/Modules/RateCards/Controllers/RateCardController.cs`
 
-### PF-2 — User Name Resolver Service
+### ✅ PF-2 — User Name Resolver Service
 Multiple partials resolve user display names with ad-hoc queries inside loops (N+1 pattern). Introduce a scoped `IUserNameResolver` that bulk-loads all required names once per request and serves them from a dictionary.
 
 Target files:
@@ -100,3 +100,4 @@ When a quote has multiple versions, add a side-by-side or diff view comparing li
 
 ### TK-2 — Task Relative Due Dates
 Tasks list shows absolute dates. Add relative display ("due today", "2 days overdue", "due in 3 days") with color coding (red = overdue, amber = due today, grey = future).
+
