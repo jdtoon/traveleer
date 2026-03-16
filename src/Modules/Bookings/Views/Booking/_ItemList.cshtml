@@ -128,11 +128,19 @@
                                             </form>
                                             <form hx-post="@Url.Action("ConfirmSupplier", "Booking", new { slug, bookingId = Model.Id, itemId = item.Id })" hx-swap="none">
                                                 @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn btn-primary btn-sm">Mark Confirmed</button>
+                                                <button type="submit"
+                                                        class="btn btn-primary btn-sm"
+                                                        hx-confirm="Mark this supplier as confirmed?">
+                                                    Mark Confirmed
+                                                </button>
                                             </form>
                                             <form hx-post="@Url.Action("DeclineSupplier", "Booking", new { slug, bookingId = Model.Id, itemId = item.Id })" hx-swap="none">
                                                 @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn btn-ghost btn-sm">Mark Declined</button>
+                                                <button type="submit"
+                                                        class="btn btn-ghost btn-sm"
+                                                        hx-confirm="Mark this supplier as declined?">
+                                                    Mark Declined
+                                                </button>
                                             </form>
                                         }
                                         @if (item.SupplierStatus == SupplierStatus.Confirmed && !item.VoucherGenerated)

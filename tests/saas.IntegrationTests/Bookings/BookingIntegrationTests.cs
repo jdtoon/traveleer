@@ -59,6 +59,20 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task BookingListPartial_RendersCostAndSellingColumns()
+    {
+        await SeedBookingWithFinancialTotalsAsync();
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/list?search=BK-FIN-");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("Cost");
+        await response.AssertContainsAsync("Selling");
+        await response.AssertContainsAsync("USD 750.00");
+        await response.AssertContainsAsync("USD 990.00");
+    }
+
+    [Fact]
     public async Task BookingListPartial_WhenFilterHasNoMatches_ShowsPreparationLinks()
     {
         var response = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/list?search={Guid.NewGuid():N}");
@@ -271,6 +285,18 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task BookingItemsPartial_RendersConfirmationPromptsForSupplierStatusChanges()
+    {
+        var (bookingId, _) = await SeedBookingWithItemAsync(status: SupplierStatus.Requested);
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/bookings/items/{bookingId}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("hx-confirm=\"Mark this supplier as confirmed?\"");
+        await response.AssertContainsAsync("hx-confirm=\"Mark this supplier as declined?\"");
+    }
+
+    [Fact]
     public async Task BookingItemsPartial_WhenRequested_UserCanSendReminder()
     {
         var (bookingId, itemId) = await SeedBookingWithItemAsync(status: SupplierStatus.Requested);
@@ -389,6 +415,30 @@ public class BookingIntegrationTests : IClassFixture<AppFixture>
             SellingCurrencyCode = "USD",
             CreatedAt = DateTime.UtcNow
         };
+        db.Bookings.Add(booking);
+        await db.SaveChangesAsync();
+        return booking.Id;
+    }
+
+    private async Task<Guid> SeedBookingWithFinancialTotalsAsync()
+    {
+        await using var db = OpenTenantDb();
+        var clientId = await db.Clients.OrderBy(x => x.Name).Select(x => x.Id).FirstAsync();
+
+        var booking = new Booking
+        {
+            BookingRef = $"BK-FIN-{Guid.NewGuid():N}"[..15],
+            ClientId = clientId,
+            Status = BookingStatus.Confirmed,
+            Pax = 2,
+            TotalCost = 750m,
+            TotalSelling = 990m,
+            TotalProfit = 240m,
+            CostCurrencyCode = "USD",
+            SellingCurrencyCode = "USD",
+            CreatedAt = DateTime.UtcNow
+        };
+
         db.Bookings.Add(booking);
         await db.SaveChangesAsync();
         return booking.Id;
