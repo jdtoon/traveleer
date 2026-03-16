@@ -92,7 +92,7 @@ Target files:
 
 ## P3 — Polish
 
-### BK-4 — Booking Calendar / Timeline View
+### ✅ BK-4 — Booking Calendar / Timeline View
 Add a timeline or calendar view to the bookings index, toggled alongside the existing table view. Show bookings plotted by travel dates.
 
 ### QT-3 — Quote Version Comparison
