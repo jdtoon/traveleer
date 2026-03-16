@@ -1,0 +1,93 @@
+@model saas.Modules.Quotes.DTOs.QuoteCompareDto
+
+<dialog class="modal modal-open">
+    <div class="modal-box max-w-5xl">
+        <div class="flex items-center justify-between gap-4 mb-6">
+            <div>
+                <h3 class="text-xl font-bold">Compare Versions</h3>
+                <p class="text-sm opacity-70">@Model.ReferenceNumber: v@(Model.Version1Number) vs v@(Model.Version2Number)</p>
+            </div>
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">x</button>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-6">
+            <!-- Version 1 -->
+            <div class="flex flex-col gap-4">
+                <div class="card bg-base-200/50 border border-base-300">
+                    <div class="card-body p-4">
+                        <div class="flex justify-between items-center border-b border-base-300 pb-2 mb-2">
+                            <span class="font-bold text-lg">Version @Model.Version1Number</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-y-2 text-sm">
+                            <div class="opacity-70">Currency</div>
+                            <div class="font-medium">@Model.Version1Preview.OutputCurrencyCode</div>
+                            <div class="opacity-70">Markup</div>
+                            <div class="font-medium">@Model.Version1Preview.MarkupPercentage.ToString("0.##")%</div>
+                            <div class="opacity-70">Travel Window</div>
+                            <div class="font-medium">@Model.Version1Preview.TravelWindowSummary</div>
+                        </div>
+                        
+                        <div class="divider my-2"></div>
+                        <span class="font-semibold text-sm uppercase tracking-wide opacity-70 mb-2 block">Line Items (@Model.Version1Preview.Items.Count)</span>
+                        <div class="flex flex-col gap-2">
+                            @if (Model.Version1Preview.Items.Count == 0)
+                            {
+                                <span class="text-sm opacity-50 italic">No items</span>
+                            }
+                            @foreach(var item in Model.Version1Preview.Items)
+                            {
+                                <div class="bg-base-100 p-2 rounded border border-base-300 text-sm">
+                                    <div class="font-medium">@item.HotelName</div>
+                                    <div class="opacity-70 text-xs">@item.RateCardName</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Version 2 -->
+            <div class="flex flex-col gap-4">
+                <div class="card bg-base-200/50 border border-base-300">
+                    <div class="card-body p-4">
+                        <div class="flex justify-between items-center border-b border-base-300 pb-2 mb-2">
+                            <span class="font-bold text-lg">Version @Model.Version2Number</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-y-2 text-sm">
+                            <div class="opacity-70 text-sm">Currency</div>
+                            <div class="font-medium @(Model.Version1Preview.OutputCurrencyCode != Model.Version2Preview.OutputCurrencyCode ? "text-primary" : "")">@Model.Version2Preview.OutputCurrencyCode</div>
+                            <div class="opacity-70 text-sm">Markup</div>
+                            <div class="font-medium @(Model.Version1Preview.MarkupPercentage != Model.Version2Preview.MarkupPercentage ? "text-primary" : "")">@Model.Version2Preview.MarkupPercentage.ToString("0.##")%</div>
+                            <div class="opacity-70 text-sm">Travel Window</div>
+                            <div class="font-medium @(Model.Version1Preview.TravelWindowSummary != Model.Version2Preview.TravelWindowSummary ? "text-primary" : "")">@Model.Version2Preview.TravelWindowSummary</div>
+                        </div>
+                        
+                        <div class="divider my-2"></div>
+                        <span class="font-semibold text-sm uppercase tracking-wide opacity-70 mb-2 block">Line Items (@Model.Version2Preview.Items.Count)</span>
+                        <div class="flex flex-col gap-2">
+                            @if (Model.Version2Preview.Items.Count == 0)
+                            {
+                                <span class="text-sm opacity-50 italic">No items</span>
+                            }
+                            @foreach(var item in Model.Version2Preview.Items)
+                            {
+                                var diffClass = !Model.Version1Preview.Items.Any(x => x.RateCardId == item.RateCardId) ? "border-primary bg-primary/5" : "border-base-300";
+                                <div class="bg-base-100 p-2 rounded border @diffClass text-sm">
+                                    <div class="font-medium">@item.HotelName</div>
+                                    <div class="opacity-70 text-xs">@item.RateCardName</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-action">
+            <button type="button" class="btn btn-ghost" hx-get="/ui/modal-close" hx-target="#modal-container">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button hx-get="/ui/modal-close" hx-target="#modal-container">close</button>
+    </form>
+</dialog>

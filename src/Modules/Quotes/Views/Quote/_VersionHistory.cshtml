@@ -5,12 +5,25 @@
 
 <div class="card border border-base-300 bg-base-100 shadow-sm">
     <div class="card-body gap-4">
-        <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
             <div>
                 <h2 class="card-title">Version History</h2>
                 <p class="text-sm opacity-70">Track saved quote snapshots as the builder changes over time.</p>
             </div>
-            <div class="text-sm opacity-60">@Model.Versions.Count version@(Model.Versions.Count == 1 ? string.Empty : "s")</div>
+            <div class="flex items-center gap-4">
+                <span class="text-sm opacity-60">
+                    <span id="vc-selected-count">0</span>/2 selected
+                </span>
+                <button type="button" 
+                        class="btn btn-sm btn-primary" 
+                        id="vc-compare-btn" 
+                        disabled 
+                        hx-get="@Url.Action("CompareVersions", "Quote", new { slug, id = Model.QuoteId })" 
+                        hx-target="#modal-container">
+                    Compare Versions
+                </button>
+                <div class="text-sm opacity-60">@Model.Versions.Count version@(Model.Versions.Count == 1 ? string.Empty : "s")</div>
+            </div>
         </div>
 
         @if (Model.Versions.Count == 0)
@@ -25,6 +38,7 @@
                 <table class="table table-zebra">
                     <thead>
                         <tr>
+                            <th>Compare</th>
                             <th>Version</th>
                             <th>Saved</th>
                             <th>By</th>
@@ -37,6 +51,11 @@
                         @foreach (var version in Model.Versions)
                         {
                             <tr class="hover">
+                                <td>
+                                    <label class="cursor-pointer">
+                                        <input type="checkbox" name="v_target" value="@version.Id" class="checkbox checkbox-sm vc-checkbox" onchange="updateVersionCompareState()" />
+                                    </label>
+                                </td>
                                 <td>
                                     <div class="flex items-center gap-2">
                                         <span class="font-medium">v@(version.VersionNumber)</span>
@@ -62,6 +81,33 @@
                     </tbody>
                 </table>
             </div>
+<script>
+    function updateVersionCompareState() {
+        const checkboxes = document.querySelectorAll('.vc-checkbox:checked');
+        const count = checkboxes.length;
+        document.getElementById('vc-selected-count').innerText = count;
+        
+        const btn = document.getElementById('vc-compare-btn');
+        if (count === 2) {
+            btn.removeAttribute('disabled');
+            const v1 = checkboxes[0].value;
+            const v2 = checkboxes[1].value;
+            
+            const baseUrl = '@Url.Action("CompareVersions", "Quote", new { slug, id = Model.QuoteId })'.replace(/&amp;/g, '&');
+            const separator = baseUrl.includes('?') ? '&' : '?';
+            btn.setAttribute('hx-get', baseUrl + separator + 'v1=' + v1 + '&v2=' + v2);
+            htmx.process(btn);
+        } else {
+            btn.setAttribute('disabled', 'disabled');
+        }
+        
+        document.querySelectorAll('.vc-checkbox').forEach(cb => {
+            if (!cb.checked) {
+                cb.disabled = count >= 2;
+            }
+        });
+    }
+</script>
         }
     </div>
 </div>

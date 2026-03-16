@@ -167,6 +167,21 @@ public class QuoteController : SwapController
         return model is null ? NotFound() : PartialView("_VersionHistory", model);
     }
 
+    [HttpGet("versions/compare/{id:guid}")]
+    [HasPermission(QuotePermissions.QuotesRead)]
+    public async Task<IActionResult> CompareVersions(Guid id, [FromQuery] Guid v1, [FromQuery] Guid v2)
+    {
+        var model = await _service.CompareVersionsAsync(id, v1, v2);
+        if (model is null)
+        {
+            return SwapResponse()
+                .WithErrorToast("Could not load versions for comparison.")
+                .Build();
+        }
+
+        return PartialView("_VersionCompare", model);
+    }
+
     [HttpGet("versions/{id:guid}/{versionId:guid}")]
     [HasPermission(QuotePermissions.QuotesRead)]
     public async Task<IActionResult> VersionDetails(Guid id, Guid versionId)
