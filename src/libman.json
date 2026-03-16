@@ -17,6 +17,14 @@
       "files": [
         "qrcode.min.js"
       ]
+    },
+    {
+      "provider": "jsdelivr",
+      "library": "chart.js@4.4.7",
+      "destination": "wwwroot/lib/chartjs",
+      "files": [
+        "dist/chart.umd.min.js"
+      ]
     }
   ]
 }

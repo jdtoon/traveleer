@@ -127,7 +127,7 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
     {
         var seeded = await SeedReportLinkDataAsync();
 
-        var response = await _client.HtmxGetAsync($"/{TenantSlug}/reports/widget/clients-top?range=year");
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/reports/widget/clients-top?range=today");
 
         response.AssertSuccess();
         await response.AssertContainsAsync(seeded.ClientName);
@@ -148,7 +148,7 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
     {
         var seeded = await SeedReportLinkDataAsync();
 
-        var response = await _client.HtmxGetAsync($"/{TenantSlug}/reports/widget/suppliers-top?range=year");
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/reports/widget/suppliers-top?range=today");
 
         response.AssertSuccess();
         await response.AssertContainsAsync(seeded.SupplierName);
@@ -178,7 +178,7 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
     {
         var seeded = await SeedReportLinkDataAsync();
 
-        var response = await _client.HtmxGetAsync($"/{TenantSlug}/reports/widget/profitability-by-booking?range=month");
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/reports/widget/profitability-by-booking?range=today");
 
         response.AssertSuccess();
         await response.AssertContainsAsync(seeded.BookingRef);

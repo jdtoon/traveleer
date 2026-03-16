@@ -6,18 +6,35 @@
 }
 else
 {
-    var max = Model.Max(q => q.Count);
-    <div class="flex flex-col gap-2 mt-2">
-        @foreach (var item in Model)
+    var labels = System.Text.Json.JsonSerializer.Serialize(Model.Select(q => q.Status).ToList());
+    var values = System.Text.Json.JsonSerializer.Serialize(Model.Select(q => q.Count).ToList());
+    var chartConfig = $$"""
         {
-            var pct = max > 0 ? (int)((double)item.Count / max * 100) : 0;
-            <div class="flex items-center gap-2">
-                <span class="text-xs w-16 text-base-content/60">@item.Status</span>
-                <div class="flex-1 bg-base-200 rounded-full h-3 overflow-hidden">
-                    <div class="bg-accent h-full rounded-full" style="width: @(pct)%"></div>
-                </div>
-                <span class="text-xs font-mono w-8 text-right">@item.Count</span>
-            </div>
+            "type": "bar",
+            "data": {
+                "labels": {{labels}},
+                "datasets": [{
+                    "label": "Quotes",
+                    "data": {{values}},
+                    "backgroundColor": "oklch(0.7154 0.1932 316.0 / 0.7)",
+                    "borderColor": "oklch(0.7154 0.1932 316.0)",
+                    "borderWidth": 1,
+                    "borderRadius": 4
+                }]
+            },
+            "options": {
+                "indexAxis": "y",
+                "responsive": true,
+                "maintainAspectRatio": false,
+                "plugins": { "legend": { "display": false } },
+                "scales": {
+                    "x": { "beginAtZero": true, "ticks": { "precision": 0, "maxTicksLimit": 5 } },
+                    "y": { "grid": { "display": false } }
+                }
+            }
         }
+    """;
+    <div class="mt-2" style="height:@(Math.Max(100, Model.Count * 36))px; position:relative;">
+        <canvas data-chart-type="bar" data-chart-config='@Html.Raw(chartConfig)'></canvas>
     </div>
 }

@@ -63,15 +63,17 @@ public class ItineraryIntegrationTests : IClassFixture<AppFixture>
     {
         var itineraryId = await SeedItineraryAsync();
 
+        string seededTitle;
         await using (var db = OpenTenantDb())
         {
             var itinerary = await db.Itineraries.FirstAsync(i => i.Id == itineraryId);
             var client = await db.Clients.OrderBy(c => c.Name).FirstAsync();
             itinerary.ClientId = client.Id;
             await db.SaveChangesAsync();
+            seededTitle = itinerary.Title;
         }
 
-        var response = await _client.HtmxGetAsync($"/{TenantSlug}/itineraries/list");
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/itineraries/list?search={Uri.EscapeDataString(seededTitle)}");
 
         response.AssertSuccess();
         await response.AssertContainsAsync($"hx-get=\"/{TenantSlug}/clients/details/");
@@ -91,7 +93,7 @@ public class ItineraryIntegrationTests : IClassFixture<AppFixture>
                     Id = Guid.NewGuid(),
                     Title = $"{prefix}-{index:D2}",
                     Status = ItineraryStatus.Draft,
-                    CreatedAt = DateTime.UtcNow.AddMinutes(index)
+                    CreatedAt = DateTime.UtcNow.AddDays(-(14 - index))
                 });
             }
 

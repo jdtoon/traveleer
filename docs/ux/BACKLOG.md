@@ -15,37 +15,18 @@ Completed items are marked ✅.
 
 ## P0 — Critical
 
-### D-1 — Dashboard Widgets
-The dashboard currently shows static welcome text. Add lazy-loaded HTMX widgets:
-- Bookings summary (count by status, total selling value)
-- Quote pipeline (open/sent/won/lost counts)
-- Recent bookings list (last 5)
-- Tasks widget (overdue + due today count)
-- Quick actions bar (New Booking, New Quote, New Client)
-
-Target files:
-- `src/Modules/Dashboard/Controllers/DashboardController.cs`
-- `src/Modules/Dashboard/Views/Dashboard/Index.cshtml`
-
-Each widget must lazy-load via `hx-trigger="load"`, show a spinner placeholder, and have its own partial + controller endpoint. Reuse `ReportsService` and `TaskService` where data already exists.
+### D-1 — Dashboard Widgets ✅
+Already implemented: Tasks widget, Active Bookings, Quote Pipeline, Revenue summary, and Recent Bookings all lazy-load via `hx-trigger="load"` behind feature/permission gates. Quick actions (New Booking, New Quote, New Client) present in the welcome card.
 
 ---
 
 ## P1 — High
 
-### HX-1 — OOB Swaps for Booking Mutations
-Booking create/edit/add-payment/confirm-supplier currently fires multi-trigger cascades that cause race conditions on slow connections. Replace with single `SwapResponse().WithOobSwap(...)` responses that update the list, the stats bar, and the detail pane simultaneously.
+### HX-1 — OOB Swaps for Booking Mutations ✅
+Already resolved: each mutation (CreateItem, CreatePayment, ConfirmSupplier, CreateSupplierPayment) emits exactly one event trigger. `#booking-summary` listens to `BookingEvents.ItemsRefresh` without `load` so it only refreshes on mutation, not on page load. No multi-trigger cascade exists.
 
-Target files:
-- `src/Modules/Bookings/Controllers/BookingController.cs`
-- `src/Modules/Bookings/Controllers/PaymentController.cs`
-
-### HX-2 + PF-1 — Booking Details Load Optimization  
-The booking details page fires 9 parallel HTMX fetches on load (comments, activity, communications, payments, items, suppliers, documents, tasks, notes). Server-render the primary summary inline. Use `hx-trigger="revealed"` for tabs that are not visible on initial load (communications, documents, activity). This removes the 9-fetch fan-out on every detail page open.
-
-Target files:
-- `src/Modules/Bookings/Views/Booking/Details.cshtml`
-- `src/Modules/Bookings/Controllers/BookingController.cs`
+### HX-2 + PF-1 — Booking Details Load Optimization ✅
+Already resolved: `#booking-summary` is server-rendered inline. Items, Payment Links, Payments, Documents load on `load`. Team, Comments, Activity, Communications all use `hx-trigger="revealed"`. Only 4 parallel fetches occur on page load.
 
 ### RP-1 — Reports Charts
 Revenue, bookings-by-status, and quotes-pipeline report widgets render data as plain text/tables. Add Chart.js visualizations (bar for revenue, doughnut for status, line for pipeline trend). Charts must be server-data-driven via a `data-chart-config` JSON attribute — no extra API calls.

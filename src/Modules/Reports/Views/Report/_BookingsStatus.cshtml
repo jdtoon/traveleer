@@ -7,26 +7,43 @@
 else
 {
     var total = Model.Sum(b => b.Count);
-    <div class="flex flex-col gap-2 mt-2">
-        @foreach (var item in Model)
+    var labels = System.Text.Json.JsonSerializer.Serialize(Model.Select(b => b.Status).ToList());
+    var values = System.Text.Json.JsonSerializer.Serialize(Model.Select(b => b.Count).ToList());
+    var colors = System.Text.Json.JsonSerializer.Serialize(Model.Select(b => b.Status switch
+    {
+        "Confirmed"  => "oklch(0.7231 0.2 142.5 / 0.85)",
+        "Completed"  => "oklch(0.6232 0.1883 259.81 / 0.85)",
+        "Cancelled"  => "oklch(0.6368 0.2078 25.33 / 0.85)",
+        "InProgress" => "oklch(0.7686 0.1647 70.08 / 0.85)",
+        _            => "oklch(0.7 0 0 / 0.5)"
+    }).ToList());
+    var chartConfig = $$"""
         {
-            var pct = total > 0 ? (int)((double)item.Count / total * 100) : 0;
-            var badgeClass = item.Status switch
-            {
-                "Confirmed" => "badge-success",
-                "Completed" => "badge-info",
-                "Cancelled" => "badge-error",
-                "InProgress" => "badge-warning",
-                _ => "badge-ghost"
-            };
-            <div class="flex items-center gap-2">
-                <span class="badge @badgeClass badge-sm w-24">@item.Status</span>
-                <div class="flex-1 bg-base-200 rounded-full h-3 overflow-hidden">
-                    <div class="bg-secondary h-full rounded-full" style="width: @(pct)%"></div>
-                </div>
-                <span class="text-xs font-mono w-8 text-right">@item.Count</span>
-            </div>
+            "type": "doughnut",
+            "data": {
+                "labels": {{labels}},
+                "datasets": [{
+                    "data": {{values}},
+                    "backgroundColor": {{colors}},
+                    "borderWidth": 1,
+                    "hoverOffset": 6
+                }]
+            },
+            "options": {
+                "responsive": true,
+                "maintainAspectRatio": false,
+                "cutout": "60%",
+                "plugins": {
+                    "legend": {
+                        "position": "right",
+                        "labels": { "boxWidth": 12, "font": { "size": 11 } }
+                    }
+                }
+            }
         }
-        <div class="text-xs text-base-content/40 text-right mt-1">Total: @total</div>
+    """;
+    <div class="mt-2" style="height:160px; position:relative;">
+        <canvas data-chart-type="doughnut" data-chart-config='@Html.Raw(chartConfig)'></canvas>
     </div>
+    <div class="text-xs text-base-content/40 text-right mt-1">Total: @total</div>
 }

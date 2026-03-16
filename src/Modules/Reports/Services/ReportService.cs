@@ -202,9 +202,11 @@ public class ReportService : IReportService
                 Id = g.Key.ClientId,
                 Name = g.Key.Name,
                 BookingCount = g.Count(),
-                TotalValue = g.Sum(b => b.TotalSelling)
+                TotalValue = g.Sum(b => b.TotalSelling),
+                MaxBookingCreatedAt = g.Max(b => b.CreatedAt)
             })
             .OrderByDescending(c => c.TotalValue)
+            .ThenByDescending(c => c.MaxBookingCreatedAt)
             .Take(top)
             .ToListAsync();
     }
@@ -224,9 +226,11 @@ public class ReportService : IReportService
                 Id = g.Key.SupplierId!.Value,
                 Name = g.Key.Name,
                 BookingItemCount = g.Count(),
-                TotalCost = g.Sum(bi => bi.CostPrice * bi.Quantity)
+                TotalCost = g.Sum(bi => bi.CostPrice * bi.Quantity),
+                MaxBookingCreatedAt = g.Max(bi => bi.Booking!.CreatedAt)
             })
             .OrderByDescending(s => s.TotalCost)
+            .ThenByDescending(s => s.MaxBookingCreatedAt)
             .Take(top)
             .ToListAsync();
     }
@@ -261,6 +265,7 @@ public class ReportService : IReportService
             .Include(b => b.Client)
             .Where(b => b.Status != BookingStatus.Cancelled && b.CreatedAt >= from && b.CreatedAt <= to)
             .OrderByDescending(b => b.TotalProfit)
+            .ThenByDescending(b => b.CreatedAt)
             .Take(50)
             .Select(b => new BookingProfitDto
             {
@@ -315,6 +320,7 @@ public class ReportService : IReportService
         var now = DateTime.UtcNow;
         return dateRange switch
         {
+            "today" => (DateTime.SpecifyKind(now.Date, DateTimeKind.Utc), now),
             "quarter" => (new DateTime(now.Year, (now.Month - 1) / 3 * 3 + 1, 1, 0, 0, 0, DateTimeKind.Utc), now),
             "year" => (new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc), now),
             _ => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), now), // month

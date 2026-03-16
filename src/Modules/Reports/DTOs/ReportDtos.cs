@@ -64,6 +64,7 @@ public class TopClientDto
     public string Name { get; set; } = string.Empty;
     public int BookingCount { get; set; }
     public decimal TotalValue { get; set; }
+    public DateTime MaxBookingCreatedAt { get; set; }
 }
 
 public class TopSupplierDto
@@ -72,6 +73,7 @@ public class TopSupplierDto
     public string Name { get; set; } = string.Empty;
     public int BookingItemCount { get; set; }
     public decimal TotalCost { get; set; }
+    public DateTime MaxBookingCreatedAt { get; set; }
 }
 
 public class ProfitabilitySummaryDto
