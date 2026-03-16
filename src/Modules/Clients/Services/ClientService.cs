@@ -14,6 +14,8 @@ public interface IClientService
     Task<ClientDto> CreateEmptyAsync();
     Task<ClientDto?> GetAsync(Guid id);
     Task<ClientDetailsDto?> GetDetailsAsync(Guid id);
+    Task<List<ClientRecentBookingDto>> GetRecentBookingsAsync(Guid clientId, int take = 5);
+    Task<List<ClientRecentQuoteDto>> GetRecentQuotesAsync(Guid clientId, int take = 5);
     Task CreateAsync(ClientDto dto);
     Task UpdateAsync(Guid id, ClientDto dto);
     Task DeleteAsync(Guid id);
@@ -106,6 +108,47 @@ public class ClientService : IClientService
                 UpdatedAt = c.UpdatedAt
             })
             .FirstOrDefaultAsync();
+    }
+
+    public async Task<List<ClientRecentBookingDto>> GetRecentBookingsAsync(Guid clientId, int take = 5)
+    {
+        var normalizedTake = Math.Clamp(take, 1, 20);
+
+        return await _db.Bookings
+            .AsNoTracking()
+            .Where(b => b.ClientId == clientId)
+            .OrderByDescending(b => b.CreatedAt)
+            .Take(normalizedTake)
+            .Select(b => new ClientRecentBookingDto
+            {
+                Id = b.Id,
+                BookingRef = b.BookingRef,
+                Status = b.Status.ToString(),
+                TotalSelling = b.TotalSelling,
+                SellingCurrencyCode = b.SellingCurrencyCode,
+                CreatedAt = b.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<List<ClientRecentQuoteDto>> GetRecentQuotesAsync(Guid clientId, int take = 5)
+    {
+        var normalizedTake = Math.Clamp(take, 1, 20);
+
+        return await _db.Quotes
+            .AsNoTracking()
+            .Where(q => q.ClientId == clientId)
+            .OrderByDescending(q => q.CreatedAt)
+            .Take(normalizedTake)
+            .Select(q => new ClientRecentQuoteDto
+            {
+                Id = q.Id,
+                ReferenceNumber = q.ReferenceNumber,
+                Status = q.Status.ToString(),
+                OutputCurrencyCode = q.OutputCurrencyCode,
+                CreatedAt = q.CreatedAt
+            })
+            .ToListAsync();
     }
 
     public async Task CreateAsync(ClientDto dto)

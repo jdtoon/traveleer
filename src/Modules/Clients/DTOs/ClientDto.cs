@@ -48,3 +48,22 @@ public class ClientDetailsDto : ClientDto
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
+
+public class ClientRecentBookingDto
+{
+    public Guid Id { get; set; }
+    public string BookingRef { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public decimal TotalSelling { get; set; }
+    public string SellingCurrencyCode { get; set; } = "USD";
+    public DateTime CreatedAt { get; set; }
+}
+
+public class ClientRecentQuoteDto
+{
+    public Guid Id { get; set; }
+    public string ReferenceNumber { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string OutputCurrencyCode { get; set; } = "USD";
+    public DateTime CreatedAt { get; set; }
+}

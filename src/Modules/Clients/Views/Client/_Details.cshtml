@@ -53,6 +53,22 @@
         </div>
 
         <div class="divider my-2"></div>
+        <div id="client-recent-bookings"
+             hx-get="@Url.Action("RecentBookings", "Client", new { slug, id = Model.Id })"
+             hx-trigger="load, @saas.Modules.Bookings.Events.BookingEvents.Refresh from:body"
+             hx-swap="innerHTML">
+            <span class="loading loading-spinner loading-lg"></span>
+        </div>
+
+        <div class="divider my-2"></div>
+        <div id="client-recent-quotes"
+             hx-get="@Url.Action("RecentQuotes", "Client", new { slug, id = Model.Id })"
+             hx-trigger="load, @saas.Modules.Quotes.Events.QuoteEvents.Refresh from:body"
+             hx-swap="innerHTML">
+            <span class="loading loading-spinner loading-lg"></span>
+        </div>
+
+        <div class="divider my-2"></div>
         <div id="client-documents"
              hx-get="@Url.Action("ClientDocuments", "Document", new { slug, clientId = Model.Id })"
              hx-trigger="load, @saas.Modules.Bookings.Events.BookingEvents.ClientDocumentsRefresh from:body"

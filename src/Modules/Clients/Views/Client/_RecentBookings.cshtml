@@ -1,0 +1,46 @@
+@model List<saas.Modules.Clients.DTOs.ClientRecentBookingDto>
+@{
+    var slug = ViewContext.RouteData.Values["slug"]?.ToString();
+}
+
+<div class="space-y-3">
+    <div class="flex items-center justify-between gap-2">
+        <h4 class="font-semibold">Recent Bookings</h4>
+        <a href="/@slug/bookings" class="btn btn-ghost btn-xs">View all</a>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <p class="text-sm opacity-60">No bookings linked to this client yet.</p>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Ref</th>
+                        <th>Status</th>
+                        <th class="text-right">Selling</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var booking in Model)
+                    {
+                        <tr>
+                            <td>
+                                <a href="@Url.Action("Details", "Booking", new { slug, id = booking.Id })" class="link link-hover">
+                                    @booking.BookingRef
+                                </a>
+                            </td>
+                            <td><span class="badge badge-ghost badge-xs">@booking.Status</span></td>
+                            <td class="text-right font-mono text-xs">@booking.SellingCurrencyCode @booking.TotalSelling.ToString("N2")</td>
+                            <td class="text-xs opacity-60">@booking.CreatedAt.ToString("dd MMM yyyy")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

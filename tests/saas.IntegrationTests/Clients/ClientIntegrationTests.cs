@@ -193,6 +193,102 @@ public class ClientIntegrationTests : IClassFixture<AppFixture>
         await response.AssertDoesNotContainAsync("Acacia Travel Group");
     }
 
+    [Fact]
+    public async Task ClientDetailsPartial_RendersRecentBookingsAndQuotesTargets()
+    {
+        var clientId = Guid.NewGuid();
+
+        await using (var db = OpenTenantDb())
+        {
+            db.Clients.Add(new saas.Modules.Clients.Entities.Client
+            {
+                Id = clientId,
+                Name = $"Client Details {Guid.NewGuid():N}"[..20],
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/clients/details/{clientId}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync($"hx-get=\"/{TenantSlug}/clients/details/{clientId}/recent-bookings\"");
+        await response.AssertContainsAsync($"hx-get=\"/{TenantSlug}/clients/details/{clientId}/recent-quotes\"");
+    }
+
+    [Fact]
+    public async Task ClientRecentBookingsPartial_RendersSeededBooking()
+    {
+        var clientId = Guid.NewGuid();
+        var bookingRef = $"BK-CLD-{Guid.NewGuid():N}"[..15];
+
+        await using (var db = OpenTenantDb())
+        {
+            db.Clients.Add(new saas.Modules.Clients.Entities.Client
+            {
+                Id = clientId,
+                Name = $"Client Bookings {Guid.NewGuid():N}"[..20],
+                CreatedAt = DateTime.UtcNow
+            });
+
+            db.Bookings.Add(new Booking
+            {
+                Id = Guid.NewGuid(),
+                BookingRef = bookingRef,
+                ClientId = clientId,
+                Status = BookingStatus.Confirmed,
+                SellingCurrencyCode = "USD",
+                CostCurrencyCode = "USD",
+                TotalSelling = 1200m,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/clients/details/{clientId}/recent-bookings");
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertContainsAsync(bookingRef);
+    }
+
+    [Fact]
+    public async Task ClientRecentQuotesPartial_RendersSeededQuote()
+    {
+        var clientId = Guid.NewGuid();
+        var quoteRef = $"QT-CLD-{Guid.NewGuid():N}"[..15];
+
+        await using (var db = OpenTenantDb())
+        {
+            db.Clients.Add(new saas.Modules.Clients.Entities.Client
+            {
+                Id = clientId,
+                Name = $"Client Quotes {Guid.NewGuid():N}"[..20],
+                CreatedAt = DateTime.UtcNow
+            });
+
+            db.Quotes.Add(new Quote
+            {
+                Id = Guid.NewGuid(),
+                ReferenceNumber = quoteRef,
+                ClientId = clientId,
+                ClientName = "Integration Client",
+                OutputCurrencyCode = "USD",
+                Status = QuoteStatus.Sent,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/clients/details/{clientId}/recent-quotes");
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertContainsAsync(quoteRef);
+    }
+
     // ── Layer 3: User Flow ──
 
     [Fact]

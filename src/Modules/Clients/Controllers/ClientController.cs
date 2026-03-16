@@ -133,6 +133,22 @@ public class ClientController : SwapController
         return PartialView("_Details", model);
     }
 
+    [HttpGet("details/{id:guid}/recent-bookings")]
+    [HasPermission(ClientPermissions.ClientsRead)]
+    public async Task<IActionResult> RecentBookings(Guid id)
+    {
+        var model = await _service.GetRecentBookingsAsync(id);
+        return PartialView("_RecentBookings", model);
+    }
+
+    [HttpGet("details/{id:guid}/recent-quotes")]
+    [HasPermission(ClientPermissions.ClientsRead)]
+    public async Task<IActionResult> RecentQuotes(Guid id)
+    {
+        var model = await _service.GetRecentQuotesAsync(id);
+        return PartialView("_RecentQuotes", model);
+    }
+
     [HttpGet("delete-confirm/{id:guid}")]
     [HasPermission(ClientPermissions.ClientsDelete)]
     public async Task<IActionResult> DeleteConfirm(Guid id)
