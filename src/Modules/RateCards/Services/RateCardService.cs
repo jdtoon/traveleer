@@ -20,6 +20,7 @@ public interface IRateCardService
     Task UpdateSeasonAsync(Guid rateCardId, RateSeasonFormDto dto);
     Task DeleteSeasonAsync(Guid rateCardId, Guid seasonId);
     Task UpdateRateAsync(RateCardRateUpdateDto dto);
+    Task UpdateRatesBatchAsync(List<RateCardRateUpdateDto> dtos);
     Task ActivateAsync(Guid id);
     Task ArchiveAsync(Guid id);
     Task SetDraftAsync(Guid id);
@@ -311,7 +312,21 @@ public class RateCardService : IRateCardService
         await _db.SaveChangesAsync();
     }
 
+    public async Task UpdateRatesBatchAsync(List<RateCardRateUpdateDto> dtos)
+    {
+        foreach (var dto in dtos)
+        {
+            await UpdateRateInternalAsync(dto, saveChanges: false);
+        }
+        await _db.SaveChangesAsync();
+    }
+
     public async Task UpdateRateAsync(RateCardRateUpdateDto dto)
+    {
+        await UpdateRateInternalAsync(dto, saveChanges: true);
+    }
+
+    private async Task UpdateRateInternalAsync(RateCardRateUpdateDto dto, bool saveChanges)
     {
         var season = await _db.RateSeasons
             .AsNoTracking()
@@ -374,7 +389,11 @@ public class RateCardService : IRateCardService
         roomRate.WeekdayRate = dto.WeekdayRate;
         roomRate.WeekendRate = dto.WeekendRate;
         roomRate.IsIncluded = dto.IsIncluded;
-        await _db.SaveChangesAsync();
+        
+        if (saveChanges)
+        {
+            await _db.SaveChangesAsync();
+        }
     }
 
     public async Task ActivateAsync(Guid id)

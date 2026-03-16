@@ -326,6 +326,11 @@ public class RateSeasonFormDto
     public string? Notes { get; set; }
 }
 
+public class RateCardRateBatchUpdateDto
+{
+    public List<RateCardRateUpdateDto> Rates { get; set; } = new();
+}
+
 public class RateCardRateUpdateDto
 {
     public Guid RateCardId { get; set; }

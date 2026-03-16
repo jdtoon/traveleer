@@ -53,13 +53,13 @@ Target files:
 
 ## P2 — Medium
 
-### ST-2 — Settings Tab Search
+### ✅ ST-2 — Settings Tab Search
 The destinations and suppliers tabs in Settings have no filtering. Add a client-side search input per tab that filters visible rows by name. Same pattern as QT-2 (data attribute + input event listener).
 
 Target files:
 - `src/Modules/Settings/Views/Settings/Index.cshtml` (or relevant partials)
 
-### RC-1 — Rate Card Batch Save
+### ✅ RC-1 — Rate Card Batch Save
 Editing rate card prices currently saves each cell change individually, causing N+1 POST requests. Add dirty-state tracking per row and a single "Save Changes" button that batches all modified rows in one POST.
 
 Target files:

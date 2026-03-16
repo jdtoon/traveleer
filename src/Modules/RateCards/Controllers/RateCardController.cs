@@ -239,6 +239,24 @@ public class RateCardController : SwapController
             .Build();
     }
 
+    [HttpPost("rates/update-batch")]
+    [HasPermission(RateCardPermissions.RateCardsEdit)]
+    public async Task<IActionResult> UpdateRatesBatch([FromForm] RateCardRateBatchUpdateDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return SwapResponse()
+                .WithErrorToast("Please enter valid rates.")
+                .Build();
+        }
+
+        await _service.UpdateRatesBatchAsync(dto.Rates);
+        return SwapResponse()
+            .WithSuccessToast("Rates updated.")
+            .WithTrigger(RateCardEvents.DetailsRefresh)
+            .Build();
+    }
+
     [HttpPost("activate/{id:guid}")]
     [ValidateAntiForgeryToken]
     [HasPermission(RateCardPermissions.RateCardsEdit)]
