@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.FeatureManagement;
 using saas.Modules.FeatureFlags.Services;
 using Xunit;
@@ -6,6 +7,11 @@ namespace saas.Tests.Modules.FeatureFlags;
 
 public class FeatureServiceTests
 {
+    private class FakeHttpContextAccessor : IHttpContextAccessor
+    {
+        public HttpContext? HttpContext { get; set; } = new DefaultHttpContext();
+    }
+
     /// <summary>
     /// The service delegates to IFeatureManager for enabled features.
     /// </summary>
@@ -15,7 +21,7 @@ public class FeatureServiceTests
     public async Task IsEnabledAsync_DelegatesToFeatureManager(string featureKey, bool expected)
     {
         var featureManager = new StubFeatureManager(enabledFeatures: ["notes", "projects"]);
-        var sut = new FeatureService(featureManager);
+        var sut = new FeatureService(featureManager, new FakeHttpContextAccessor());
 
         Assert.Equal(expected, await sut.IsEnabledAsync(featureKey));
     }
@@ -24,7 +30,7 @@ public class FeatureServiceTests
     public async Task GetEnabledFeaturesAsync_ReturnsOnlyEnabled()
     {
         var featureManager = new StubFeatureManager(enabledFeatures: ["notes", "projects"]);
-        var sut = new FeatureService(featureManager);
+        var sut = new FeatureService(featureManager, new FakeHttpContextAccessor());
 
         var enabled = await sut.GetEnabledFeaturesAsync();
 

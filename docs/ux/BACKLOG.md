@@ -74,7 +74,7 @@ Target files:
 - Register in `src/Infrastructure/ServiceCollectionExtensions.cs`
 - Update callers in bookings, quotes, tasks modules
 
-### PF-3 — Sidebar Feature Flag Caching
+### ✅ PF-3 — Sidebar Feature Flag Caching
 The sidebar evaluates feature flags on every render via individual DB calls. Load all flags for the current tenant once per request in middleware and cache in `HttpContext.Items`.
 
 Target files:
@@ -100,6 +100,7 @@ When a quote has multiple versions, add a side-by-side or diff view comparing li
 
 ### TK-2 — Task Relative Due Dates
 Tasks list shows absolute dates. Add relative display ("due today", "2 days overdue", "due in 3 days") with color coding (red = overdue, amber = due today, grey = future).
+
 
 
 

@@ -347,6 +347,7 @@ public static class ApplicationBuilderExtensions
         app.UseStaticFiles();
         app.UseRouting();
         app.UseMiddleware<TenantResolutionMiddleware>();
+        app.UseMiddleware<FeatureFlagMiddleware>();
         app.UseRateLimiter(); // After tenant resolution so "tenant" policy can access ITenantContext
         app.UseAuthentication();
         app.UseSwapHtmx();
