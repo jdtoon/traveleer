@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using saas.Data.Tenant;
 using saas.IntegrationTests.Fixtures;
+using saas.Modules.Bookings.Entities;
+using saas.Modules.Quotes.Entities;
 using Swap.Testing;
 using Xunit;
 
@@ -59,6 +61,55 @@ public class ClientIntegrationTests : IClassFixture<AppFixture>
 
         response.AssertSuccess();
         await response.AssertContainsAsync("Acacia Travel Group");
+    }
+
+    [Fact]
+    public async Task ClientListPartial_RendersBookingAndQuoteActivityCounts()
+    {
+        var clientId = Guid.NewGuid();
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var clientName = $"Activity Client {suffix}";
+
+        await using (var db = OpenTenantDb())
+        {
+            db.Clients.Add(new saas.Modules.Clients.Entities.Client
+            {
+                Id = clientId,
+                Name = clientName,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            db.Bookings.Add(new Booking
+            {
+                Id = Guid.NewGuid(),
+                BookingRef = $"BK-CL-{suffix.ToUpperInvariant()}",
+                ClientId = clientId,
+                Status = BookingStatus.Confirmed,
+                CostCurrencyCode = "USD",
+                SellingCurrencyCode = "USD",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            db.Quotes.Add(new Quote
+            {
+                Id = Guid.NewGuid(),
+                ReferenceNumber = $"QT-CL-{suffix.ToUpperInvariant()}",
+                ClientId = clientId,
+                ClientName = clientName,
+                Status = QuoteStatus.Draft,
+                OutputCurrencyCode = "USD",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.HtmxGetAsync($"/{TenantSlug}/clients/list?search={Uri.EscapeDataString(clientName)}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync(clientName);
+        await response.AssertContainsAsync("<span class=\"font-medium\">1</span> booking");
+        await response.AssertContainsAsync("<span class=\"font-medium\">1</span> quote");
     }
 
     [Fact]

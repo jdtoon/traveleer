@@ -250,6 +250,8 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
 
         var createdAt = DateTime.UtcNow;
         var bookingIds = new[] { bookingId, Guid.NewGuid(), Guid.NewGuid() };
+        const decimal seededSelling = 900000000000m;
+        const decimal seededCost = 650000000000m;
         for (var index = 0; index < bookingIds.Length; index++)
         {
             var currentBookingId = bookingIds[index];
@@ -259,9 +261,9 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
                 BookingRef = index == 0 ? bookingRef : $"{bookingRef}-{index + 1}",
                 ClientId = clientId,
                 Status = BookingStatus.Confirmed,
-                TotalSelling = 500000000m,
-                TotalCost = 350000000m,
-                TotalProfit = 150000000m,
+                TotalSelling = seededSelling,
+                TotalCost = seededCost,
+                TotalProfit = seededSelling - seededCost,
                 SellingCurrencyCode = "USD",
                 CostCurrencyCode = "USD",
                 CreatedAt = createdAt.AddMinutes(-index),
@@ -274,8 +276,8 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
                 BookingId = currentBookingId,
                 SupplierId = supplierId,
                 ServiceName = "Report-linked stay",
-                CostPrice = 350000000m,
-                SellingPrice = 500000000m,
+                CostPrice = seededCost,
+                SellingPrice = seededSelling,
                 Quantity = 1
             });
         }

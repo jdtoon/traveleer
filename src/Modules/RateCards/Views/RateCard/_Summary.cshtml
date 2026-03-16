@@ -2,6 +2,7 @@
 @{
     var slug = ViewContext.RouteData.Values["slug"]?.ToString();
     var pricingDimensionLabel = Model.RoomTypes.Count == 1 ? Model.PricingDimensionSingular : Model.PricingDimensionPlural;
+    var inventoryUrl = Url.Action("Index", "Inventory", new { slug, search = Model.InventoryItemName });
 }
 
 <div class="flex flex-col gap-6">
@@ -11,7 +12,12 @@
                 <h1 class="text-2xl font-bold">@Model.Name</h1>
                 <span class="badge badge-outline">@Model.Status</span>
             </div>
-            <p class="mt-2 opacity-70">@Model.InventoryItemName@if (!string.IsNullOrWhiteSpace(Model.DestinationName)) { <text> · @Model.DestinationName</text> }</p>
+            <p class="mt-2 opacity-70">
+                <a href="@inventoryUrl" class="link link-hover">
+                    @Model.InventoryItemName
+                </a>
+                @if (!string.IsNullOrWhiteSpace(Model.DestinationName)) { <text> · @Model.DestinationName</text> }
+            </p>
         </div>
         <div class="flex flex-wrap gap-2">
             <has-permission name="ratecards.edit">
@@ -58,7 +64,11 @@
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-2">
                     <div class="text-sm uppercase tracking-wide opacity-60">@Model.InventoryKindLabel</div>
-                    <div class="font-medium">@Model.InventoryItemName</div>
+                    <div class="font-medium">
+                        <a href="@inventoryUrl" class="link link-hover">
+                            @Model.InventoryItemName
+                        </a>
+                    </div>
                     <div class="text-sm opacity-70">@(string.IsNullOrWhiteSpace(Model.DestinationName) ? "Destination pending" : Model.DestinationName)</div>
                 </div>
             </div>

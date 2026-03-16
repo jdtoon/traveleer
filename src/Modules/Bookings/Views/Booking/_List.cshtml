@@ -55,6 +55,7 @@ else
                     <th>Travel</th>
                     <th>Status</th>
                     <th>Assigned</th>
+                    <th class="text-right">Cost</th>
                     <th class="text-right">Selling</th>
                     <th class="text-right">Action</th>
                 </tr>
@@ -103,6 +104,7 @@ else
                                 <span class="opacity-40">—</span>
                             }
                         </td>
+                        <td class="text-right font-medium">@item.CostCurrencyCode @item.TotalCost.ToString("N2")</td>
                         <td class="text-right font-medium">@item.SellingCurrencyCode @item.TotalSelling.ToString("N2")</td>
                         <td class="text-right">
                             <a class="btn btn-ghost btn-sm" href="@Url.Action("Details", "Booking", new { slug, id = item.Id })">Open</a>

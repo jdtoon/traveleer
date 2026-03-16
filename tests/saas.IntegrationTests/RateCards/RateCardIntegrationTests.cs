@@ -191,6 +191,23 @@ public class RateCardIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task RateCardDetails_RendersInventoryDetailLinks()
+    {
+        var rateCardId = await SeedRateCardAsync();
+
+        await using var db = OpenTenantDb();
+        var rateCard = await db.RateCards
+            .AsNoTracking()
+            .Include(rc => rc.InventoryItem)
+            .FirstAsync(rc => rc.Id == rateCardId);
+
+        var response = await _client.GetAsync($"/{TenantSlug}/rate-cards/details/{rateCardId}");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync($"href=\"/{TenantSlug}/inventory?search={Uri.EscapeDataString(rateCard.InventoryItem!.Name)}\"");
+    }
+
+    [Fact]
     public async Task ExcursionRateCardDetails_UserCanUpdateRateCategory()
     {
         var rateCardId = await SeedExcursionRateCardAsync();

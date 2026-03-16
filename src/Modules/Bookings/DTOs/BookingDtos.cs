@@ -22,6 +22,8 @@ public class BookingListItemDto
     public DateOnly? TravelEndDate { get; set; }
     public int Pax { get; set; }
     public int ItemCount { get; set; }
+    public decimal TotalCost { get; set; }
+    public string CostCurrencyCode { get; set; } = "USD";
     public decimal TotalSelling { get; set; }
     public string SellingCurrencyCode { get; set; } = "USD";
     public DateTime CreatedAt { get; set; }

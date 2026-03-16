@@ -101,6 +101,8 @@ public class BookingService : IBookingService
                 TravelEndDate = x.TravelEndDate,
                 Pax = x.Pax,
                 ItemCount = x.Items.Count,
+                TotalCost = x.TotalCost,
+                CostCurrencyCode = x.CostCurrencyCode,
                 TotalSelling = x.TotalSelling,
                 SellingCurrencyCode = x.SellingCurrencyCode,
                 CreatedAt = x.CreatedAt

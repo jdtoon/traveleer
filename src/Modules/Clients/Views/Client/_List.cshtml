@@ -22,6 +22,7 @@ else
                     <th>Company</th>
                     <th>Contact</th>
                     <th>Country</th>
+                    <th>Activity</th>
                     <th>Created</th>
                     <th></th>
                 </tr>
@@ -40,6 +41,14 @@ else
                     <td>@(item.Company ?? "-")</td>
                     <td>@(item.Phone ?? "-")</td>
                     <td>@(item.Country ?? "-")</td>
+                    <td>
+                        <div class="text-sm">
+                            <span class="font-medium">@item.BookingCount</span> booking@(item.BookingCount == 1 ? string.Empty : "s")
+                        </div>
+                        <div class="text-xs opacity-60">
+                            <span class="font-medium">@item.QuoteCount</span> quote@(item.QuoteCount == 1 ? string.Empty : "s")
+                        </div>
+                    </td>
                     <td class="opacity-70">@item.CreatedAt.ToString("dd MMM yyyy")</td>
                     <td class="text-right">
                         <div class="dropdown dropdown-end">

@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using saas.Data;
 using saas.Data.Tenant;
+using saas.Modules.Bookings.Entities;
 using saas.Modules.Clients.DTOs;
 using saas.Modules.Clients.Entities;
+using saas.Modules.Quotes.Entities;
 
 namespace saas.Modules.Clients.Services;
 
@@ -58,6 +60,8 @@ public class ClientService : IClientService
                 Email = c.Email,
                 Phone = c.Phone,
                 Country = c.Country,
+                BookingCount = _db.Set<Booking>().Count(b => b.ClientId == c.Id && b.Status != BookingStatus.Cancelled),
+                QuoteCount = _db.Set<Quote>().Count(q => q.ClientId == c.Id),
                 CreatedAt = c.CreatedAt
             });
 
