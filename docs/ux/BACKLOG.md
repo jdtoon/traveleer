@@ -95,7 +95,7 @@ Target files:
 ### ✅ BK-4 — Booking Calendar / Timeline View
 Add a timeline or calendar view to the bookings index, toggled alongside the existing table view. Show bookings plotted by travel dates.
 
-### QT-3 — Quote Version Comparison
+### ✅ QT-3 — Quote Version Comparison
 When a quote has multiple versions, add a side-by-side or diff view comparing line items and totals between any two selected versions.
 
 ### TK-2 — Task Relative Due Dates
