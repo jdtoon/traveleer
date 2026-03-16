@@ -167,14 +167,26 @@
                         </div>
                         <div class="badge badge-outline">@Model.SelectedRateCardIds.Count selected</div>
                     </div>
+                    <div class="form-control w-full md:max-w-md">
+                        <label class="label" for="rate-card-search"><span class="label-text">Find rate cards</span></label>
+                        <input id="rate-card-search"
+                               type="search"
+                               class="input input-bordered w-full"
+                               placeholder="Search by hotel, contract, destination, or currency"
+                               autocomplete="off" />
+                    </div>
                     <div class="grid gap-4">
                         @if (ViewData.ModelState.TryGetValue(nameof(Model.SelectedRateCardIds), out var selectedRateCardErrors) && selectedRateCardErrors.Errors.Count > 0)
                         {
                             <div class="alert alert-error text-sm">@selectedRateCardErrors.Errors[0].ErrorMessage</div>
                         }
+                        <div id="rate-card-search-empty" class="hidden rounded-box border border-dashed border-base-300 p-4 text-sm opacity-70">
+                            No rate cards match this search. Try a different hotel, destination, or contract keyword.
+                        </div>
                         @foreach (var option in Model.AvailableRateCards)
                         {
-                            <label class="card cursor-pointer border border-base-300 bg-base-100 shadow-sm transition hover:border-primary/40">
+                            <label class="card cursor-pointer border border-base-300 bg-base-100 shadow-sm transition hover:border-primary/40 rate-card-option"
+                                   data-rate-card-search="@($"{option.HotelName} {option.RateCardName} {option.DestinationName} {option.ContractCurrencyCode}".ToLowerInvariant())">
                                 <div class="card-body gap-3 p-4">
                                     <div class="flex items-start justify-between gap-4">
                                         <div class="space-y-1">
@@ -237,3 +249,35 @@
         </div>
     </form>
 </div>
+
+<script>
+(() => {
+    const searchInput = document.getElementById("rate-card-search");
+    if (!searchInput) {
+        return;
+    }
+
+    const options = Array.from(document.querySelectorAll(".rate-card-option"));
+    const emptyState = document.getElementById("rate-card-search-empty");
+
+    const applyFilter = () => {
+        const term = searchInput.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        options.forEach((option) => {
+            const searchable = option.getAttribute("data-rate-card-search") || "";
+            const isMatch = term.length === 0 || searchable.includes(term);
+            option.classList.toggle("hidden", !isMatch);
+            if (isMatch) {
+                visibleCount += 1;
+            }
+        });
+
+        if (emptyState) {
+            emptyState.classList.toggle("hidden", visibleCount > 0);
+        }
+    };
+
+    searchInput.addEventListener("input", applyFilter);
+})();
+</script>

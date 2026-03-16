@@ -88,6 +88,17 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task QuoteBuilderPage_RendersRateCardSearchControl()
+    {
+        var response = await _client.GetAsync($"/{TenantSlug}/quotes/new");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("Find rate cards");
+        await response.AssertContainsAsync("id=\"rate-card-search\"");
+        await response.AssertContainsAsync("data-rate-card-search=");
+    }
+
+    [Fact]
     public async Task QuotePreview_WhenTemplateSettingsProvided_ReflectsLayoutAndToggles()
     {
         var rateCardId = await SeedRateCardAsync();
