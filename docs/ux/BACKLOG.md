@@ -81,7 +81,7 @@ Target files:
 - `src/Infrastructure/Middleware/` (new middleware or extend existing)
 - `src/Modules/FeatureFlags/Services/FeatureFlagService.cs`
 
-### PF-8 — Communications Pagination
+### ✅ PF-8 — Communications Pagination
 The communications tab on booking details loads all records with no limit, causing unbounded query results for clients with high message volume. Add default `Take(20)` with a "Load more" HTMX pattern.
 
 Target files:
