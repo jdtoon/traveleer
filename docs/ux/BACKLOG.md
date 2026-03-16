@@ -28,7 +28,7 @@ Already resolved: each mutation (CreateItem, CreatePayment, ConfirmSupplier, Cre
 ### HX-2 + PF-1 — Booking Details Load Optimization ✅
 Already resolved: `#booking-summary` is server-rendered inline. Items, Payment Links, Payments, Documents load on `load`. Team, Comments, Activity, Communications all use `hx-trigger="revealed"`. Only 4 parallel fetches occur on page load.
 
-### RP-1 — Reports Charts
+### RP-1 — Reports Charts ✅
 Revenue, bookings-by-status, and quotes-pipeline report widgets render data as plain text/tables. Add Chart.js visualizations (bar for revenue, doughnut for status, line for pipeline trend). Charts must be server-data-driven via a `data-chart-config` JSON attribute — no extra API calls.
 
 Target files:
