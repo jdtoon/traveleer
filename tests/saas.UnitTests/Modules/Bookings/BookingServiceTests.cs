@@ -100,7 +100,7 @@ public class BookingServiceTests : IAsyncLifetime
         _templateService = new FakeEmailTemplateService();
         _tenantContext = new FakeTenantContext();
         _voucherDocumentService = new FakeBookingVoucherDocumentService();
-        _service = new BookingService(_db, _emailService, _templateService, _tenantContext, _voucherDocumentService, new FakeCommunicationService());
+        _service = new BookingService(_db, _emailService, _templateService, _tenantContext, _voucherDocumentService, new FakeCommunicationService(), new saas.Infrastructure.Services.UserNameResolver(_db));
     }
 
     public async Task DisposeAsync()
@@ -610,3 +610,6 @@ public class BookingServiceTests : IAsyncLifetime
         public Task AutoLogEmailAsync(Guid? clientId, Guid? supplierId, Guid? bookingId, string subject, string recipient) => Task.CompletedTask;
     }
 }
+
+
+

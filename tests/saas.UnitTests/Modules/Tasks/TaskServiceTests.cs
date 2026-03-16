@@ -26,7 +26,7 @@ public class TaskServiceTests : IAsyncLifetime
         _db = new TenantDbContext(options);
         await _db.Database.EnsureCreatedAsync();
 
-        _service = new TaskService(_db);
+        _service = new TaskService(_db, new saas.Infrastructure.Services.UserNameResolver(_db));
     }
 
     public async Task DisposeAsync()
@@ -396,3 +396,4 @@ public class TaskServiceTests : IAsyncLifetime
         Assert.True(dto.IsDueToday);
     }
 }
+

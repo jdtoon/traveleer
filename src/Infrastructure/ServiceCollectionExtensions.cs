@@ -116,6 +116,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddHttpContextAccessor();
         services.AddScoped<ITenantContext, TenantContext>();
+        services.AddScoped<IUserNameResolver, UserNameResolver>();
 
         // Site settings
         services.AddOptions<SiteSettings>()
@@ -351,3 +352,4 @@ public static class ServiceCollectionExtensions
         return services;
     }
 }
+

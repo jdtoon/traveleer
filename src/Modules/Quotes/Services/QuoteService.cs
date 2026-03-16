@@ -32,11 +32,13 @@ public class QuoteService : IQuoteService
     private static readonly JsonSerializerOptions SnapshotJsonOptions = new(JsonSerializerDefaults.Web);
     private readonly TenantDbContext _db;
     private readonly IQuoteNumberingService _numberingService;
+    private readonly saas.Shared.IUserNameResolver _userNameResolver;
 
-    public QuoteService(TenantDbContext db, IQuoteNumberingService numberingService)
+    public QuoteService(TenantDbContext db, IQuoteNumberingService numberingService, saas.Shared.IUserNameResolver userNameResolver)
     {
         _db = db;
         _numberingService = numberingService;
+        _userNameResolver = userNameResolver;
     }
 
     public async Task<PaginatedList<QuoteListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12, Guid? clientId = null)
@@ -367,11 +369,14 @@ public class QuoteService : IQuoteService
             .Where(x => x.QuoteId == id)
             .MaxAsync(x => (int?)x.VersionNumber) ?? 0;
 
-        var versions = await _db.QuoteVersions
+                var versions = await _db.QuoteVersions
             .AsNoTracking()
             .Where(x => x.QuoteId == id)
             .OrderByDescending(x => x.VersionNumber)
             .ToListAsync();
+
+        var userIds = versions.Where(v => !string.IsNullOrEmpty(v.CreatedBy)).Select(v => v.CreatedBy).Distinct().ToList();
+        var userNames = await _userNameResolver.ResolveNamesAsync(userIds);
 
         return new QuoteVersionHistoryDto
         {
@@ -380,12 +385,13 @@ public class QuoteService : IQuoteService
             Versions = versions.Select(x =>
             {
                 var snapshot = DeserializeSnapshot(x.SnapshotJson);
+                var createdBy = !string.IsNullOrEmpty(x.CreatedBy) && userNames.TryGetValue(x.CreatedBy, out var name) ? name : x.CreatedBy;
                 return new QuoteVersionListItemDto
                 {
                     Id = x.Id,
                     VersionNumber = x.VersionNumber,
                     IsCurrent = x.VersionNumber == latestVersionNumber,
-                    CreatedBy = x.CreatedBy,
+                    CreatedBy = createdBy,
                     CreatedAt = x.CreatedAt,
                     RateCardCount = snapshot?.SelectedRateCardIds.Count ?? 0,
                     OutputCurrencyCode = snapshot?.OutputCurrencyCode ?? "USD"
@@ -406,13 +412,22 @@ public class QuoteService : IQuoteService
             return null;
         }
 
+                string createdBy = version.CreatedBy;
+        if (!string.IsNullOrEmpty(createdBy))
+        {
+            var userNames = await _userNameResolver.ResolveNamesAsync(new[] { createdBy });
+            if (userNames.TryGetValue(createdBy, out var name))
+            {
+                createdBy = name;
+            }
+        }
+
         return new QuoteVersionDetailsDto
         {
-            QuoteId = version.QuoteId,
             ReferenceNumber = version.Quote?.ReferenceNumber ?? string.Empty,
             VersionId = version.Id,
             VersionNumber = version.VersionNumber,
-            CreatedBy = version.CreatedBy,
+            CreatedBy = createdBy,
             CreatedAt = version.CreatedAt,
             Snapshot = DeserializeSnapshot(version.SnapshotJson) ?? new QuoteVersionSnapshotDto()
         };
@@ -718,3 +733,8 @@ public class QuoteService : IQuoteService
         return Math.Round(markedUp, 2, MidpointRounding.AwayFromZero);
     }
 }
+
+
+
+
+

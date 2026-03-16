@@ -36,6 +36,7 @@ public class BookingService : IBookingService
     private readonly ITenantContext _tenantContext;
     private readonly IBookingVoucherDocumentService _voucherDocumentService;
     private readonly ICommunicationService _communicationService;
+    private readonly saas.Shared.IUserNameResolver _userNameResolver;
 
     public BookingService(
         TenantDbContext db,
@@ -43,7 +44,7 @@ public class BookingService : IBookingService
         IEmailTemplateService templateService,
         ITenantContext tenantContext,
         IBookingVoucherDocumentService voucherDocumentService,
-        ICommunicationService communicationService)
+        ICommunicationService communicationService, saas.Shared.IUserNameResolver userNameResolver)
     {
         _db = db;
         _emailService = emailService;
@@ -51,6 +52,7 @@ public class BookingService : IBookingService
         _tenantContext = tenantContext;
         _voucherDocumentService = voucherDocumentService;
         _communicationService = communicationService;
+        _userNameResolver = userNameResolver;
     }
 
     public async Task<PaginatedList<BookingListItemDto>> GetListAsync(string? status = null, string? search = null, int page = 1, int pageSize = 12, string? assignedToUserId = null, Guid? clientId = null)
@@ -126,11 +128,8 @@ public class BookingService : IBookingService
 
             if (assignments.Count > 0)
             {
-                var userIds = assignments.Select(a => a.UserId).Distinct().ToList();
-                var userNames = await _db.Users
-                    .AsNoTracking()
-                    .Where(u => userIds.Contains(u.Id))
-                    .ToDictionaryAsync(u => u.Id, u => u.DisplayName ?? u.Email ?? u.Id);
+                                var userIds = assignments.Select(a => a.UserId).Distinct().ToList();
+                var userNames = await _userNameResolver.ResolveNamesAsync(userIds);
 
                 var grouped = assignments.GroupBy(a => a.BookingId)
                     .ToDictionary(g => g.Key, g => g.Select(a => userNames.GetValueOrDefault(a.UserId, a.UserId)).ToList());
@@ -927,3 +926,6 @@ public class BookingService : IBookingService
     private static string? Normalize(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
+
+
+

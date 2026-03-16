@@ -153,7 +153,7 @@ public class QuoteServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         _numberingService = new QuoteNumberingService(_db);
-        _service = new QuoteService(_db, _numberingService);
+        _service = new QuoteService(_db, _numberingService, new saas.Infrastructure.Services.UserNameResolver(_db));
     }
 
     public async Task DisposeAsync()
@@ -383,3 +383,7 @@ public class QuoteServiceTests : IAsyncLifetime
         Assert.Equal("Spacious double room with city-facing windows.", Assert.Single(item.RoomTypes).Description);
     }
 }
+
+
+
+

@@ -24,10 +24,12 @@ public interface ITaskService
 public class TaskService : ITaskService
 {
     private readonly TenantDbContext _db;
+    private readonly saas.Shared.IUserNameResolver _userNameResolver;
 
-    public TaskService(TenantDbContext db)
+    public TaskService(TenantDbContext db, saas.Shared.IUserNameResolver userNameResolver)
     {
         _db = db;
+        _userNameResolver = userNameResolver;
     }
 
     public async Task<PaginatedList<TaskListItemDto>> GetListAsync(
@@ -181,16 +183,14 @@ public class TaskService : ITaskService
         var userIds = dtos.Where(d => d.AssigneeUserId != null).Select(d => d.AssigneeUserId!).Distinct().ToList();
         if (userIds.Count == 0) return;
 
-        var users = await _db.Users
-            .Where(u => userIds.Contains(u.Id))
-            .Select(u => new { u.Id, u.DisplayName, u.Email })
-            .ToListAsync();
+        var lookup = await _userNameResolver.ResolveNamesAsync(userIds);
 
-        var lookup = users.ToDictionary(u => u.Id, u => u.DisplayName ?? u.Email ?? u.Id);
         foreach (var dto in dtos)
         {
             if (dto.AssigneeUserId != null && lookup.TryGetValue(dto.AssigneeUserId, out var name))
+            {
                 dto.AssigneeName = name;
+            }
         }
     }
 
@@ -263,3 +263,9 @@ public class TaskService : ITaskService
         CreatedAt = t.CreatedAt
     };
 }
+
+
+
+
+
+
