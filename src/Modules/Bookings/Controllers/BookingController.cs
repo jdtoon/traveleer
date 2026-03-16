@@ -26,23 +26,30 @@ public class BookingController : SwapController
 
     [HttpGet("")]
     [HasPermission(BookingPermissions.BookingsRead)]
-    public IActionResult Index([FromQuery] string? status = null, [FromQuery] string? search = null, [FromQuery] bool assignedToMe = false)
+    public IActionResult Index([FromQuery] string? status = null, [FromQuery] string? search = null, [FromQuery] bool assignedToMe = false, [FromQuery] string? view = null)
     {
         ViewData["Status"] = status;
         ViewData["Search"] = search;
         ViewData["AssignedToMe"] = assignedToMe;
+        ViewData["View"] = view ?? "list";
         return SwapView();
     }
 
     [HttpGet("list")]
     [HasPermission(BookingPermissions.BookingsRead)]
-    public async Task<IActionResult> List([FromQuery] string? status = null, [FromQuery] string? search = null, [FromQuery] int page = 1, [FromQuery] bool assignedToMe = false)
+    public async Task<IActionResult> List([FromQuery] string? status = null, [FromQuery] string? search = null, [FromQuery] int page = 1, [FromQuery] bool assignedToMe = false, [FromQuery] string? view = null)
     {
         ViewData["Status"] = status;
         ViewData["Search"] = search;
         ViewData["AssignedToMe"] = assignedToMe;
+        ViewData["View"] = view ?? "list";
         var assignedUserId = assignedToMe ? _currentUser.UserId : null;
-        var model = await _service.GetListAsync(status, search, page, assignedToUserId: assignedUserId);
+        var pageSize = (view == "calendar") ? 100 : 12;
+        var model = await _service.GetListAsync(status, search, page, pageSize: pageSize, assignedToUserId: assignedUserId);
+        
+        if (view == "calendar")
+            return PartialView("_Calendar", model);
+
         return PartialView("_List", model);
     }
 

@@ -4,29 +4,31 @@
     var status = ViewData["Status"]?.ToString();
     var search = ViewData["Search"]?.ToString();
     var assignedToMe = ViewData["AssignedToMe"] is true;
+    var view = ViewData["View"]?.ToString() ?? "list";
 
     string tabClass(string? current) => string.Equals(status, current, StringComparison.OrdinalIgnoreCase)
         ? "tab tab-active"
         : "tab";
 
-    string? QueryFor(string? nextStatus)
+    string? QueryFor(string? nextStatus, string? nextView = null)
     {
         var parts = new List<string>();
         if (!string.IsNullOrWhiteSpace(nextStatus)) parts.Add($"status={Uri.EscapeDataString(nextStatus)}");
         if (!string.IsNullOrWhiteSpace(search)) parts.Add($"search={Uri.EscapeDataString(search)}");
         if (assignedToMe) parts.Add("assignedToMe=true");
+        if ((nextView ?? view) == "calendar") parts.Add("view=calendar");
         return parts.Count == 0 ? null : string.Join("&", parts);
     }
 
-    string TabUrl(string? nextStatus)
+    string TabUrl(string? nextStatus, string? nextView = null)
     {
-        var query = QueryFor(nextStatus);
+        var query = QueryFor(nextStatus, nextView);
         return query is null ? $"/{slug}/bookings" : $"/{slug}/bookings?{query}";
     }
 
-    string TabListUrl(string? nextStatus)
+    string TabListUrl(string? nextStatus, string? nextView = null)
     {
-        var query = QueryFor(nextStatus);
+        var query = QueryFor(nextStatus, nextView);
         return query is null ? $"/{slug}/bookings/list" : $"/{slug}/bookings/list?{query}";
     }
 }
@@ -44,13 +46,26 @@
 
     <div class="card border border-base-300 bg-base-100 shadow-sm">
         <div class="card-body gap-6">
-            <div role="tablist" class="tabs tabs-bordered flex-wrap gap-2">
-                <a href="@TabUrl(null)" hx-get="@TabListUrl(null)" hx-target="#booking-list" hx-push-url="@TabUrl(null)" class="@tabClass(null)">All</a>
-                <a href="@TabUrl(nameof(BookingStatus.Provisional))" hx-get="@TabListUrl(nameof(BookingStatus.Provisional))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.Provisional))" class="@tabClass(nameof(BookingStatus.Provisional))">Provisional</a>
-                <a href="@TabUrl(nameof(BookingStatus.Confirmed))" hx-get="@TabListUrl(nameof(BookingStatus.Confirmed))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.Confirmed))" class="@tabClass(nameof(BookingStatus.Confirmed))">Confirmed</a>
-                <a href="@TabUrl(nameof(BookingStatus.InProgress))" hx-get="@TabListUrl(nameof(BookingStatus.InProgress))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.InProgress))" class="@tabClass(nameof(BookingStatus.InProgress))">In Progress</a>
-                <a href="@TabUrl(nameof(BookingStatus.Completed))" hx-get="@TabListUrl(nameof(BookingStatus.Completed))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.Completed))" class="@tabClass(nameof(BookingStatus.Completed))">Completed</a>
-                <a href="@TabUrl(nameof(BookingStatus.Cancelled))" hx-get="@TabListUrl(nameof(BookingStatus.Cancelled))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.Cancelled))" class="@tabClass(nameof(BookingStatus.Cancelled))">Cancelled</a>
+            <div class="flex flex-col md:flex-row gap-4 justify-between md:items-center border-b border-base-200 pb-4">
+                <div role="tablist" class="tabs tabs-bordered flex-wrap gap-2">
+                    <a href="@TabUrl(null)" hx-get="@TabListUrl(null)" hx-target="#booking-list" hx-push-url="@TabUrl(null)" class="@tabClass(null)">All</a>
+                    <a href="@TabUrl(nameof(BookingStatus.Provisional))" hx-get="@TabListUrl(nameof(BookingStatus.Provisional))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.Provisional))" class="@tabClass(nameof(BookingStatus.Provisional))">Provisional</a>
+                    <a href="@TabUrl(nameof(BookingStatus.Confirmed))" hx-get="@TabListUrl(nameof(BookingStatus.Confirmed))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.Confirmed))" class="@tabClass(nameof(BookingStatus.Confirmed))">Confirmed</a>
+                    <a href="@TabUrl(nameof(BookingStatus.InProgress))" hx-get="@TabListUrl(nameof(BookingStatus.InProgress))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.InProgress))" class="@tabClass(nameof(BookingStatus.InProgress))">In Progress</a>
+                    <a href="@TabUrl(nameof(BookingStatus.Completed))" hx-get="@TabListUrl(nameof(BookingStatus.Completed))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.Completed))" class="@tabClass(nameof(BookingStatus.Completed))">Completed</a>
+                    <a href="@TabUrl(nameof(BookingStatus.Cancelled))" hx-get="@TabListUrl(nameof(BookingStatus.Cancelled))" hx-target="#booking-list" hx-push-url="@TabUrl(nameof(BookingStatus.Cancelled))" class="@tabClass(nameof(BookingStatus.Cancelled))">Cancelled</a>
+                </div>
+                
+                <div class="join">
+                    <a href="@TabUrl(status, "list")" hx-get="@TabListUrl(status, "list")" hx-target="#booking-list" hx-push-url="@TabUrl(status, "list")" class="btn btn-sm join-item @(view != "calendar" ? "btn-active" : "")">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                        List
+                    </a>
+                    <a href="@TabUrl(status, "calendar")" hx-get="@TabListUrl(status, "calendar")" hx-target="#booking-list" hx-push-url="@TabUrl(status, "calendar")" class="btn btn-sm join-item @(view == "calendar" ? "btn-active" : "")">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+                        Timeline
+                    </a>
+                </div>
             </div>
 
             <form class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-end"
@@ -58,6 +73,7 @@
                   hx-target="#booking-list"
                   hx-swap="innerHTML">
                 <input type="hidden" name="status" value="@status" />
+                <input type="hidden" name="view" value="@view" />
                 <input type="hidden" name="page" value="1" />
                 <div class="form-control w-full">
                     <label class="label" for="booking-search">
@@ -74,7 +90,7 @@
             </form>
 
             <div id="booking-list"
-                 hx-get="@Url.Action("List", "Booking", new { slug, status, search })"
+                 hx-get="@Url.Action("List", "Booking", new { slug, status, search, view })"
                  hx-trigger="load, @saas.Modules.Bookings.Events.BookingEvents.Refresh from:body"
                  hx-swap="innerHTML show:none">
                 <span class="loading loading-spinner loading-lg"></span>
