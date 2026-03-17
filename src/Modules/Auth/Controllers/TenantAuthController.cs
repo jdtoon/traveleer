@@ -30,6 +30,7 @@ public class TenantAuthController : SwapController
     private readonly ITenantContext _tenantContext;
     private readonly TwoFactorService _twoFactorService;
     private readonly IDataProtector _twoFactorProtector;
+    private readonly IReadOnlyList<IModule> _modules;
 
     private const string TwoFactorPurpose = "2FA-Challenge";
 
@@ -43,7 +44,8 @@ public class TenantAuthController : SwapController
         IPublishEndpoint publishEndpoint,
         ITenantContext tenantContext,
         TwoFactorService twoFactorService,
-        IDataProtectionProvider dataProtection)
+        IDataProtectionProvider dataProtection,
+        IReadOnlyList<IModule> modules)
     {
         _magicLinks = magicLinks;
         _email = email;
@@ -55,6 +57,7 @@ public class TenantAuthController : SwapController
         _tenantContext = tenantContext;
         _twoFactorService = twoFactorService;
         _twoFactorProtector = dataProtection.CreateProtector(TwoFactorPurpose);
+        _modules = modules;
     }
 
     [HttpGet("login")]
@@ -123,6 +126,8 @@ public class TenantAuthController : SwapController
             .Distinct()
             .ToListAsync();
 
+        var effectivePermissionKeys = ExpandAdminPermissions(roles, permissionKeys);
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id),
@@ -131,7 +136,7 @@ public class TenantAuthController : SwapController
         };
 
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
-        claims.AddRange(permissionKeys.Select(p => new Claim(AuthClaims.Permission, p)));
+        claims.AddRange(effectivePermissionKeys.Select(p => new Claim(AuthClaims.Permission, p)));
 
         // Check if 2FA is enabled — redirect to 2FA challenge instead of completing login
         if (user.IsTwoFactorEnabled)
@@ -275,6 +280,8 @@ public class TenantAuthController : SwapController
             .Distinct()
             .ToListAsync();
 
+        var effectivePermissionKeys = ExpandAdminPermissions(roles, permissionKeys);
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id),
@@ -282,7 +289,7 @@ public class TenantAuthController : SwapController
             new(AuthClaims.TenantSlug, slug)
         };
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
-        claims.AddRange(permissionKeys.Select(p => new Claim(AuthClaims.Permission, p)));
+        claims.AddRange(effectivePermissionKeys.Select(p => new Claim(AuthClaims.Permission, p)));
 
         // Track session
         Guid sessionId = Guid.NewGuid();
@@ -353,6 +360,22 @@ public class TenantAuthController : SwapController
         else if (userAgent.Contains("iPhone") || userAgent.Contains("iPad")) os = "iOS";
 
         return $"{browser} on {os}";
+    }
+
+    private List<string> ExpandAdminPermissions(IEnumerable<string> roles, IEnumerable<string> permissionKeys)
+    {
+        var effectivePermissionKeys = new HashSet<string>(permissionKeys, StringComparer.OrdinalIgnoreCase);
+        if (!roles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+        {
+            return effectivePermissionKeys.ToList();
+        }
+
+        foreach (var permission in _modules.SelectMany(module => module.Permissions))
+        {
+            effectivePermissionKeys.Add(permission.Key);
+        }
+
+        return effectivePermissionKeys.ToList();
     }
 
     [HttpPost("logout")]

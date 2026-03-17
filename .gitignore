@@ -68,3 +68,5 @@ Generated/
 test-publish/
 
 appsettings.local.jsontest-upload.txt
+
+.artifacts/

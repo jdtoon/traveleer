@@ -229,6 +229,36 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
 
         await using var db = OpenTenantDb();
 
+        var priorReportBookings = await db.Bookings
+            .Where(b => EF.Functions.Like(b.BookingRef, "BK-RPT-%"))
+            .Select(b => b.Id)
+            .ToListAsync();
+
+        if (priorReportBookings.Count > 0)
+        {
+            var priorItems = await db.BookingItems
+                .Where(item => priorReportBookings.Contains(item.BookingId))
+                .ToListAsync();
+            db.BookingItems.RemoveRange(priorItems);
+
+            var priorBookings = await db.Bookings
+                .Where(b => priorReportBookings.Contains(b.Id))
+                .ToListAsync();
+            db.Bookings.RemoveRange(priorBookings);
+
+            var priorClients = await db.Clients
+                .Where(c => EF.Functions.Like(c.Name, "Report Client %"))
+                .ToListAsync();
+            db.Clients.RemoveRange(priorClients);
+
+            var priorSuppliers = await db.Suppliers
+                .Where(s => EF.Functions.Like(s.Name, "Report Supplier %"))
+                .ToListAsync();
+            db.Suppliers.RemoveRange(priorSuppliers);
+
+            await db.SaveChangesAsync();
+        }
+
         db.Clients.Add(new Client
         {
             Id = clientId,
@@ -250,8 +280,8 @@ public class ReportIntegrationTests : IClassFixture<AppFixture>
 
         var createdAt = DateTime.UtcNow;
         var bookingIds = new[] { bookingId, Guid.NewGuid(), Guid.NewGuid() };
-        const decimal seededSelling = 900000000000m;
-        const decimal seededCost = 650000000000m;
+        const decimal seededSelling = 900m;
+        const decimal seededCost = 650m;
         for (var index = 0; index < bookingIds.Length; index++)
         {
             var currentBookingId = bookingIds[index];

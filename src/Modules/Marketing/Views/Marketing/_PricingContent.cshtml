@@ -63,7 +63,9 @@
             <div class="mt-6">
                 <a class="btn btn-primary w-full" href="/register?plan=@plan.Id">Get started</a>
             </div>
-            <div class="mt-4 text-xs opacity-60">Up to @plan.MaxUsers users on this plan</div>
+            <div class="mt-4 text-xs opacity-60">
+                @(plan.MaxUsers.HasValue ? $"Up to {plan.MaxUsers.Value} users on this plan" : "Unlimited users on this plan")
+            </div>
         </div>
     }
 </div>

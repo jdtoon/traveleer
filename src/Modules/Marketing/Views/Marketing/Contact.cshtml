@@ -14,14 +14,14 @@
                 <h1 class="text-4xl md:text-5xl font-bold">Talk to the team behind Traveleer.</h1>
                 <p class="mt-3 text-lg opacity-70">Tell us how your agency currently handles supplier contracts, quote creation, and booking follow-up. We respond within one business day.</p>
 
-                <form class="mt-8 grid gap-4"
+                    <form id="contact-form"
+                        class="mt-8 grid gap-4"
                       method="post"
                       action="/contact"
                       hx-post="/contact"
                       hx-target="#contact-result"
                       hx-swap="innerHTML"
-                      hx-disabled-elt="#contact-submit-btn"
-                      hx-on::after-request="if(event.detail.successful) this.reset()">
+                        hx-disabled-elt="#contact-submit-btn">
                     @Html.AntiForgeryToken()
 
                     <div class="grid gap-4 md:grid-cols-2">
@@ -79,6 +79,24 @@
         </div>
     </div>
 </section>
+
+<script>
+    (function () {
+        var form = document.getElementById("contact-form");
+        if (!form || form.dataset.cspBound === "true") {
+            return;
+        }
+
+        form.dataset.cspBound = "true";
+        form.addEventListener("htmx:afterRequest", function (event) {
+            if (!event.detail.successful) {
+                return;
+            }
+
+            form.reset();
+        });
+    })();
+</script>
 
 @if (useTurnstile)
 {

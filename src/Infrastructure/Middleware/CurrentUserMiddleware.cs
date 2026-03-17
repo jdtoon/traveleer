@@ -139,7 +139,9 @@ public class CurrentUserMiddleware
                 .Distinct()
                 .ToListAsync();
 
-        if (ClaimsMatch(context.User, roleNames, permissionKeys))
+        var effectivePermissionKeys = ExpandAdminPermissions(context, roleNames, permissionKeys);
+
+        if (ClaimsMatch(context.User, roleNames, effectivePermissionKeys))
         {
             return;
         }
@@ -147,7 +149,7 @@ public class CurrentUserMiddleware
         var refreshedClaims = context.User.Claims
             .Where(claim => claim.Type != ClaimTypes.Role && claim.Type != AuthClaims.Permission)
             .Concat(roleNames.Select(roleName => new Claim(ClaimTypes.Role, roleName)))
-            .Concat(permissionKeys.Select(permission => new Claim(AuthClaims.Permission, permission)))
+            .Concat(effectivePermissionKeys.Select(permission => new Claim(AuthClaims.Permission, permission)))
             .ToList();
 
         var authType = context.User.Identity?.AuthenticationType ?? AuthSchemes.Tenant;
@@ -175,5 +177,22 @@ public class CurrentUserMiddleware
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return claimedRoles.SetEquals(roleNames) && claimedPermissions.SetEquals(permissionKeys);
+    }
+
+    private static List<string> ExpandAdminPermissions(HttpContext context, IReadOnlyCollection<string> roleNames, IReadOnlyCollection<string> permissionKeys)
+    {
+        var effectivePermissionKeys = new HashSet<string>(permissionKeys, StringComparer.OrdinalIgnoreCase);
+        if (!roleNames.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+        {
+            return effectivePermissionKeys.ToList();
+        }
+
+        var modules = context.RequestServices.GetRequiredService<IReadOnlyList<IModule>>();
+        foreach (var permission in modules.SelectMany(module => module.Permissions))
+        {
+            effectivePermissionKeys.Add(permission.Key);
+        }
+
+        return effectivePermissionKeys.ToList();
     }
 }

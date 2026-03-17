@@ -44,6 +44,7 @@ public class MarketingIntegrationTests : IClassFixture<AppFixture>
         response.AssertSuccess();
         await response.AssertContainsAsync("Plans for agencies that want cleaner rate, quote, and booking operations.");
         await response.AssertContainsAsync("Get started");
+        await response.AssertDoesNotContainAsync("Up to users on this plan");
     }
 
     [Fact]
@@ -68,6 +69,16 @@ public class MarketingIntegrationTests : IClassFixture<AppFixture>
         response.AssertSuccess();
         await response.AssertPartialViewAsync();
         await response.AssertContainsAsync("required");
+    }
+
+    [Fact]
+    public async Task ContactPage_DoesNotRenderInlineHtmxEventHandlers()
+    {
+        var response = await _client.GetAsync("/contact");
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("contact-form");
+        await response.AssertDoesNotContainAsync("hx-on::after-request");
     }
 
     [Fact]

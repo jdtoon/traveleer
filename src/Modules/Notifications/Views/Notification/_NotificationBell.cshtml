@@ -16,8 +16,7 @@
         <span id="notification-badge" class="badge badge-primary badge-xs absolute -top-1 -right-1 hidden"
               hx-get="/@slug/notifications/count"
               hx-trigger="load, every 30s"
-              hx-swap="innerHTML"
-              hx-on::after-request="this.classList.toggle('hidden', this.innerText === '0')"></span>
+              hx-swap="innerHTML"></span>
     </div>
     <div id="notification-panel" tabindex="0"
          class="dropdown-content z-50 card card-compact w-80 bg-base-200 shadow-lg">
@@ -26,3 +25,17 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        var badge = document.getElementById("notification-badge");
+        if (!badge || badge.dataset.cspBound === "true") {
+            return;
+        }
+
+        badge.dataset.cspBound = "true";
+        badge.addEventListener("htmx:afterRequest", function () {
+            badge.classList.toggle("hidden", badge.textContent.trim() === "0");
+        });
+    })();
+</script>

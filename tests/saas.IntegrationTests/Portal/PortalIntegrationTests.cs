@@ -71,6 +71,29 @@ public class PortalIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task RevokeLink_FromPortalLinksPage_UpdatesDatabaseAndReturnsUpdatedList()
+    {
+        var linkId = await SeedPortalLinkAsync();
+
+        var page = await _client.GetAsync($"/{TenantSlug}/portal/links");
+        page.AssertSuccess();
+        await page.AssertElementExistsAsync($"form[action='/{TenantSlug}/portal/links/revoke/{linkId}']");
+
+        var response = await _client.SubmitFormAsync(
+            page,
+            $"form[action='/{TenantSlug}/portal/links/revoke/{linkId}']",
+            new Dictionary<string, string>());
+
+        response.AssertSuccess();
+        await response.AssertContainsAsync("Revoked");
+
+        await using var db = OpenTenantDb();
+        var link = await db.PortalLinks.FindAsync(linkId);
+        Assert.NotNull(link);
+        Assert.True(link!.IsRevoked);
+    }
+
+    [Fact]
     public async Task ClientLinks_ReturnsLinksForClient()
     {
         var clientId = await GetFirstClientIdAsync();

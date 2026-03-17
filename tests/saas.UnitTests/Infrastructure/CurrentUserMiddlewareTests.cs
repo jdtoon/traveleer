@@ -10,6 +10,7 @@ using saas.Infrastructure.Middleware;
 using saas.Modules.Auth;
 using saas.Modules.Auth.Entities;
 using saas.Modules.Auth.Services;
+using saas.Modules.Branding;
 using saas.Shared;
 using Xunit;
 
@@ -131,6 +132,100 @@ public class CurrentUserMiddlewareTests
         Assert.Contains(
             authService.SignedInPrincipal!.Claims,
             claim => claim.Type == AuthClaims.Permission && claim.Value == "inventory.read");
+    }
+
+    [Fact]
+    public async Task RefreshesTenantClaims_WhenUserIsAdmin_AddsAllModulePermissions()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<TenantDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var tenantDb = new TenantDbContext(options);
+        await tenantDb.Database.EnsureCreatedAsync();
+
+        var role = new AppRole
+        {
+            Id = "role-admin",
+            Name = "Admin",
+            NormalizedName = "ADMIN",
+            IsSystemRole = true
+        };
+
+        var user = new AppUser
+        {
+            Id = "user-admin",
+            UserName = "admin@example.test",
+            NormalizedUserName = "ADMIN@EXAMPLE.TEST",
+            Email = "admin@example.test",
+            NormalizedEmail = "ADMIN@EXAMPLE.TEST",
+            EmailConfirmed = true,
+            IsActive = true,
+            SecurityStamp = Guid.NewGuid().ToString("N")
+        };
+
+        var sessionId = Guid.NewGuid();
+
+        tenantDb.Roles.Add(role);
+        tenantDb.Users.Add(user);
+        tenantDb.UserRoles.Add(new Microsoft.AspNetCore.Identity.IdentityUserRole<string>
+        {
+            UserId = user.Id,
+            RoleId = role.Id
+        });
+        tenantDb.UserSessions.Add(new UserSession
+        {
+            Id = sessionId,
+            UserId = user.Id,
+            CreatedAt = DateTime.UtcNow,
+            LastActivityAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddHours(1)
+        });
+        await tenantDb.SaveChangesAsync();
+
+        var currentUser = new CurrentUser();
+        var tenantContext = new FakeTenantContext
+        {
+            IsTenantRequest = true,
+            Slug = "demo"
+        };
+        var authService = new FakeAuthenticationService();
+
+        var services = new ServiceCollection();
+        services.AddSingleton<ICurrentUser>(currentUser);
+        services.AddSingleton<ITenantContext>(tenantContext);
+        services.AddSingleton(tenantDb);
+        services.AddSingleton<IAuthenticationService>(authService);
+        services.AddSingleton<IReadOnlyList<IModule>>([new BrandingModule()]);
+        var provider = services.BuildServiceProvider();
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.Id),
+            new(ClaimTypes.Email, user.Email ?? string.Empty),
+            new(ClaimTypes.Role, "Admin"),
+            new(AuthClaims.TenantSlug, "demo"),
+            new(AuthClaims.SessionId, sessionId.ToString())
+        };
+
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = provider,
+            User = new ClaimsPrincipal(new ClaimsIdentity(claims, AuthSchemes.Tenant))
+        };
+
+        var middleware = new CurrentUserMiddleware(_ => Task.CompletedTask, NullLogger<CurrentUserMiddleware>.Instance);
+
+        await middleware.InvokeAsync(httpContext, currentUser, tenantContext);
+
+        Assert.True(currentUser.HasPermission(BrandingPermissions.BrandingEdit));
+        Assert.NotNull(authService.SignedInPrincipal);
+        Assert.Contains(
+            authService.SignedInPrincipal!.Claims,
+            claim => claim.Type == AuthClaims.Permission && claim.Value == BrandingPermissions.BrandingEdit);
     }
 
     private sealed class FakeAuthenticationService : IAuthenticationService
