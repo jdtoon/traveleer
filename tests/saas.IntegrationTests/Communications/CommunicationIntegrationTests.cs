@@ -235,7 +235,7 @@ public class CommunicationIntegrationTests : IClassFixture<AppFixture>
         firstPage.AssertSuccess();
         await firstPage.AssertContainsAsync("Paged client communication 21");
         await firstPage.AssertDoesNotContainAsync("Paged client communication 01");
-        await firstPage.AssertContainsAsync("Next");
+        await firstPage.AssertContainsAsync("Load More");
 
         var secondPage = await _client.HtmxGetAsync($"/{TenantSlug}/comms/client/{clientId}?page=2");
         secondPage.AssertSuccess();

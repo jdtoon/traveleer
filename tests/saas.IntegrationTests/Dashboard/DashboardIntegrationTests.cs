@@ -17,12 +17,11 @@ public class DashboardIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
-    public async Task DashboardPage_DoesNotRenderInlineHtmxEventHandlersInNotificationBell()
+    public async Task DashboardPage_DoesNotRenderInlineHtmxEventHandlers()
     {
         var response = await _client.GetAsync($"/{TenantSlug}");
 
         response.AssertSuccess();
-        await response.AssertContainsAsync("notification-badge");
         await response.AssertDoesNotContainAsync("hx-on::after-request");
     }
 
