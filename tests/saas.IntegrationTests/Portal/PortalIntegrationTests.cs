@@ -144,6 +144,8 @@ public class PortalIntegrationTests : IClassFixture<AppFixture>
         response.AssertSuccess();
         await response.AssertContainsAsync("Welcome");
         await response.AssertContainsAsync("Bookings");
+        await response.AssertContainsAsync("/_content/Swap.Htmx/js/swap.client.js");
+        await response.AssertDoesNotContainAsync("/_content/Swap.Htmx/js/swap.js");
     }
 
     [Fact]

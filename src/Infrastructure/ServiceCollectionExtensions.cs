@@ -18,6 +18,23 @@ namespace saas.Infrastructure;
 
 public static class ServiceCollectionExtensions
 {
+    private static string ResolveSqliteConnectionString(string? connectionString, string fallbackPath, string contentRootPath)
+    {
+        var candidate = string.IsNullOrWhiteSpace(connectionString)
+            ? $"Data Source={fallbackPath}"
+            : connectionString;
+
+        const string prefix = "Data Source=";
+        if (!candidate.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return candidate;
+
+        var dbPath = candidate[prefix.Length..].Trim();
+        if (string.IsNullOrWhiteSpace(dbPath) || Path.IsPathRooted(dbPath) || dbPath == ":memory:")
+            return candidate;
+
+        return $"Data Source={Path.Combine(contentRootPath, dbPath)}";
+    }
+
     public static IServiceCollection AddDataProtectionConfig(this IServiceCollection services, IWebHostEnvironment environment)
     {
         var keysPath = Path.Combine(environment.ContentRootPath, "db", "keys");
@@ -65,8 +82,13 @@ public static class ServiceCollectionExtensions
         // CoreDbContext — fixed connection string
         services.AddDbContext<CoreDbContext>((serviceProvider, options) =>
         {
+            var coreConnectionString = ResolveSqliteConnectionString(
+                configuration.GetConnectionString("CoreDatabase"),
+                Path.Combine("db", "core.db"),
+                environment.ContentRootPath);
+
             options.UseSqlite(
-                configuration.GetConnectionString("CoreDatabase") ?? $"Data Source={Path.Combine(dataPath, "core.db")}",
+                coreConnectionString,
                 sql => sql.MigrationsAssembly(typeof(CoreDbContext).Assembly.FullName)
             ).AddInterceptors(walInterceptor);
 
@@ -76,9 +98,14 @@ public static class ServiceCollectionExtensions
         });
 
         // AuditDbContext — fixed connection string
+        var auditConnectionString = ResolveSqliteConnectionString(
+            configuration.GetConnectionString("AuditDatabase"),
+            Path.Combine("db", "audit.db"),
+            environment.ContentRootPath);
+
         services.AddDbContext<AuditDbContext>(options =>
             options.UseSqlite(
-                configuration.GetConnectionString("AuditDatabase") ?? $"Data Source={Path.Combine(dataPath, "audit.db")}",
+                auditConnectionString,
                 sql => sql.MigrationsAssembly(typeof(AuditDbContext).Assembly.FullName)
             ).AddInterceptors(walInterceptor));
 

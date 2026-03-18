@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -20,6 +21,8 @@ namespace saas.IntegrationTests.Fixtures;
 /// </summary>
 public class AppFixture : IDisposable
 {
+    private static readonly string SourceRoot = ResolveSourceRoot();
+
     public WebApplicationFactory<Program> Factory { get; }
 
     private TestUserData? _adminUser;
@@ -37,6 +40,7 @@ public class AppFixture : IDisposable
         Factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseSetting(WebHostDefaults.ContentRootKey, SourceRoot);
                 builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Development");
                 builder.UseSetting("DevSeed:Enabled", "true");
                 builder.UseSetting("DevSeed:TenantSlug", "demo");
@@ -47,6 +51,10 @@ public class AppFixture : IDisposable
                 builder.UseSetting("Turnstile:Provider", "Mock");
                 builder.UseSetting("Email:Provider", "Console");
                 builder.UseSetting("Storage:Provider", "Local");
+                builder.UseSetting("ConnectionStrings:CoreDatabase", $"Data Source={Path.Combine(SourceRoot, "db", "core.db")}");
+                builder.UseSetting("ConnectionStrings:AuditDatabase", $"Data Source={Path.Combine(SourceRoot, "db", "audit.db")}");
+                builder.UseSetting("Tenancy:DatabasePath", Path.Combine(SourceRoot, "db", "tenants"));
+                builder.UseSetting("Storage:LocalBasePath", Path.Combine(SourceRoot, "db", "uploads"));
 
                 builder.ConfigureAppConfiguration((_, configBuilder) =>
                 {
@@ -69,6 +77,21 @@ public class AppFixture : IDisposable
             AuthSchemes.Tenant, BuildTenantClaims(_memberUser!, "demo")));
         _superAdminFactory = new(() => CreateDerivedFactory(
             AuthSchemes.SuperAdmin, BuildSuperAdminClaims(_adminUser!)));
+    }
+
+    private static string ResolveSourceRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(directory.FullName, "src", "saas.csproj");
+            if (File.Exists(candidate))
+                return Path.Combine(directory.FullName, "src");
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate the src directory for integration tests.");
     }
 
     private void LoadTestUserData()

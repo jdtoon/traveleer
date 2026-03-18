@@ -54,8 +54,7 @@ public class TaskController : SwapController
     [HasPermission(TaskPermissions.TasksCreate)]
     public async Task<IActionResult> New(string? linkedEntityType, Guid? linkedEntityId)
     {
-        var users = await _adminService.GetUsersAsync(page: 1, pageSize: 100);
-        ViewBag.Users = users.Items;
+        await PopulateUsersAsync();
         var dto = new CreateTaskDto
         {
             LinkedEntityType = linkedEntityType,
@@ -69,6 +68,15 @@ public class TaskController : SwapController
     [HasPermission(TaskPermissions.TasksCreate)]
     public async Task<IActionResult> Create([FromForm] CreateTaskDto dto)
     {
+        if (!ModelState.IsValid)
+        {
+            await PopulateUsersAsync();
+            return SwapResponse()
+                .WithErrorToast("Please fix the errors below.")
+                .WithView("_CreateForm", dto)
+                .Build();
+        }
+
         var userId = _currentUser.UserId ?? string.Empty;
         await _taskService.CreateAsync(dto, userId);
         return SwapResponse()
@@ -85,8 +93,7 @@ public class TaskController : SwapController
         var task = await _taskService.GetByIdAsync(id);
         if (task == null) return NotFound();
 
-        var users = await _adminService.GetUsersAsync(page: 1, pageSize: 100);
-        ViewBag.Users = users.Items;
+        await PopulateUsersAsync();
 
         var dto = new EditTaskDto
         {
@@ -109,12 +116,28 @@ public class TaskController : SwapController
     public async Task<IActionResult> Update(Guid id, [FromForm] EditTaskDto dto)
     {
         dto.Id = id;
+
+        if (!ModelState.IsValid)
+        {
+            await PopulateUsersAsync();
+            return SwapResponse()
+                .WithErrorToast("Please fix the errors below.")
+                .WithView("_EditForm", dto)
+                .Build();
+        }
+
         await _taskService.UpdateAsync(dto);
         return SwapResponse()
             .WithView("_ModalClose")
             .WithSuccessToast("Task updated.")
             .WithTrigger(TaskEvents.Refresh)
             .Build();
+    }
+
+    private async Task PopulateUsersAsync()
+    {
+        var users = await _adminService.GetUsersAsync(page: 1, pageSize: 100);
+        ViewBag.Users = users.Items;
     }
 
     [HttpPost("{slug}/tasks/complete/{id:guid}")]

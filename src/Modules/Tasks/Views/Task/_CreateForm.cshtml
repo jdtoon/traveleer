@@ -16,24 +16,26 @@
             <div class="flex flex-col gap-3">
                 <div class="form-control w-full">
                     <label class="label"><span class="label-text">Title</span></label>
-                    <input type="text" name="Title" class="input input-bordered w-full" required maxlength="200" />
+                    <input type="text" name="Title" value="@Model.Title" class="input input-bordered w-full" required maxlength="200" />
+                    <span asp-validation-for="Title" class="text-error text-sm mt-1"></span>
                 </div>
                 <div class="form-control w-full">
                     <label class="label"><span class="label-text">Description</span></label>
-                    <textarea name="Description" class="textarea textarea-bordered w-full" maxlength="2000" rows="3"></textarea>
+                    <textarea name="Description" class="textarea textarea-bordered w-full" maxlength="2000" rows="3">@Model.Description</textarea>
+                    <span asp-validation-for="Description" class="text-error text-sm mt-1"></span>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div class="form-control w-full">
                         <label class="label"><span class="label-text">Due Date</span></label>
-                        <input type="date" name="DueDate" class="input input-bordered w-full" />
+                        <input type="date" name="DueDate" value="@Model.DueDate?.ToString("yyyy-MM-dd")" class="input input-bordered w-full" />
                     </div>
                     <div class="form-control w-full">
                         <label class="label"><span class="label-text">Priority</span></label>
                         <select name="Priority" class="select select-bordered w-full">
-                            <option value="0">Low</option>
-                            <option value="1" selected>Normal</option>
-                            <option value="2">High</option>
-                            <option value="3">Urgent</option>
+                            <option value="0" selected="@(Model.Priority == TaskPriority.Low ? "selected" : null)">Low</option>
+                            <option value="1" selected="@(Model.Priority == TaskPriority.Normal ? "selected" : null)">Normal</option>
+                            <option value="2" selected="@(Model.Priority == TaskPriority.High ? "selected" : null)">High</option>
+                            <option value="3" selected="@(Model.Priority == TaskPriority.Urgent ? "selected" : null)">Urgent</option>
                         </select>
                     </div>
                 </div>
@@ -43,7 +45,7 @@
                         <option value="">Unassigned</option>
                         @foreach (var u in users.Where(u => u.IsActive))
                         {
-                            <option value="@u.Id">@(u.DisplayName ?? u.Email)</option>
+                            <option value="@u.Id" selected="@(Model.AssigneeUserId == u.Id ? "selected" : null)">@(u.DisplayName ?? u.Email)</option>
                         }
                     </select>
                 </div>

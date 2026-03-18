@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using saas.Modules.Tasks.Entities;
 
 namespace saas.Modules.Tasks.DTOs;
@@ -26,7 +27,11 @@ public class TaskListItemDto
 
 public class CreateTaskDto
 {
+    [Required]
+    [StringLength(200)]
     public string Title { get; set; } = string.Empty;
+
+    [StringLength(2000)]
     public string? Description { get; set; }
     public DateOnly? DueDate { get; set; }
     public TaskPriority Priority { get; set; } = TaskPriority.Normal;
@@ -38,7 +43,12 @@ public class CreateTaskDto
 public class EditTaskDto
 {
     public Guid Id { get; set; }
+
+    [Required]
+    [StringLength(200)]
     public string Title { get; set; } = string.Empty;
+
+    [StringLength(2000)]
     public string? Description { get; set; }
     public DateOnly? DueDate { get; set; }
     public TaskPriority Priority { get; set; }

@@ -110,6 +110,31 @@ public class TaskIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
+    public async Task CreateTask_WhenTitleMissing_ReturnsFormWithValidationAndDoesNotPersist()
+    {
+        await using var db = OpenTenantDb();
+        var taskCountBefore = await db.AgentTasks.CountAsync();
+
+        var formResponse = await _client.HtmxGetAsync($"/{TenantSlug}/tasks/new");
+        formResponse.AssertSuccess();
+
+        var response = await _client.SubmitFormAsync(formResponse, "form", new Dictionary<string, string>
+        {
+            ["Title"] = string.Empty,
+            ["Description"] = "Should not save",
+            ["Priority"] = "1"
+        });
+
+        response.AssertSuccess();
+        await response.AssertPartialViewAsync();
+        await response.AssertContainsAsync("The Title field is required.");
+        await response.AssertContainsAsync("New Task");
+
+        var taskCountAfter = await db.AgentTasks.CountAsync();
+        Assert.Equal(taskCountBefore, taskCountAfter);
+    }
+
+    [Fact]
     public async Task TaskList_ShowsCreatedTask()
     {
         var entityType = $"Entity-{Guid.NewGuid():N}"[..16];
