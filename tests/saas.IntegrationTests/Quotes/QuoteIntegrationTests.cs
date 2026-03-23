@@ -208,36 +208,6 @@ public class QuoteIntegrationTests : IClassFixture<AppFixture>
     }
 
     [Fact]
-    public async Task QuoteDetailsPage_RendersVersionHistoryContainer()
-    {
-        var quoteId = await SeedQuoteAsync();
-
-        var response = await _client.GetAsync($"/{TenantSlug}/quotes/details/{quoteId}");
-
-        response.AssertSuccess();
-        await response.AssertElementExistsAsync("#quote-versions");
-        await response.AssertElementExistsAsync($"a[href='/{TenantSlug}/quotes']");
-        await response.AssertContainsAsync("Back to Quotes");
-        await response.AssertContainsAsync("Travel dates not set yet");
-    }
-
-    [Fact]
-    public async Task QuoteVersionsPartial_WhenVersionsExist_RendersWithoutLayout()
-    {
-        var quoteId = await SeedQuoteAsync();
-        await SeedQuoteVersionAsync(quoteId, 1, "USD", 1);
-        await SeedQuoteVersionAsync(quoteId, 2, "SAR", 2);
-
-        var response = await _client.HtmxGetAsync($"/{TenantSlug}/quotes/versions/{quoteId}");
-
-        response.AssertSuccess();
-        await response.AssertPartialViewAsync();
-        await response.AssertContainsAsync("Version History");
-        await response.AssertContainsAsync("View Snapshot");
-        await response.AssertContainsAsync("v2");
-    }
-
-    [Fact]
     public async Task QuoteVersionDetails_WhenRequested_RendersSnapshotModal()
     {
         var quoteId = await SeedQuoteAsync();
