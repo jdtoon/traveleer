@@ -98,11 +98,11 @@ public class SuperAdminAuthController : SwapController
         {
             var payload = $"{admin.Id}|{DateTime.UtcNow.AddMinutes(5):O}";
             var challengeToken = _twoFactorProtector.Protect(payload);
-            return Redirect($"/super-admin/two-factor-challenge?t={Uri.EscapeDataString(challengeToken)}");
+            return AuthRedirects.Redirect(this, $"/super-admin/two-factor-challenge?t={Uri.EscapeDataString(challengeToken)}");
         }
 
         await SignInAdminAsync(admin);
-        return Redirect("/super-admin");
+        return AuthRedirects.Redirect(this, "/super-admin");
     }
 
     // ── Password Login ─────────────────────────────────────────────────────
@@ -136,11 +136,11 @@ public class SuperAdminAuthController : SwapController
         {
             var payload = $"{admin.Id}|{DateTime.UtcNow.AddMinutes(5):O}";
             var challengeToken = _twoFactorProtector.Protect(payload);
-            return Redirect($"/super-admin/two-factor-challenge?t={Uri.EscapeDataString(challengeToken)}");
+            return AuthRedirects.Redirect(this, $"/super-admin/two-factor-challenge?t={Uri.EscapeDataString(challengeToken)}");
         }
 
         await SignInAdminAsync(admin);
-        return Redirect("/super-admin");
+        return AuthRedirects.Redirect(this, "/super-admin");
     }
 
     // ── Forgot Password ────────────────────────────────────────────────────
@@ -230,7 +230,7 @@ public class SuperAdminAuthController : SwapController
         admin.PasswordResetTokenExpiry = null;
         await _coreDb.SaveChangesAsync();
 
-        return Redirect("/super-admin/login?passwordReset=true");
+        return AuthRedirects.Redirect(this, "/super-admin/login?passwordReset=true");
     }
 
     // ── Two-Factor Challenge ────────────────────────────────────────────────
@@ -258,7 +258,7 @@ public class SuperAdminAuthController : SwapController
     {
         var parsed = ValidateChallengeToken(t);
         if (parsed is null)
-            return Redirect("/super-admin/login");
+            return AuthRedirects.Redirect(this, "/super-admin/login");
 
         ViewData["ChallengeToken"] = t;
         return SwapView(SwapViews.SuperAdminAuth.SuperAdminTwoFactorChallenge);
@@ -269,7 +269,7 @@ public class SuperAdminAuthController : SwapController
     {
         var parsed = ValidateChallengeToken(challengeToken);
         if (parsed is null)
-            return Redirect("/super-admin/login");
+            return AuthRedirects.Redirect(this, "/super-admin/login");
 
         var admin = await _coreDb.SuperAdmins.FindAsync(Guid.Parse(parsed.Value.AdminId));
         if (admin is null || !admin.IsActive)
@@ -293,7 +293,7 @@ public class SuperAdminAuthController : SwapController
         }
 
         await SignInAdminAsync(admin);
-        return Redirect("/super-admin");
+        return AuthRedirects.Redirect(this, "/super-admin");
     }
 
     private async Task SignInAdminAsync(Modules.SuperAdmin.Entities.SuperAdmin admin)
@@ -315,13 +315,13 @@ public class SuperAdminAuthController : SwapController
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutAsync(AuthSchemes.SuperAdmin);
-        return Redirect("/super-admin/login");
+        return AuthRedirects.Redirect(this, "/super-admin/login");
     }
 
     [HttpGet("logout")]
     public async Task<IActionResult> LogoutGet()
     {
         await HttpContext.SignOutAsync(AuthSchemes.SuperAdmin);
-        return Redirect("/super-admin/login");
+        return AuthRedirects.Redirect(this, "/super-admin/login");
     }
 }

@@ -229,7 +229,7 @@ public class TenantAuthController : SwapController
             return SwapView(SwapViews.TenantAuth.ResetPassword, model: error);
         }
 
-        return Redirect($"/{slug}/login?passwordReset=true");
+        return AuthRedirects.Redirect(this, $"/{slug}/login?passwordReset=true");
     }
 
     // ── Two-Factor Challenge (unauthenticated) ─────────────────────────────
@@ -261,7 +261,7 @@ public class TenantAuthController : SwapController
     {
         var parsed = ValidateChallengeToken(t);
         if (parsed is null || !string.Equals(parsed.Value.Slug, slug, StringComparison.OrdinalIgnoreCase))
-            return Redirect($"/{slug}/login");
+            return AuthRedirects.Redirect(this, $"/{slug}/login");
 
         ViewData["TenantSlug"] = slug;
         ViewData["ChallengeToken"] = t;
@@ -273,7 +273,7 @@ public class TenantAuthController : SwapController
     {
         var parsed = ValidateChallengeToken(challengeToken);
         if (parsed is null || !string.Equals(parsed.Value.Slug, slug, StringComparison.OrdinalIgnoreCase))
-            return Redirect($"/{slug}/login");
+            return AuthRedirects.Redirect(this, $"/{slug}/login");
 
         var userId = parsed.Value.UserId;
         var user = await _userManager.FindByIdAsync(userId);
@@ -314,7 +314,7 @@ public class TenantAuthController : SwapController
         {
             var payload = $"{user.Id}|{slug}|{DateTime.UtcNow.AddMinutes(5):O}";
             var challengeToken = _twoFactorProtector.Protect(payload);
-            return Redirect($"/{slug}/two-factor-challenge?t={Uri.EscapeDataString(challengeToken)}");
+            return AuthRedirects.Redirect(this, $"/{slug}/two-factor-challenge?t={Uri.EscapeDataString(challengeToken)}");
         }
 
         return await CompleteSignInAsync(user, slug);
@@ -396,7 +396,7 @@ public class TenantAuthController : SwapController
         }
         catch { /* Don't block login if event publish fails */ }
 
-        return Redirect($"/{slug}");
+        return AuthRedirects.Redirect(this, $"/{slug}");
     }
 
     private static string ParseDeviceInfo(string userAgent)
@@ -423,13 +423,13 @@ public class TenantAuthController : SwapController
     public async Task<IActionResult> Logout([FromRoute] string slug)
     {
         await HttpContext.SignOutAsync(AuthSchemes.Tenant);
-        return Redirect($"/{slug}/login");
+        return AuthRedirects.Redirect(this, $"/{slug}/login");
     }
 
     [HttpGet("logout")]
     public async Task<IActionResult> LogoutGet([FromRoute] string slug)
     {
         await HttpContext.SignOutAsync(AuthSchemes.Tenant);
-        return Redirect($"/{slug}/login");
+        return AuthRedirects.Redirect(this, $"/{slug}/login");
     }
 }
