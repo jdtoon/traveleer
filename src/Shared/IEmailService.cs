@@ -7,6 +7,7 @@ public interface IEmailService
 {
     Task SendAsync(EmailMessage message);
     Task SendMagicLinkAsync(string to, string magicLinkUrl);
+    Task SendPasswordResetAsync(string to, string resetUrl);
 }
 
 public record EmailMessage(

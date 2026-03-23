@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using saas.Modules.Billing.Entities;
 using saas.Modules.FeatureFlags.Entities;
@@ -13,7 +14,7 @@ namespace saas.Data.Core;
 /// </summary>
 public static class CoreDataSeeder
 {
-    public static async Task SeedAsync(CoreDbContext db, IConfiguration configuration, IReadOnlyList<IModule> modules)
+    public static async Task SeedAsync(CoreDbContext db, IConfiguration configuration, IReadOnlyList<IModule> modules, IPasswordHasher<SuperAdmin>? passwordHasher = null)
     {
         if (await db.Plans.AnyAsync())
         {
@@ -114,14 +115,20 @@ public static class CoreDataSeeder
 
         // 4. Seed default Super Admin
         var adminEmail = configuration.GetValue<string>("SuperAdmin:Email") ?? "admin@localhost";
-        db.SuperAdmins.Add(new SuperAdmin
+        var adminPassword = configuration.GetValue<string>("SuperAdmin:Password");
+
+        var superAdmin = new SuperAdmin
         {
             Id = Guid.NewGuid(),
             Email = adminEmail,
             DisplayName = "Super Admin",
             IsActive = true
-        });
+        };
 
+        if (passwordHasher is not null && !string.IsNullOrWhiteSpace(adminPassword))
+            superAdmin.PasswordHash = passwordHasher.HashPassword(superAdmin, adminPassword);
+
+        db.SuperAdmins.Add(superAdmin);
         await db.SaveChangesAsync();
     }
 

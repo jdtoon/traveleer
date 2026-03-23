@@ -133,6 +133,9 @@ public static class ServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddOptions<AuthOptions>()
+            .BindConfiguration(AuthOptions.SectionName);
+
         // Provider switching for Email & BotProtection
         var emailProvider = configuration.GetValue<string>("Email:Provider") ?? "Console";
         if (emailProvider.Equals("Smtp", StringComparison.OrdinalIgnoreCase))
@@ -167,6 +170,10 @@ public static class ServiceCollectionExtensions
 
         services.AddAuthentication();
         services.AddAuthorization();
+
+        // PasswordHasher for SuperAdmin (not an IdentityUser — needs explicit registration)
+        services.AddSingleton<Microsoft.AspNetCore.Identity.IPasswordHasher<saas.Modules.SuperAdmin.Entities.SuperAdmin>,
+            Microsoft.AspNetCore.Identity.PasswordHasher<saas.Modules.SuperAdmin.Entities.SuperAdmin>>();
 
         return services;
     }

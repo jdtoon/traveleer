@@ -241,6 +241,7 @@ public class TenantAdminServiceTests : IAsyncLifetime
             return Task.CompletedTask;
         }
 
+        public Task SendPasswordResetAsync(string to, string resetUrl) => Task.CompletedTask;
         public Task SendMagicLinkAsync(string to, string magicLinkUrl)
         {
             SentLinks.Add((to, magicLinkUrl));

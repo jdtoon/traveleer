@@ -70,4 +70,18 @@ public class MailerSendEmailService : IEmailService
             HtmlBody: htmlBody,
             PlainTextBody: plainText));
     }
+
+    public Task SendPasswordResetAsync(string to, string resetUrl)
+    {
+        var htmlBody = _templateService.Render("PasswordReset", new Dictionary<string, string>
+        {
+            ["ResetUrl"] = resetUrl
+        });
+
+        return SendAsync(new EmailMessage(
+            To: to,
+            Subject: "Reset your password",
+            HtmlBody: htmlBody,
+            PlainTextBody: $"Reset your password using this link: {resetUrl}"));
+    }
 }

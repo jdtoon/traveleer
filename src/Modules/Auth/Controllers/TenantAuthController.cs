@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Threading.RateLimiting;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using saas.Data.Tenant;
 using saas.Modules.Auth.Entities;
 using saas.Modules.Auth.Services;
@@ -30,6 +32,7 @@ public class TenantAuthController : SwapController
     private readonly ITenantContext _tenantContext;
     private readonly TwoFactorService _twoFactorService;
     private readonly IDataProtector _twoFactorProtector;
+    private readonly AuthOptions _authOptions;
 
     private const string TwoFactorPurpose = "2FA-Challenge";
 
@@ -43,7 +46,8 @@ public class TenantAuthController : SwapController
         IPublishEndpoint publishEndpoint,
         ITenantContext tenantContext,
         TwoFactorService twoFactorService,
-        IDataProtectionProvider dataProtection)
+        IDataProtectionProvider dataProtection,
+        IOptions<AuthOptions> authOptions)
     {
         _magicLinks = magicLinks;
         _email = email;
@@ -55,19 +59,25 @@ public class TenantAuthController : SwapController
         _tenantContext = tenantContext;
         _twoFactorService = twoFactorService;
         _twoFactorProtector = dataProtection.CreateProtector(TwoFactorPurpose);
+        _authOptions = authOptions.Value;
     }
 
     [HttpGet("login")]
     public IActionResult Login([FromRoute] string slug)
     {
         ViewData["TenantSlug"] = slug;
-        return SwapView(SwapViews.TenantAuth.TenantLogin);
+        return _authOptions.IsPasswordLogin
+            ? SwapView(SwapViews.TenantAuth.TenantPasswordLogin)
+            : SwapView(SwapViews.TenantAuth.TenantLogin);
     }
 
     [HttpPost("login")]
     [EnableRateLimiting("strict")]
     public async Task<IActionResult> LoginPost([FromRoute] string slug, [FromForm] string email, [FromForm] string? captchaToken)
     {
+        if (!_authOptions.IsMagicLinkLogin)
+            return NotFound();
+
         if (!await _botProtection.ValidateAsync(captchaToken))
         {
             ViewData["TenantSlug"] = slug;
@@ -108,91 +118,118 @@ public class TenantAuthController : SwapController
         if (!user.IsActive)
             return SwapView(SwapViews.Shared.MagicLinkError, "This account has been deactivated. Please contact your administrator.");
 
-        var roles = await _userManager.GetRolesAsync(user);
+        return await SignInOrChallengeTenantUserAsync(user, slug);
+    }
 
-        // Load role IDs for the user's roles
-        var roleIds = await _tenantDb.Roles
-            .Where(r => roles.Contains(r.Name!))
-            .Select(r => r.Id)
-            .ToListAsync();
+    // ── Password Login ─────────────────────────────────────────────────────
 
-        // Load permissions for those roles
-        var permissionKeys = await _tenantDb.RolePermissions
-            .Where(rp => roleIds.Contains(rp.RoleId))
-            .Select(rp => rp.Permission.Key)
-            .Distinct()
-            .ToListAsync();
+    [HttpPost("login/password")]
+    [EnableRateLimiting("strict")]
+    public async Task<IActionResult> PasswordLoginPost([FromRoute] string slug, [FromForm] string email, [FromForm] string password, [FromForm] string? captchaToken)
+    {
+        if (!_authOptions.IsPasswordLogin)
+            return NotFound();
 
-        var claims = new List<Claim>
+        if (!await _botProtection.ValidateAsync(captchaToken))
         {
-            new(ClaimTypes.NameIdentifier, user.Id),
-            new(ClaimTypes.Email, user.Email ?? string.Empty),
-            new(AuthClaims.TenantSlug, slug)
-        };
-
-        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
-        claims.AddRange(permissionKeys.Select(p => new Claim(AuthClaims.Permission, p)));
-
-        // Check if 2FA is enabled — redirect to 2FA challenge instead of completing login
-        if (user.IsTwoFactorEnabled)
-        {
-            // Create a signed, time-limited token containing the user ID and slug
-            var payload = $"{user.Id}|{slug}|{DateTime.UtcNow.AddMinutes(5):O}";
-            var challengeToken = _twoFactorProtector.Protect(payload);
-            return Redirect($"/{slug}/two-factor-challenge?t={Uri.EscapeDataString(challengeToken)}");
+            ViewData["TenantSlug"] = slug;
+            return SwapView(SwapViews.TenantAuth.TenantPasswordLogin, model: "Bot verification failed. Please try again.");
         }
 
-        // Track session
-        Guid sessionId = Guid.NewGuid();
-        try
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            var session = new UserSession
-            {
-                Id = sessionId,
-                UserId = user.Id,
-                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                UserAgent = Request.Headers.UserAgent.ToString(),
-                DeviceInfo = ParseDeviceInfo(Request.Headers.UserAgent.ToString()),
-                CreatedAt = DateTime.UtcNow,
-                LastActivityAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddHours(12)
-            };
-            _tenantDb.Set<UserSession>().Add(session);
-            await _tenantDb.SaveChangesAsync();
+            ViewData["TenantSlug"] = slug;
+            return SwapView(SwapViews.TenantAuth.TenantPasswordLogin, model: "Email and password are required.");
         }
-        catch { /* Don't block login if session tracking fails */ }
 
-        // Add session ID to claims so middleware can validate it
-        claims.Add(new Claim(AuthClaims.SessionId, sessionId.ToString()));
-
-        var identity = new ClaimsIdentity(claims, AuthSchemes.Tenant);
-        var principal = new ClaimsPrincipal(identity);
-
-        await HttpContext.SignInAsync(AuthSchemes.Tenant, principal);
-
-        // Send login notification
-        try
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user is null || !user.IsActive || !await _userManager.CheckPasswordAsync(user, password))
         {
-            var device = ParseDeviceInfo(Request.Headers.UserAgent.ToString());
-            await _notifications.SendAsync(user.Id, "Sign-in detected",
-                $"You signed in from {device}",
-                $"/{slug}/Session");
+            ViewData["TenantSlug"] = slug;
+            return SwapView(SwapViews.TenantAuth.TenantPasswordLogin, model: "Invalid email or password.");
         }
-        catch { /* Don't block login if notification fails */ }
 
-        // Publish domain event
-        try
+        return await SignInOrChallengeTenantUserAsync(user, slug);
+    }
+
+    // ── Forgot Password ────────────────────────────────────────────────────
+
+    [HttpGet("forgot-password")]
+    public IActionResult ForgotPassword([FromRoute] string slug)
+    {
+        if (!_authOptions.IsPasswordLogin)
+            return NotFound();
+
+        ViewData["TenantSlug"] = slug;
+        return SwapView(SwapViews.TenantAuth.ForgotPassword);
+    }
+
+    [HttpPost("forgot-password")]
+    [EnableRateLimiting("strict")]
+    public async Task<IActionResult> ForgotPasswordPost([FromRoute] string slug, [FromForm] string email)
+    {
+        if (!_authOptions.IsPasswordLogin)
+            return NotFound();
+
+        ViewData["TenantSlug"] = slug;
+
+        // Always show the same view to prevent email enumeration
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user is not null && user.IsActive)
         {
-            await _publishEndpoint.Publish(new UserLoggedInEvent(
-                UserId: user.Id,
-                Email: user.Email ?? string.Empty,
-                TenantId: _tenantContext.TenantId ?? Guid.Empty,
-                Slug: slug,
-                LoggedInAtUtc: DateTime.UtcNow));
-        }
-        catch { /* Don't block login if event publish fails */ }
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var resetUrl = Url.Action("ResetPassword", "TenantAuth",
+                new { slug, email = user.Email, token },
+                Request.Scheme) ?? "/";
 
-        return Redirect($"/{slug}");
+            try { await _email.SendPasswordResetAsync(user.Email!, resetUrl); }
+            catch { /* Don't block response if email fails */ }
+        }
+
+        return SwapView(SwapViews.Shared.PasswordResetSent);
+    }
+
+    // ── Reset Password ─────────────────────────────────────────────────────
+
+    [HttpGet("reset-password")]
+    public IActionResult ResetPassword([FromRoute] string slug, [FromQuery] string email, [FromQuery] string token)
+    {
+        if (!_authOptions.IsPasswordLogin)
+            return NotFound();
+
+        ViewData["TenantSlug"] = slug;
+        ViewData["Email"] = email;
+        ViewData["Token"] = token;
+        return SwapView(SwapViews.TenantAuth.ResetPassword);
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPasswordPost([FromRoute] string slug,
+        [FromForm] string email, [FromForm] string token,
+        [FromForm] string newPassword, [FromForm] string confirmPassword)
+    {
+        if (!_authOptions.IsPasswordLogin)
+            return NotFound();
+
+        ViewData["TenantSlug"] = slug;
+        ViewData["Email"] = email;
+        ViewData["Token"] = token;
+
+        if (newPassword != confirmPassword)
+            return SwapView(SwapViews.TenantAuth.ResetPassword, model: "Passwords do not match.");
+
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user is null)
+            return SwapView(SwapViews.TenantAuth.ResetPassword, model: "Invalid request.");
+
+        var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+        if (!result.Succeeded)
+        {
+            var error = result.Errors.FirstOrDefault()?.Description ?? "Failed to reset password.";
+            return SwapView(SwapViews.TenantAuth.ResetPassword, model: error);
+        }
+
+        return Redirect($"/{slug}/login?passwordReset=true");
     }
 
     // ── Two-Factor Challenge (unauthenticated) ─────────────────────────────
@@ -263,7 +300,34 @@ public class TenantAuthController : SwapController
         }
 
         // 2FA passed — complete the sign-in flow
+        return await CompleteSignInAsync(user, slug);
+    }
+
+    // ── Shared Sign-In Helpers ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Checks 2FA and either redirects to the challenge page or completes sign-in.
+    /// </summary>
+    private async Task<IActionResult> SignInOrChallengeTenantUserAsync(AppUser user, string slug)
+    {
+        if (user.IsTwoFactorEnabled)
+        {
+            var payload = $"{user.Id}|{slug}|{DateTime.UtcNow.AddMinutes(5):O}";
+            var challengeToken = _twoFactorProtector.Protect(payload);
+            return Redirect($"/{slug}/two-factor-challenge?t={Uri.EscapeDataString(challengeToken)}");
+        }
+
+        return await CompleteSignInAsync(user, slug);
+    }
+
+    /// <summary>
+    /// Builds claims, tracks session, signs in, sends notification and publishes event.
+    /// Called after both magic-link verify and 2FA challenge completion.
+    /// </summary>
+    private async Task<IActionResult> CompleteSignInAsync(AppUser user, string slug)
+    {
         var roles = await _userManager.GetRolesAsync(user);
+
         var roleIds = await _tenantDb.Roles
             .Where(r => roles.Contains(r.Name!))
             .Select(r => r.Id)
@@ -315,7 +379,7 @@ public class TenantAuthController : SwapController
         {
             var device = ParseDeviceInfo(Request.Headers.UserAgent.ToString());
             await _notifications.SendAsync(user.Id, "Sign-in detected",
-                $"You signed in from {device} (2FA verified)",
+                $"You signed in from {device}",
                 $"/{slug}/Session");
         }
         catch { /* Don't block login if notification fails */ }

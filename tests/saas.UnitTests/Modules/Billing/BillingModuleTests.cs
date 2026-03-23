@@ -160,5 +160,6 @@ public class BillingModuleTests
     {
         public Task SendAsync(EmailMessage message) => Task.CompletedTask;
         public Task SendMagicLinkAsync(string to, string magicLinkUrl) => Task.CompletedTask;
+        public Task SendPasswordResetAsync(string to, string resetUrl) => Task.CompletedTask;
     }
 }

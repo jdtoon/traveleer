@@ -52,7 +52,9 @@ public static class ApplicationBuilderExtensions
 
             // Seed core data (features collected from modules + plans + super admin)
             var modules = scope.ServiceProvider.GetRequiredService<IReadOnlyList<IModule>>();
-            await CoreDataSeeder.SeedAsync(coreDb, app.Configuration, modules);
+            var superAdminPasswordHasher = scope.ServiceProvider
+                .GetService<Microsoft.AspNetCore.Identity.IPasswordHasher<saas.Modules.SuperAdmin.Entities.SuperAdmin>>();
+            await CoreDataSeeder.SeedAsync(coreDb, app.Configuration, modules, superAdminPasswordHasher);
 
             // Sync permissions to all existing tenant DBs (idempotent)
             await SyncPermissionsToTenantsAsync(modules, logger);

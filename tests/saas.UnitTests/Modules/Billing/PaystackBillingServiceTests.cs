@@ -1063,6 +1063,7 @@ public class PaystackBillingServiceTests : IAsyncDisposable
         }
 
         public Task SendMagicLinkAsync(string to, string magicLinkUrl) => Task.CompletedTask;
+        public Task SendPasswordResetAsync(string to, string resetUrl) => Task.CompletedTask;
     }
 
     private class StubHttpHandler : HttpMessageHandler

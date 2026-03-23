@@ -30,6 +30,16 @@ public class SmtpEmailServiceTests
         await service.SendMagicLinkAsync("user@test.com", "https://example.com/magic");
     }
 
+    [Fact]
+    public async Task SendPasswordResetAsync_DelegatesToSendAsync()
+    {
+        var options = Options.Create(new EmailOptions { FromAddress = "" });
+        var service = new SmtpEmailService(options, _stubTemplateService, NullLogger<SmtpEmailService>.Instance);
+
+        // Should not throw — logs error when FromAddress is empty
+        await service.SendPasswordResetAsync("user@test.com", "https://example.com/reset?token=abc");
+    }
+
     private class StubEmailTemplateService : IEmailTemplateService
     {
         public string Render(string templateName, Dictionary<string, string> variables)

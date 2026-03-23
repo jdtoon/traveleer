@@ -15,6 +15,11 @@ public class SuperAdmin : IAuditableEntity
     public string? TwoFactorRecoveryCodes { get; set; }
     public bool IsTwoFactorEnabled { get; set; }
 
+    // Password authentication (optional — null means password login is not configured)
+    public string? PasswordHash { get; set; }
+    public string? PasswordResetToken { get; set; }
+    public DateTime? PasswordResetTokenExpiry { get; set; }
+
     // IAuditableEntity
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
