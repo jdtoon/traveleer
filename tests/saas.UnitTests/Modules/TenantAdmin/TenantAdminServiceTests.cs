@@ -246,6 +246,8 @@ public class TenantAdminServiceTests : IAsyncLifetime
             SentLinks.Add((to, magicLinkUrl));
             return Task.FromResult(EmailSendResult.Succeeded());
         }
+
+    public Task SendPasswordResetAsync(string to, string resetUrl) => Task.CompletedTask;
     }
 
     private class FakeFeatureService : IFeatureService

@@ -26,4 +26,16 @@ public class DevSeedOptions
 
     /// <summary>Plan slug to assign to the demo tenant.</summary>
     public string PlanSlug { get; set; } = "starter";
+
+    /// <summary>
+    /// Optional password for the demo admin user.
+    /// When set, UserManager.CreateAsync(user, password) is used so the user can log in with email + password.
+    /// When null, no password hash is set (suitable when LoginMethod = "MagicLink").
+    /// </summary>
+    public string? AdminPassword { get; set; }
+
+    /// <summary>
+    /// Optional password for the demo member user. See AdminPassword for details.
+    /// </summary>
+    public string? MemberPassword { get; set; }
 }

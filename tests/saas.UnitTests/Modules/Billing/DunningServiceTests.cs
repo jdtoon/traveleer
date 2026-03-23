@@ -271,6 +271,7 @@ public class DunningServiceTests : IAsyncDisposable
         }
 
         public Task<EmailSendResult> SendMagicLinkAsync(string to, string magicLinkUrl) => Task.FromResult(EmailSendResult.Succeeded());
+        public Task SendPasswordResetAsync(string to, string resetUrl) => Task.CompletedTask;
     }
 
     private class StubVariableChargeService : IVariableChargeService

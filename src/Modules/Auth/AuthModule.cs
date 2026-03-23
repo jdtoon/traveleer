@@ -45,10 +45,15 @@ public class AuthModule : IModule
         services.AddIdentityCore<AppUser>(options =>
             {
                 options.User.RequireUniqueEmail = true;
+                options.Password.RequiredLength = 8;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireDigit = false;
             })
             .AddRoles<AppRole>()
             .AddEntityFrameworkStores<TenantDbContext>()
-            .AddSignInManager();
+            .AddSignInManager()
+            .AddDefaultTokenProviders();
 
         services.AddAuthentication()
             .AddCookie(AuthSchemes.SuperAdmin, options =>

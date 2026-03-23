@@ -1,8 +1,11 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using saas.Data.Core;
 using saas.Modules.Auth.Services;
 using saas.Shared;
@@ -19,8 +22,11 @@ public class SuperAdminAuthController : SwapController
     private readonly IBotProtection _botProtection;
     private readonly SuperAdminTwoFactorService _twoFactorService;
     private readonly IDataProtector _twoFactorProtector;
+    private readonly IPasswordHasher<Modules.SuperAdmin.Entities.SuperAdmin> _passwordHasher;
+    private readonly AuthOptions _authOptions;
 
     private const string TwoFactorPurpose = "SA-2FA-Challenge";
+    private const int PasswordResetTokenExpiryMinutes = 60;
 
     public SuperAdminAuthController(
         CoreDbContext coreDb,
@@ -28,7 +34,9 @@ public class SuperAdminAuthController : SwapController
         IEmailService email,
         IBotProtection botProtection,
         SuperAdminTwoFactorService twoFactorService,
-        IDataProtectionProvider dataProtection)
+        IDataProtectionProvider dataProtection,
+        IPasswordHasher<Modules.SuperAdmin.Entities.SuperAdmin> passwordHasher,
+        IOptions<AuthOptions> authOptions)
     {
         _coreDb = coreDb;
         _magicLinks = magicLinks;
@@ -36,17 +44,24 @@ public class SuperAdminAuthController : SwapController
         _botProtection = botProtection;
         _twoFactorService = twoFactorService;
         _twoFactorProtector = dataProtection.CreateProtector(TwoFactorPurpose);
+        _passwordHasher = passwordHasher;
+        _authOptions = authOptions.Value;
     }
 
     [HttpGet("login")]
     public IActionResult Login()
     {
-        return SwapView(SwapViews.SuperAdminAuth.SuperAdminLogin);
+        return _authOptions.IsPasswordLogin
+            ? SwapView(SwapViews.SuperAdminAuth.SuperAdminPasswordLogin)
+            : SwapView(SwapViews.SuperAdminAuth.SuperAdminLogin);
     }
 
     [HttpPost("login")]
     public async Task<IActionResult> LoginPost([FromForm] string email, [FromForm] string? captchaToken)
     {
+        if (!_authOptions.IsMagicLinkLogin)
+            return NotFound();
+
         if (!await _botProtection.ValidateAsync(captchaToken))
             return SwapView(SwapViews.SuperAdminAuth.SuperAdminLogin, model: "Bot verification failed. Please try again.");
 
@@ -83,11 +98,139 @@ public class SuperAdminAuthController : SwapController
         {
             var payload = $"{admin.Id}|{DateTime.UtcNow.AddMinutes(5):O}";
             var challengeToken = _twoFactorProtector.Protect(payload);
-            return Redirect($"/super-admin/two-factor-challenge?t={Uri.EscapeDataString(challengeToken)}");
+            return AuthRedirects.Redirect(this, $"/super-admin/two-factor-challenge?t={Uri.EscapeDataString(challengeToken)}");
         }
 
         await SignInAdminAsync(admin);
-        return Redirect("/super-admin");
+        return AuthRedirects.Redirect(this, "/super-admin");
+    }
+
+    // ── Password Login ─────────────────────────────────────────────────────
+
+    [HttpPost("login/password")]
+    public async Task<IActionResult> PasswordLoginPost([FromForm] string email, [FromForm] string password, [FromForm] string? captchaToken)
+    {
+        if (!_authOptions.IsPasswordLogin)
+            return NotFound();
+
+        if (!await _botProtection.ValidateAsync(captchaToken))
+            return SwapView(SwapViews.SuperAdminAuth.SuperAdminPasswordLogin, model: "Bot verification failed. Please try again.");
+
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+            return SwapView(SwapViews.SuperAdminAuth.SuperAdminPasswordLogin, model: "Email and password are required.");
+
+        var admin = await _coreDb.SuperAdmins.FirstOrDefaultAsync(a => a.Email == email && a.IsActive);
+        if (admin is null || string.IsNullOrEmpty(admin.PasswordHash))
+        {
+            return SwapView(SwapViews.SuperAdminAuth.SuperAdminPasswordLogin, model: "Invalid email or password.");
+        }
+
+        var result = _passwordHasher.VerifyHashedPassword(admin, admin.PasswordHash, password);
+        if (result == PasswordVerificationResult.Failed)
+            return SwapView(SwapViews.SuperAdminAuth.SuperAdminPasswordLogin, model: "Invalid email or password.");
+
+        admin.LastLoginAt = DateTime.UtcNow;
+        await _coreDb.SaveChangesAsync();
+
+        if (admin.IsTwoFactorEnabled)
+        {
+            var payload = $"{admin.Id}|{DateTime.UtcNow.AddMinutes(5):O}";
+            var challengeToken = _twoFactorProtector.Protect(payload);
+            return AuthRedirects.Redirect(this, $"/super-admin/two-factor-challenge?t={Uri.EscapeDataString(challengeToken)}");
+        }
+
+        await SignInAdminAsync(admin);
+        return AuthRedirects.Redirect(this, "/super-admin");
+    }
+
+    // ── Forgot Password ────────────────────────────────────────────────────
+
+    [HttpGet("forgot-password")]
+    public IActionResult ForgotPassword()
+    {
+        if (!_authOptions.IsPasswordLogin)
+            return NotFound();
+
+        return SwapView(SwapViews.SuperAdminAuth.SuperAdminForgotPassword);
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPasswordPost([FromForm] string email)
+    {
+        if (!_authOptions.IsPasswordLogin)
+            return NotFound();
+
+        var admin = await _coreDb.SuperAdmins.FirstOrDefaultAsync(a => a.Email == email && a.IsActive);
+        if (admin is not null)
+        {
+            var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+                .Replace("+", "-").Replace("/", "_").TrimEnd('=');
+            var tokenHash = Convert.ToBase64String(
+                System.Security.Cryptography.SHA256.HashData(
+                    System.Text.Encoding.UTF8.GetBytes(rawToken)));
+
+            admin.PasswordResetToken = tokenHash;
+            admin.PasswordResetTokenExpiry = DateTime.UtcNow.AddMinutes(PasswordResetTokenExpiryMinutes);
+            await _coreDb.SaveChangesAsync();
+
+            var resetUrl = Url.Action("SuperAdminResetPassword", "SuperAdminAuth",
+                new { email = admin.Email, token = rawToken },
+                Request.Scheme) ?? "/super-admin/login";
+
+            try { await _email.SendPasswordResetAsync(admin.Email, resetUrl); }
+            catch { /* Don't block response if email fails */ }
+        }
+
+        return SwapView(SwapViews.Shared.PasswordResetSent);
+    }
+
+    // ── Reset Password ─────────────────────────────────────────────────────
+
+    [HttpGet("reset-password")]
+    public IActionResult SuperAdminResetPassword([FromQuery] string email, [FromQuery] string token)
+    {
+        if (!_authOptions.IsPasswordLogin)
+            return NotFound();
+
+        ViewData["Email"] = email;
+        ViewData["Token"] = token;
+        return SwapView(SwapViews.SuperAdminAuth.SuperAdminResetPassword);
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> SuperAdminResetPasswordPost(
+        [FromForm] string email, [FromForm] string token,
+        [FromForm] string newPassword, [FromForm] string confirmPassword)
+    {
+        if (!_authOptions.IsPasswordLogin)
+            return NotFound();
+
+        ViewData["Email"] = email;
+        ViewData["Token"] = token;
+
+        if (newPassword != confirmPassword)
+            return SwapView(SwapViews.SuperAdminAuth.SuperAdminResetPassword, model: "Passwords do not match.");
+
+        if (newPassword.Length < 8)
+            return SwapView(SwapViews.SuperAdminAuth.SuperAdminResetPassword, model: "Password must be at least 8 characters.");
+
+        var admin = await _coreDb.SuperAdmins.FirstOrDefaultAsync(a => a.Email == email && a.IsActive);
+        if (admin is null || string.IsNullOrEmpty(admin.PasswordResetToken) || admin.PasswordResetTokenExpiry < DateTime.UtcNow)
+            return SwapView(SwapViews.SuperAdminAuth.SuperAdminResetPassword, model: "This reset link has expired or is invalid. Please request a new one.");
+
+        var tokenHash = Convert.ToBase64String(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(token)));
+
+        if (!string.Equals(tokenHash, admin.PasswordResetToken, StringComparison.Ordinal))
+            return SwapView(SwapViews.SuperAdminAuth.SuperAdminResetPassword, model: "This reset link has expired or is invalid. Please request a new one.");
+
+        admin.PasswordHash = _passwordHasher.HashPassword(admin, newPassword);
+        admin.PasswordResetToken = null;
+        admin.PasswordResetTokenExpiry = null;
+        await _coreDb.SaveChangesAsync();
+
+        return AuthRedirects.Redirect(this, "/super-admin/login?passwordReset=true");
     }
 
     // ── Two-Factor Challenge ────────────────────────────────────────────────
@@ -115,7 +258,7 @@ public class SuperAdminAuthController : SwapController
     {
         var parsed = ValidateChallengeToken(t);
         if (parsed is null)
-            return Redirect("/super-admin/login");
+            return AuthRedirects.Redirect(this, "/super-admin/login");
 
         ViewData["ChallengeToken"] = t;
         return SwapView(SwapViews.SuperAdminAuth.SuperAdminTwoFactorChallenge);
@@ -126,7 +269,7 @@ public class SuperAdminAuthController : SwapController
     {
         var parsed = ValidateChallengeToken(challengeToken);
         if (parsed is null)
-            return Redirect("/super-admin/login");
+            return AuthRedirects.Redirect(this, "/super-admin/login");
 
         var admin = await _coreDb.SuperAdmins.FindAsync(Guid.Parse(parsed.Value.AdminId));
         if (admin is null || !admin.IsActive)
@@ -150,7 +293,7 @@ public class SuperAdminAuthController : SwapController
         }
 
         await SignInAdminAsync(admin);
-        return Redirect("/super-admin");
+        return AuthRedirects.Redirect(this, "/super-admin");
     }
 
     private async Task SignInAdminAsync(Modules.SuperAdmin.Entities.SuperAdmin admin)
@@ -172,13 +315,13 @@ public class SuperAdminAuthController : SwapController
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutAsync(AuthSchemes.SuperAdmin);
-        return Redirect("/super-admin/login");
+        return AuthRedirects.Redirect(this, "/super-admin/login");
     }
 
     [HttpGet("logout")]
     public async Task<IActionResult> LogoutGet()
     {
         await HttpContext.SignOutAsync(AuthSchemes.SuperAdmin);
-        return Redirect("/super-admin/login");
+        return AuthRedirects.Redirect(this, "/super-admin/login");
     }
 }

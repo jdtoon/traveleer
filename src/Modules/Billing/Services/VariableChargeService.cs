@@ -309,6 +309,21 @@ public class VariableChargeService : IVariableChargeService
 }
 
 /// <summary>
+/// No-op implementation used when Paystack is not configured (e.g. Mock billing mode).
+/// </summary>
+public class NullVariableChargeService : IVariableChargeService
+{
+    public Task<VariableChargeBreakdown> CalculateVariableChargesAsync(Guid tenantId, DateTime periodStart, DateTime periodEnd)
+        => Task.FromResult(VariableChargeBreakdown.Empty);
+
+    public Task<ChargeResult> ChargeVariableAsync(Guid tenantId)
+        => Task.FromResult(new ChargeResult(false, Error: "Variable charging is not available in this billing mode."));
+
+    public Task<ChargeResult> ChargeInvoiceAsync(Guid tenantId, Invoice invoice)
+        => Task.FromResult(new ChargeResult(false, Error: "Variable charging is not available in this billing mode."));
+}
+
+/// <summary>
 /// Breakdown of variable charges for a billing period.
 /// Contains pre-built invoice line items ready for invoice generation.
 /// </summary>

@@ -39,4 +39,20 @@ public class ConsoleEmailService : IEmailService
             HtmlBody: htmlBody,
             PlainTextBody: $"Sign in using this link: {magicLinkUrl}"));
     }
+
+    public Task SendPasswordResetAsync(string to, string resetUrl)
+    {
+        var htmlBody = _templateService.Render("PasswordReset", new Dictionary<string, string>
+        {
+            ["ResetUrl"] = resetUrl
+        });
+
+        _logger.LogInformation("\n================ PASSWORD RESET ================\nTo: {To}\nUrl: {Url}\n================================================\n", to, resetUrl);
+
+        return SendAsync(new EmailMessage(
+            To: to,
+            Subject: "Reset your password",
+            HtmlBody: htmlBody,
+            PlainTextBody: $"Reset your password using this link: {resetUrl}"));
+    }
 }

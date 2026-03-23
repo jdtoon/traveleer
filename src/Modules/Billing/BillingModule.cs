@@ -36,6 +36,9 @@ public class BillingModule : IModule
         {
             services.AddScoped<IBillingService, PaystackBillingService>();
 
+            // Variable charge orchestrator requires PaystackClient — only available in Paystack mode
+            services.AddScoped<IVariableChargeService, VariableChargeService>();
+
             // Background plan sync — only in Paystack mode
             services.AddHostedService<PaystackPlanSyncService>();
 
@@ -45,6 +48,9 @@ public class BillingModule : IModule
         else
         {
             services.AddScoped<IBillingService, MockBillingService>();
+
+            // No-op variable charge service for non-Paystack providers
+            services.AddScoped<IVariableChargeService, NullVariableChargeService>();
         }
 
         // Invoice generator (legacy) is used by both providers
@@ -57,9 +63,6 @@ public class BillingModule : IModule
         services.AddScoped<ISeatBillingService, SeatBillingService>();
         services.AddScoped<IDunningService, DunningService>();
         services.AddScoped<IAddOnService, AddOnService>();
-
-        // Variable charge orchestrator (seats + usage collection via charge_authorization)
-        services.AddScoped<IVariableChargeService, VariableChargeService>();
 
         // Lazy<IVariableChargeService> for DunningService (breaks circular dependency)
         services.AddScoped(sp => new Lazy<IVariableChargeService>(() => sp.GetRequiredService<IVariableChargeService>()));

@@ -86,7 +86,12 @@ public static class DevDataSeeder
                 UpdatedAt = DateTime.UtcNow
             };
 
-            var createResult = await userManager.CreateAsync(memberUser);
+            IdentityResult createResult;
+            if (!string.IsNullOrWhiteSpace(options.MemberPassword))
+                createResult = await userManager.CreateAsync(memberUser, options.MemberPassword);
+            else
+                createResult = await userManager.CreateAsync(memberUser);
+
             if (createResult.Succeeded)
             {
                 await userManager.AddToRoleAsync(memberUser, "Member");
@@ -96,6 +101,21 @@ public static class DevDataSeeder
             {
                 logger.LogWarning("DevSeed: Failed to create member user: {Errors}",
                     string.Join(", ", createResult.Errors.Select(e => e.Description)));
+            }
+        }
+
+        // Set admin password if configured (provisioner creates admin without a password)
+        if (!string.IsNullOrWhiteSpace(options.AdminPassword))
+        {
+            var adminUser = await tenantDb.Users.FirstOrDefaultAsync(u => u.Email == options.AdminEmail);
+            if (adminUser is not null && string.IsNullOrEmpty(adminUser.PasswordHash))
+            {
+                var addPasswordResult = await userManager.AddPasswordAsync(adminUser, options.AdminPassword);
+                if (addPasswordResult.Succeeded)
+                    logger.LogInformation("DevSeed: Set password for admin user {Email}", options.AdminEmail);
+                else
+                    logger.LogWarning("DevSeed: Failed to set admin password: {Errors}",
+                        string.Join(", ", addPasswordResult.Errors.Select(e => e.Description)));
             }
         }
 
