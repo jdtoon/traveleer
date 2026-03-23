@@ -1,0 +1,68 @@
+services:
+  app:
+    container_name: saas-app-single
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - app-data:/app/db
+    environment:
+      # Core
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+
+      # SQLite data paths in-container
+      ConnectionStrings__CoreDatabase: Data Source=/app/db/core.db
+      ConnectionStrings__AuditDatabase: Data Source=/app/db/audit.db
+      Tenancy__DatabasePath: /app/db/tenants
+
+      # App identity
+      Site__BaseUrl: ${Site__BaseUrl:-http://localhost:8080}
+      Site__Name: ${Site__Name:-SaaS App (Single Deploy)}
+      Site__SupportEmail: ${Site__SupportEmail:-support@localhost}
+
+      # Auth mode (Password or MagicLink)
+      Auth__LoginMethod: ${Auth__LoginMethod:-Password}
+
+      # Super admin bootstrap
+      SuperAdmin__Email: ${SuperAdmin__Email:-admin@localhost}
+      SuperAdmin__Password: ${SuperAdmin__Password:-SuperAdmin1234!}
+
+      # Local-only providers (no external dependencies)
+      Billing__Provider: Mock
+      Email__Provider: Console
+      Turnstile__Provider: Mock
+      Storage__Provider: Local
+      Storage__LocalBasePath: /app/db/uploads
+      Litestream__Enabled: "false"
+      Messaging__Provider: InMemory
+      Caching__Provider: Memory
+      Hangfire__Storage: InMemory
+
+      # Keep infrastructure dashboards disabled in this profile
+      Infrastructure__SeqUrl: ""
+      Infrastructure__RabbitMqManagementUrl: ""
+      Infrastructure__UptimeKumaUrl: ""
+
+      # Seed demo data on startup
+      DevSeed__Enabled: "true"
+      DevSeed__TenantSlug: ${DevSeed__TenantSlug:-demo}
+      DevSeed__TenantName: ${DevSeed__TenantName:-Demo Workspace}
+      DevSeed__AdminEmail: ${DevSeed__AdminEmail:-admin@demo.local}
+      DevSeed__AdminPassword: ${DevSeed__AdminPassword:-Admin1234!}
+      DevSeed__MemberEmail: ${DevSeed__MemberEmail:-member@demo.local}
+      DevSeed__MemberPassword: ${DevSeed__MemberPassword:-Member1234!}
+      DevSeed__PlanSlug: ${DevSeed__PlanSlug:-starter}
+
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  app-data:
